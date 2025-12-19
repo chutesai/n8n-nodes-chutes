@@ -1,0 +1,79 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Environment variables (contains API keys!)
+.env
+.env.local
+.env.*.local
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Test output files (temporary)
+*test-output*.txt
+*test-results*.txt
+*TEST*.txt
+*OUTPUT*.txt
+BUILD-OUTPUT.txt
+UNIT-TEST-OUTPUT.txt
+INTEGRATION-TEST-OUTPUT.txt
+# Video output files from tests (any test directory)
+tests/**/output-*.mp4
+
+# Editor directories and files
+.vscode/
+.cursor/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+.cache/
+.temp/
+
+# Vitest
+.vitest/
+**/.vitest/
+
+# Optional npm cache directory
+.npm
+
+# TypeScript cache
+*.tsbuildinfo
+.tsc-cache/
+
+# Package manager lock files (optional - uncomment if you want to ignore)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Next.js build artifacts (for test-nextjs)
+tests/test-nextjs/.next/
+tests/test-nextjs/next-env.d.ts
+tests/test-nextjs/.env.local
+
+# Test files that get built/generated
+test-package.mjs
+test-package-cjs.cjs
+test-nextjs-simple.mjs
+benchmark.mjs

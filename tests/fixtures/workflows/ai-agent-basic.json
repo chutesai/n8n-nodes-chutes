@@ -1,0 +1,74 @@
+{
+	"name": "TEST_AI_Agent_Basic",
+	"nodes": [
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "chat-trigger",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.1,
+			"position": [250, 300],
+			"webhookId": "test-webhook"
+		},
+		{
+			"parameters": {
+				"chuteUrl": "https://llm.chutes.ai",
+				"model": "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+			},
+			"id": "chat-model",
+			"name": "Chutes Chat Model",
+			"type": "n8n-nodes-chutes.chutesChatModel",
+			"typeVersion": 1,
+			"position": [450, 200],
+			"credentials": {
+				"chutesApi": {
+					"id": "1",
+					"name": "Chutes.ai API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"promptType": "auto",
+				"text": "={{ $json.chatInput }}",
+				"options": {
+					"systemMessage": "You are a helpful assistant."
+				}
+			},
+			"id": "ai-agent",
+			"name": "Chutes AI Agent",
+			"type": "n8n-nodes-chutes.chutesAIAgent",
+			"typeVersion": 1,
+			"position": [650, 300]
+		}
+	],
+	"connections": {
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "Chutes AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chutes Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Chutes AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null
+}
+

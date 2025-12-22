@@ -1,0 +1,60 @@
+{
+	"name": "TEST_Text_Generation_Chat",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "manual-trigger",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [250, 300]
+		},
+		{
+			"parameters": {
+				"resource": "textGeneration",
+				"operation": "chat",
+				"model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+				"chuteUrl": "https://llm.chutes.ai",
+				"messages": {
+					"messageValues": [
+						{
+							"role": "system",
+							"content": "You are a helpful coding assistant."
+						},
+						{
+							"role": "user",
+							"content": "What is Test-Driven Development?"
+						}
+					]
+				}
+			},
+			"id": "chutes-node",
+			"name": "Chutes",
+			"type": "n8n-nodes-chutes.chutes",
+			"typeVersion": 1,
+			"position": [450, 300],
+			"credentials": {
+				"chutesApi": {
+					"id": "1",
+					"name": "Chutes.ai API"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Chutes",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null
+}
+

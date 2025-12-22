@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  n8n:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: n8n-chutes-test
+    ports:
+      - "5678:5678"
+    environment:
+      # Basic Authentication
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=admin
+      
+      # Development Settings
+      - N8N_LOG_LEVEL=debug
+      - NODE_ENV=development
+      
+      # Custom Extensions Path
+      - N8N_CUSTOM_EXTENSIONS=/data/custom
+      
+      # Security (disable for local testing)
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_VERSION_NOTIFICATIONS_ENABLED=false
+      
+      # Execution Settings
+      - EXECUTIONS_DATA_SAVE_ON_ERROR=all
+      - EXECUTIONS_DATA_SAVE_ON_SUCCESS=all
+      - EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=true
+      
+      # Timezone
+      - GENERIC_TIMEZONE=America/New_York
+      
+    volumes:
+      # Persist n8n data
+      - n8n_data:/home/node/.n8n
+      
+      # Mount the built node for testing
+      - ../../dist:/data/custom/n8n-nodes-chutes/dist
+      - ../../package.json:/data/custom/n8n-nodes-chutes/package.json
+      - ../../credentials:/data/custom/n8n-nodes-chutes/credentials
+      - ../../nodes:/data/custom/n8n-nodes-chutes/nodes
+      
+      # Mount test workflows
+      - ./workflows:/data/workflows:ro
+      
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  n8n_data:
+    driver: local

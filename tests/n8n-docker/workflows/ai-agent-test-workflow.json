@@ -1,0 +1,76 @@
+{
+  "name": "Chutes AI Agent Test",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a7f6e8b4-1234-5678-9abc-def012345678",
+      "name": "When clicking 'Test workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chuteUrl": "https://llm.chutes.ai",
+        "model": "deepseek-ai/DeepSeek-V3",
+        "temperature": 0.7,
+        "options": {
+          "maxTokens": 1000
+        }
+      },
+      "id": "b8g7f9c5-2345-6789-0bcd-ef0123456789",
+      "name": "Chutes Chat Model",
+      "type": "n8n-nodes-chutes.chutesChatModel",
+      "typeVersion": 1,
+      "position": [
+        460,
+        200
+      ],
+      "credentials": {
+        "chutesApi": {
+          "id": "1",
+          "name": "Chutes.ai API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.output }}",
+        "options": {}
+      },
+      "id": "e3d2c1b0-8765-4321-0fed-cba987654321",
+      "name": "Display Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking 'Test workflow'": {
+      "main": [
+        []
+      ]
+    },
+    "Chutes Chat Model": {
+      "ai_languageModel": [
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2024-01-16T00:00:00.000Z",
+  "versionId": "1"
+}
+

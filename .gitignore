@@ -1,79 +1,56 @@
 # Dependencies
 node_modules/
+# package-lock.json
 
-# Build output
+# Build outputs
 dist/
-*.tsbuildinfo
 
-# Environment variables (contains API keys!)
-.env
-.env.local
-.env.*.local
-
-# Test coverage
-coverage/
-.nyc_output/
-
-# Test output files (temporary)
-*test-output*.txt
-*test-results*.txt
-*TEST*.txt
-*OUTPUT*.txt
-BUILD-OUTPUT.txt
-UNIT-TEST-OUTPUT.txt
-INTEGRATION-TEST-OUTPUT.txt
-# Video output files from tests (any test directory)
-tests/**/output-*.mp4
-
-# Editor directories and files
+# IDE
 .vscode/
-.cursor/
 .idea/
+.lsp/
+.clj-kondo/
+.cursor/
 *.swp
 *.swo
 *~
-.DS_Store
 
-# Logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# OS files
+# OS
 .DS_Store
 Thumbs.db
 
+# Logs
+*.log
+npm-debug.log*
+
+# Environment Variables
+# .env.example is safe to commit (contains no secrets)
+# .env contains your actual API key and MUST be ignored
+
+# To include .env in version control (NOT RECOMMENDED):
+# Comment out the .env line below with a # at the start
+# WARNING: Only do this if you know what you're doing!
+
+.env
+.env.local
+
+# Always ignore local environment overrides
+.env.*.local
+
+# Test
+coverage/
+.nyc_output/
+*.test.ts.snap
+jest-results.json
+test-results*.txt
+tests/test-output/
+
+# Compiled test files (TypeScript generates these)
+tests/**/*.js
+tests/**/*.js.map
+tests/**/*.d.ts
+
 # Temporary files
-*.tmp
-.cache/
-.temp/
+tmp/
+temp/
 
-# Vitest
-.vitest/
-**/.vitest/
-
-# Optional npm cache directory
-.npm
-
-# TypeScript cache
-*.tsbuildinfo
-.tsc-cache/
-
-# Package manager lock files (optional - uncomment if you want to ignore)
-# package-lock.json
-# yarn.lock
-# pnpm-lock.yaml
-
-# Next.js build artifacts (for test-nextjs)
-tests/test-nextjs/.next/
-tests/test-nextjs/next-env.d.ts
-tests/test-nextjs/.env.local
-
-# Test files that get built/generated
-test-package.mjs
-test-package-cjs.cjs
-test-nextjs-simple.mjs
-benchmark.mjs

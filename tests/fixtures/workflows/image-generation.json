@@ -1,0 +1,51 @@
+{
+	"name": "TEST_Image_Generation",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "manual-trigger",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [250, 300]
+		},
+		{
+			"parameters": {
+				"resource": "imageGeneration",
+				"operation": "generate",
+				"model": "black-forest-labs/FLUX.1-schnell",
+				"chuteUrl": "https://image.chutes.ai",
+				"prompt": "A robot writing code with TDD methodology",
+				"size": "1024x1024",
+				"n": 1
+			},
+			"id": "chutes-node",
+			"name": "Chutes",
+			"type": "n8n-nodes-chutes.chutes",
+			"typeVersion": 1,
+			"position": [450, 300],
+			"credentials": {
+				"chutesApi": {
+					"id": "1",
+					"name": "Chutes.ai API"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Chutes",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null
+}
+

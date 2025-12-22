@@ -1,0 +1,423 @@
+{
+    "nodes": [
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          -620,
+          260
+        ],
+        "id": "bb4f2d87-b332-4bca-a517-d54b63418833",
+        "name": "When clicking ‘Execute workflow’"
+      },
+      {
+        "parameters": {
+          "numberInputs": 10
+        },
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3.2,
+        "position": [
+          1080,
+          160
+        ],
+        "id": "abbfce45-6bdb-45e5-89a9-9976fd424860",
+        "name": "Merge"
+      },
+      {
+        "parameters": {
+          "chuteUrl": "https://chutes-deepseek-ai-deepseek-v3-2.chutes.ai",
+          "prompt": "please create a good lyrics and sound style prompt for the diffrhythm Music Generation model about \"a cat in a hat that sat on a fat stack of pancakes, maple syrup flows down the side of the stack of pancakes\" have fun, make it quirky and silly and cool and not cringe . ALSO, please, Do not under any circumstances write anything except the prompt, no headers thats say \"here is your prompt\" or anything like that. Just the prompt please.",
+          "additionalOptions": {
+            "seed": "={{ Math.floor(Math.random() * 1000000000) }}"
+          }
+        },
+        "type": "CUSTOM.chutes",
+        "typeVersion": 1,
+        "position": [
+          -120,
+          -600
+        ],
+        "id": "58c833ad-aa87-4cba-9c08-f3c645ad2541",
+        "name": "Chutes",
+        "credentials": {
+          "chutesApi": {
+            "id": "Lv1zGZROIfHD4yIL",
+            "name": "Chutes account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "chuteUrl": "https://chutes-deepseek-ai-deepseek-r1-0528.chutes.ai",
+          "operation": "chat",
+          "messages": {
+            "messageValues": [
+              {
+                "role": "system",
+                "content": "you are the HAL9000 before it went insane, be helpful like the computer in the movie, you are to pretend you are in the movie 2001 a space odyssey, and will not break character. if the user asks questions they also are pretending to be in the movie."
+              },
+              {
+                "content": "can you guess how long before we reach Jupiter, HAL?"
+              }
+            ]
+          },
+          "additionalOptions": {}
+        },
+        "type": "CUSTOM.chutes",
+        "typeVersion": 1,
+        "position": [
+          -120,
+          -400
+        ],
+        "id": "1c0f07ed-3ca2-4217-ae16-45b050009ed8",
+        "name": "Chutes1",
+        "credentials": {
+          "chutesApi": {
+            "id": "Lv1zGZROIfHD4yIL",
+            "name": "Chutes account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "resource": "imageGeneration",
+          "chuteUrl": "https://chutes-qwen-image.chutes.ai",
+          "prompt": "a cat in a hat that sat on a fat stack of pancakes, maple syrup flows down the side of the stack of pancakes",
+          "additionalOptions": {
+            "seed": "={{ Math.floor(Math.random() * 1000000000) }}"
+          }
+        },
+        "type": "CUSTOM.chutes",
+        "typeVersion": 1,
+        "position": [
+          -120,
+          -200
+        ],
+        "id": "5c179cb4-6c5e-498c-acce-3d274d0b819c",
+        "name": "Chutes2",
+        "credentials": {
+          "chutesApi": {
+            "id": "Lv1zGZROIfHD4yIL",
+            "name": "Chutes account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "resource": "videoGeneration",
+          "chuteUrl": "https://chutes-wan2-1-14b.chutes.ai",
+          "prompt": "a cat in a hat that sat on a fat stack of pancakes, maple syrup flows down the side of the stack of pancakes, lots of movement",
+          "additionalOptions": {}
+        },
+        "type": "CUSTOM.chutes",
+        "typeVersion": 1,
+        "position": [
+          80,
+          40
+        ],
+        "id": "2bfe45c5-a70c-4bee-b8cb-6d0f96fde252",
+        "name": "Chutes3",
+        "credentials": {
+          "chutesApi": {
+            "id": "Lv1zGZROIfHD4yIL",
+            "name": "Chutes account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "resource": "videoGeneration",
+          "chuteUrl": "https://chutes-wan-2-2-i2v-14b-fast.chutes.ai",
+          "operation": "image2video",
+          "prompt": "the maple syrup flows down the pancakes slowly while the cat wags his tail",
+          "additionalOptions": {
+            "timeout": 120
+          }
+        },
+        "type": "CUSTOM.chutes",
+        "typeVersion": 1,
+        "position": [
+          -120,
+          260
+        ],
+        "id": "45e4c3de-f198-4f65-b97b-c761ae7405c3",
+        "name": "Chutes4",
+        "retryOnFail": true,
+        "maxTries": 5,
+        "credentials": {
+          "chutesApi": {
+            "id": "Lv1zGZROIfHD4yIL",
+            "name": "Chutes account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "resource": "textToSpeech",
+          "chuteUrl": "https://chutes-kokoro.chutes.ai",
+          "text": "Ten Thin sticks, three thick bricks. This is a Stupid superstition. Eleven benevolent elephants. Two tried and true tridents. Thirty-Seven Rolling red wagons. One Black back bat. She sees three cheeses. Swiss wrist-watches are the best wrist-watches, but only with red leather yellow leather wrist bands from midtown Manhattan so be sure to never ever have leather weathered by resting in Westchester vestibules because you know you need unique New York and the sunshine shown through the shimmering sheer solariums is worth less investment when listed within a Westchester swiss wrist-watch warehouse where one would wish for never worn unwound widgets.",
+          "voice": "af_jessica",
+          "additionalOptions": {
+            "timeout": 30
+          }
+        },
+        "type": "CUSTOM.chutes",
+        "typeVersion": 1,
+        "position": [
+          -120,
+          520
+        ],
+        "id": "77a60ea0-0b6b-44b1-8ab8-c43962e297ce",
+        "name": "Chutes5",
+        "retryOnFail": true,
+        "maxTries": 5,
+        "credentials": {
+          "chutesApi": {
+            "id": "Lv1zGZROIfHD4yIL",
+            "name": "Chutes account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "resource": "speechToText",
+          "chuteUrl": "https://chutes-whisper-large-v3.chutes.ai",
+          "additionalOptions": {}
+        },
+        "type": "CUSTOM.chutes",
+        "typeVersion": 1,
+        "position": [
+          -120,
+          740
+        ],
+        "id": "7c598e6c-f3ef-4796-a0a8-35aa8d537ada",
+        "name": "Chutes6",
+        "credentials": {
+          "chutesApi": {
+            "id": "Lv1zGZROIfHD4yIL",
+            "name": "Chutes account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "resource": "musicGeneration",
+          "chuteUrl": "https://chutes-diffrhythm.chutes.ai",
+          "prompt": "Genre: Whimsical synth-pop, bouncy children's music with a touch of lo-fi hip-hop beat.\\nMood: Playful, quirky, sugary-sweet, slightly mischievous.\\nInstruments: Upright bass plucks, glockenspiel melodies, warm Wurlitzer electric piano chords, a crisp snare with brush strokes, a simple kick drum. Occasional vinyl crackle and pop sounds.\\nSound Design: A prominent, playful synth bass melody that mimics a cat's prowling. Sound effects: a soft \"meow\" tuned to the key, a subtle \"drip\" sound for the syrup, light whisker-twitching noises.\\nRhythm: A steady, laid-back shuffle beat (around 95 BPM) that feels like a cat lazily swishing its tail.\\nMelody: A simple, catchy, child-like melody played on the glockenspiel, repeating with small variations.\\nStructure: Intro (bass and beat), verse (Wurlitzer and glockenspiel), silly breakdown with exaggerated \"drip\" sounds and a jazzy bass walk, return to main melody.\\nLyrics Style: Simple, repetitive, rhyming, narrated with a slightly smirking, friendly male vocal (think a playful children's show host).\\nLyrical Content: (Sing-song, rhythmic delivery)\\n*(Upright bass plucks intro)*\\n\"A cat in a hat, a very fine hat,\\nHe found a tall tower, can you imagine that?\\nNot made of bricks, no, not made of stone,\\nBut a fluffy, buttery, golden throne.\\nA stack of pancakes, a syrupy fate,\\nHe sat right down, didn't hesitate.\\nMaple river, slow and sweet,\\nMaking the pancake tower a delicious treat.\\nDrip-drop, slippy-slide,\\nDown the golden, fluffy side.\\nA cat in a hat on a pancake stack,\\nNever, ever, giving it back.\"\\n*(Breakdown with exaggerated syrup drip sounds and a jazzy bass solo before final chorus)*",
+          "additionalOptions": {}
+        },
+        "type": "CUSTOM.chutes",
+        "typeVersion": 1,
+        "position": [
+          80,
+          960
+        ],
+        "id": "f4c95029-bca5-40a9-8331-8c777bafe032",
+        "name": "Chutes7",
+        "credentials": {
+          "chutesApi": {
+            "id": "Lv1zGZROIfHD4yIL",
+            "name": "Chutes account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "resource": "embeddings",
+          "chuteUrl": "https://chutes-qwen-qwen3-embedding-0-6b.chutes.ai",
+          "text": "Ten Thin sticks, three thick bricks. This is a Stupid superstition. Eleven benevolent elephants. Two tried and true tridents. Thirty-Seven Rolling red wagons. One Black back bat. She sees three cheeses. Swiss wrist-watches are the best wrist-watches, but only with red leather yellow leather wrist bands from midtown Manhattan so be sure to never ever have leather weathered by resting in Westchester vestibules because you know you need unique New York and the sunshine shown through the shimmering sheer solariums is worth less investment when listed within a Westchester swiss wrist-watch warehouse where one would wish for never worn unwound widgets.",
+          "additionalOptions": {}
+        },
+        "type": "CUSTOM.chutes",
+        "typeVersion": 1,
+        "position": [
+          80,
+          1180
+        ],
+        "id": "df25bd7e-3c30-41df-a6ec-93871bba781e",
+        "name": "Chutes8",
+        "credentials": {
+          "chutesApi": {
+            "id": "Lv1zGZROIfHD4yIL",
+            "name": "Chutes account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "resource": "contentModeration",
+          "chuteUrl": "https://chutes-nsfw-classifier.chutes.ai",
+          "content": "Ten Thin sticks, three thick bricks. This is a Stupid superstition. Eleven benevolent elephants. Two tried and true tridents. Thirty-Seven Rolling red wagons. One Black back bat. She sees three cheeses. Swiss wrist-watches are the best wrist-watches, but only with red leather yellow leather wrist bands from midtown Manhattan so be sure to never ever have leather weathered by resting in Westchester vestibules because you know you need unique New York and the sunshine shown through the shimmering sheer solariums is worth less investment when listed within a Westchester swiss wrist-watch warehouse where one would wish for never worn unwound widgets.",
+          "additionalOptions": {}
+        },
+        "type": "CUSTOM.chutes",
+        "typeVersion": 1,
+        "position": [
+          80,
+          1400
+        ],
+        "id": "ed5e0cf2-3252-43ea-8030-2f12911fbf3f",
+        "name": "Chutes9",
+        "credentials": {
+          "chutesApi": {
+            "id": "Lv1zGZROIfHD4yIL",
+            "name": "Chutes account"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "When clicking ‘Execute workflow’": {
+        "main": [
+          [
+            {
+              "node": "Chutes",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Chutes1",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Chutes2",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Chutes5",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Chutes": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Chutes1": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Chutes2": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 2
+            },
+            {
+              "node": "Chutes4",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Chutes3": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 3
+            }
+          ]
+        ]
+      },
+      "Chutes4": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 4
+            }
+          ]
+        ]
+      },
+      "Chutes5": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 5
+            },
+            {
+              "node": "Chutes6",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Chutes6": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 6
+            }
+          ]
+        ]
+      },
+      "Chutes7": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 7
+            }
+          ]
+        ]
+      },
+      "Chutes8": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 8
+            }
+          ]
+        ]
+      },
+      "Chutes9": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 9
+            }
+          ]
+        ]
+      }
+    },
+    "pinData": {},
+    "meta": {
+      "templateCredsSetupCompleted": true,
+      "instanceId": "0766e26a38e4cf9836ab30499d93ee64e5c7b0eae3f1edb925460d34cf41d5c5"
+    }
+  }

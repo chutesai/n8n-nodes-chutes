@@ -48,7 +48,7 @@
     "tdd:full": "jest --watch --verbose --coverage",
     "release": "release-it",
     "release:dry": "release-it --dry-run",
-    "prepublishOnly": "npm run build && npm run lint nodes credentials package.json && npm test"
+    "prepublishOnly": "npm run build && npm run lint && npm test"
   },
   "files": [
     "dist"

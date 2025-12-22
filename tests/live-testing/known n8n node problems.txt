@@ -1,0 +1,99 @@
+[LLM (text Generation) resource]
+Dropdown looks like it shows every chute, it shows a bunch of affine chutes, and maybe even private chutes, and some might not even be llm model chutes im not sure
+
+[Video Generation resource]
+Both text to video and image to video use the same resource, with different "operations", not sure if bug or feature? Both contain the chutes auto populated dropdown for video models both ways, so youd have to pick the correct operation, then the correct corresponding chute.
+
+[Image generation resource]
+Image generation resource does not have a way to input images for image-edit models
+For some reason Wan2.2-Fast is showing up in image gen resource, infact both vid gens are
+Many image chutes missing
+NSFW classifier model same as edit, no input for it, only prompt box
+
+[Content Moderation Resource]
+Only has the NSFW classifier in it, just like the other node that has that one chute, it has no way to input an image, only text
+
+
+[General QOL complaints]
+Does not have a way to put in a custom model or chute name that could flow or be set from a previous node
+
+
+[Music Generation resource] - Broken or missing Implementation:
+Resource "musicGeneration" not implemented in Chutes.ai
+{
+  "errorMessage": "Resource \"musicGeneration\" not implemented in Chutes.ai",
+  "errorDetails": {},
+  "n8nDetails": {
+    "nodeName": "Chutes7",
+    "nodeType": "CUSTOM.chutes",
+    "nodeVersion": 1,
+    "resource": "musicGeneration",
+    "operation": "generate",
+    "itemIndex": 0,
+    "time": "12/10/2025, 5:02:59 PM",
+    "n8nVersion": "1.97.1 (Self Hosted)",
+    "binaryDataMode": "default",
+    "stackTrace": [
+      "NodeOperationError: Resource \"musicGeneration\" not implemented in Chutes.ai",
+      "    at ExecuteContext.execute (/data/custom/n8n-nodes-chutes/nodes/Chutes/Chutes.node.ts:334:10)",
+      "    at WorkflowExecute.runNode (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_openai@4.78.1_encoding@0.1.13_zod@3.24.1_/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:1185:32)",
+      "    at /usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_openai@4.78.1_encoding@0.1.13_zod@3.24.1_/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:1534:38",
+      "    at processTicksAndRejections (node:internal/process/task_queues:95:5)",
+      "    at /usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_openai@4.78.1_encoding@0.1.13_zod@3.24.1_/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:2098:11"
+    ]
+  }
+}
+
+[Embeddings resource] - Broken or missing Implementation:
+Resource "embeddings" not implemented in Chutes.ai
+{
+  "errorMessage": "Resource \"embeddings\" not implemented in Chutes.ai",
+  "errorDetails": {},
+  "n8nDetails": {
+    "nodeName": "Chutes8",
+    "nodeType": "CUSTOM.chutes",
+    "nodeVersion": 1,
+    "resource": "embeddings",
+    "operation": "generate",
+    "itemIndex": 0,
+    "time": "12/10/2025, 5:07:46 PM",
+    "n8nVersion": "1.97.1 (Self Hosted)",
+    "binaryDataMode": "default",
+    "stackTrace": [
+      "NodeOperationError: Resource \"embeddings\" not implemented in Chutes.ai",
+      "    at ExecuteContext.execute (/data/custom/n8n-nodes-chutes/nodes/Chutes/Chutes.node.ts:334:10)",
+      "    at WorkflowExecute.runNode (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_openai@4.78.1_encoding@0.1.13_zod@3.24.1_/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:1185:32)",
+      "    at /usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_openai@4.78.1_encoding@0.1.13_zod@3.24.1_/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:1534:38",
+      "    at processTicksAndRejections (node:internal/process/task_queues:95:5)",
+      "    at /usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_openai@4.78.1_encoding@0.1.13_zod@3.24.1_/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:2098:11"
+    ]
+  }
+}
+
+
+[Content Moderation resource] - Broken or missing Implementation:
+Resource "contentModeration" not implemented in Chutes.ai
+{
+  "errorMessage": "Resource \"contentModeration\" not implemented in Chutes.ai",
+  "errorDetails": {},
+  "n8nDetails": {
+    "nodeName": "Chutes9",
+    "nodeType": "CUSTOM.chutes",
+    "nodeVersion": 1,
+    "resource": "contentModeration",
+    "operation": "analyze",
+    "itemIndex": 0,
+    "time": "12/10/2025, 5:31:05 PM",
+    "n8nVersion": "1.97.1 (Self Hosted)",
+    "binaryDataMode": "default",
+    "stackTrace": [
+      "NodeOperationError: Resource \"contentModeration\" not implemented in Chutes.ai",
+      "    at ExecuteContext.execute (/data/custom/n8n-nodes-chutes/nodes/Chutes/Chutes.node.ts:334:10)",
+      "    at WorkflowExecute.runNode (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_openai@4.78.1_encoding@0.1.13_zod@3.24.1_/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:1185:32)",
+      "    at /usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_openai@4.78.1_encoding@0.1.13_zod@3.24.1_/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:1534:38",
+      "    at processTicksAndRejections (node:internal/process/task_queues:95:5)",
+      "    at /usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_openai@4.78.1_encoding@0.1.13_zod@3.24.1_/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:2098:11"
+    ]
+  }
+}
+

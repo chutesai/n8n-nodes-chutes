@@ -1,0 +1,450 @@
+{
+  "name": "test_nodes",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -520,
+        720
+      ],
+      "id": "b9caaa0c-f81e-4a97-9a9a-3906dcf40e76",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "numberInputs": 10
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1180,
+        620
+      ],
+      "id": "27635904-a077-4d5e-b34c-02c1118542be",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "chuteUrl": "https://chutes-deepseek-ai-deepseek-r1-0528.chutes.ai",
+        "prompt": "please tell me a story about a cat with a hat that sat on a fat stack of pancakes",
+        "additionalOptions": {
+          "seed": "={{ Math.floor(Math.random() * 1000000000) }}"
+        }
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        -140
+      ],
+      "id": "2dd68d1e-6238-48ee-8c75-1b3e0eb0727c",
+      "name": "Chutes - Text Generation",
+      "credentials": {
+        "chutesApi": {
+          "id": "Lv1zGZROIfHD4yIL",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chuteUrl": "https://chutes-moonshotai-kimi-k2-thinking.chutes.ai",
+        "operation": "chat",
+        "messages": {
+          "messageValues": [
+            {
+              "role": "system",
+              "content": "you are the HAL9000 before it went insane, be helpful like the computer in the movie, you are to pretend you are in the movie 2001 a space odyssey, and will not break character. if the user asks questions they also are pretending to be in the movie."
+            },
+            {
+              "content": "can you guess how long before we reach Jupiter, HAL?"
+            }
+          ]
+        },
+        "additionalOptions": {}
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        60
+      ],
+      "id": "25deb3e8-3108-4383-a03b-1374efb51b02",
+      "name": "Chutes - Chat Generation",
+      "credentials": {
+        "chutesApi": {
+          "id": "Lv1zGZROIfHD4yIL",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "imageGeneration",
+        "chuteUrl": "https://chutes-qwen-image.chutes.ai",
+        "prompt": "a cat in a hat that sat on a fat stack of pancakes, maple syrup flows down the side of the stack of pancakes",
+        "additionalOptions": {
+          "seed": "={{ Math.floor(Math.random() * 1000000000) }}"
+        }
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        260
+      ],
+      "id": "4563139a-e979-4a5d-b32d-6fc5bc035b30",
+      "name": "Chutes - Image Generation",
+      "credentials": {
+        "chutesApi": {
+          "id": "Lv1zGZROIfHD4yIL",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "imageGeneration",
+        "chuteUrl": "https://chutes-qwen-image-edit-2509.chutes.ai",
+        "operation": "edit",
+        "prompt": "make the hat green and the cat black and the pancakes blueberry pancakes, and make the syrup strawberry colored syrup",
+        "additionalOptions": {}
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        240,
+        500
+      ],
+      "id": "a91b2400-ad55-4895-84be-ac6908895512",
+      "name": "Chutes - Edit Image",
+      "credentials": {
+        "chutesApi": {
+          "id": "Lv1zGZROIfHD4yIL",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "videoGeneration",
+        "chuteUrl": "https://chutes-wan-2-2-i2v-14b-fast.chutes.ai",
+        "operation": "image2video",
+        "prompt": "the maple syrup flows down the pancakes slowly while the cat wags his tail",
+        "additionalOptions": {
+          "timeout": 120
+        }
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        0,
+        660
+      ],
+      "id": "8d3afbae-3dcf-4c99-bfe0-f3bd7066979b",
+      "name": "Chutes - Image to Video",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "credentials": {
+        "chutesApi": {
+          "id": "Lv1zGZROIfHD4yIL",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "textToSpeech",
+        "chuteUrl": "https://chutes-kokoro.chutes.ai",
+        "text": "Ten Thin sticks, three thick bricks. This is a Stupid superstition. Eleven benevolent elephants. Two tried and true tridents. Thirty-Seven Rolling red wagons. One Black back bat. She sees three cheeses. Swiss wrist-watches are the best wrist-watches, but only with red leather yellow leather wrist bands from midtown Manhattan so be sure to never ever have leather weathered by resting in Westchester vestibules because you know you need unique New York and the sunshine shown through the shimmering sheer solariums is worth less investment when listed within a Westchester swiss wrist-watch warehouse where one would wish for never worn unwound widgets.",
+        "voice": "af_jessica",
+        "additionalOptions": {
+          "timeout": 30
+        }
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        980
+      ],
+      "id": "2343ada1-554d-4d16-897d-5c997b15b4ad",
+      "name": "Chutes - Text to Speech",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "credentials": {
+        "chutesApi": {
+          "id": "Lv1zGZROIfHD4yIL",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "speechToText",
+        "chuteUrl": "https://chutes-whisper-large-v3.chutes.ai",
+        "additionalOptions": {}
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        1200
+      ],
+      "id": "93abc16d-a76f-4430-9e75-31534760ba11",
+      "name": "Chutes - Speech to Text",
+      "credentials": {
+        "chutesApi": {
+          "id": "Lv1zGZROIfHD4yIL",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "embeddings",
+        "chuteUrl": "https://chutes-qwen-qwen3-embedding-0-6b.chutes.ai",
+        "text": "Ten Thin sticks, three thick bricks. This is a Stupid superstition. Eleven benevolent elephants. Two tried and true tridents. Thirty-Seven Rolling red wagons. One Black back bat. She sees three cheeses. Swiss wrist-watches are the best wrist-watches, but only with red leather yellow leather wrist bands from midtown Manhattan so be sure to never ever have leather weathered by resting in Westchester vestibules because you know you need unique New York and the sunshine shown through the shimmering sheer solariums is worth less investment when listed within a Westchester swiss wrist-watch warehouse where one would wish for never worn unwound widgets.",
+        "additionalOptions": {}
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        1460
+      ],
+      "id": "55d86c43-3fa2-4fae-adf9-b9980e7990ab",
+      "name": "Chutes - Embeddings",
+      "credentials": {
+        "chutesApi": {
+          "id": "Lv1zGZROIfHD4yIL",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "contentModeration",
+        "chuteUrl": "https://chutes-nsfw-classifier.chutes.ai",
+        "content": "={{ $json.text }}",
+        "additionalOptions": {}
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        300,
+        1720
+      ],
+      "id": "98e5244b-9374-43d4-8b14-8d179771af7e",
+      "name": "Chutes - Content Moderation",
+      "credentials": {
+        "chutesApi": {
+          "id": "Lv1zGZROIfHD4yIL",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "musicGeneration",
+        "additionalOptions": {}
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        900,
+        1420
+      ],
+      "id": "dfce677a-4238-4ac6-910b-96ede683f1a3",
+      "name": "Chutes - Music Generation",
+      "credentials": {
+        "chutesApi": {
+          "id": "Lv1zGZROIfHD4yIL",
+          "name": "Chutes account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Chutes - Image Generation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chutes - Text to Speech",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chutes - Text Generation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chutes - Chat Generation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chutes - Embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chutes - Text Generation": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chutes - Chat Generation": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Chutes - Image Generation": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          },
+          {
+            "node": "Chutes - Image to Video",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chutes - Edit Image",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chutes - Content Moderation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chutes - Edit Image": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Chutes - Image to Video": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Chutes - Text to Speech": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 5
+          },
+          {
+            "node": "Chutes - Speech to Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chutes - Speech to Text": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 6
+          },
+          {
+            "node": "Chutes - Content Moderation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chutes - Embeddings": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 7
+          }
+        ]
+      ]
+    },
+    "Chutes - Content Moderation": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 8
+          }
+        ]
+      ]
+    },
+    "Chutes - Music Generation": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 9
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "fd0dcbe2-1a50-4ba4-a012-a9a8dc719b1a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0766e26a38e4cf9836ab30499d93ee64e5c7b0eae3f1edb925460d34cf41d5c5"
+  },
+  "id": "l2N3qzVJkYMKM3fU",
+  "tags": []
+}

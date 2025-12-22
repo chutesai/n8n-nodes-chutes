@@ -1,0 +1,67 @@
+{
+  "name": "Chutes.ai Test Workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-node",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "resource": "textGeneration",
+        "chuteUrl": "https://llm.chutes.ai",
+        "operation": "chat",
+        "model": "deepseek-ai/DeepSeek-R1",
+        "messages": {
+          "messageValues": [
+            {
+              "role": "user",
+              "content": "Hello! Can you tell me a short joke about programming?"
+            }
+          ]
+        },
+        "additionalOptions": {
+          "temperature": 0.7,
+          "maxTokens": 150
+        }
+      },
+      "id": "chutes-node",
+      "name": "Chutes Text Generation",
+      "type": "n8n-nodes-chutes.chutes",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "credentials": {
+        "chutesApi": {
+          "id": "1",
+          "name": "Chutes.ai API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chutes Text Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-10-15T20:00:00.000Z",
+  "versionId": "1"
+}
+

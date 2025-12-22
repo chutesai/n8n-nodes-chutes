@@ -1,0 +1,9 @@
+# Docker volumes and data
+n8n_data/
+
+# Logs
+*.log
+
+# Workflows (optional - uncomment if you don't want to commit test workflows)
+# workflows/
+

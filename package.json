@@ -1,0 +1,86 @@
+{
+  "name": "n8n-nodes-chutes",
+  "version": "0.0.8",
+  "description": "Chutes.ai integration for n8n - AI text generation, image generation, and inference",
+  "keywords": [
+    "n8n-community-node-package",
+    "ai",
+    "llm",
+    "image-generation",
+    "chutes",
+    "chutes.ai",
+    "text-generation",
+    "inference",
+    "machine-learning"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/chutesai/n8n-nodes-chutes",
+  "engines": {
+    "node": ">=20.12.0"
+  },
+  "author": {
+    "name": "Ian Tuddenham",
+    "email": "ian@tuddenham.dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chutesai/n8n-nodes-chutes.git"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc && gulp build:icons",
+    "dev": "tsc --watch",
+    "format": "prettier nodes credentials --write",
+    "lint": "eslint \"nodes/**/*.ts\" \"credentials/**/*.ts\"",
+    "lintfix": "eslint \"nodes/**/*.ts\" \"credentials/**/*.ts\" --fix",
+	"test": "jest --forceExit",
+    "test:ci": "jest --forceExit --ci",
+    "test:unit": "jest --forceExit --ci --testPathIgnorePatterns=\"tests/api-discovery|tests/integration\"",
+	"test:integration": "jest --forceExit --ci --testPathPatterns=\"tests/integration\" --testPathIgnorePatterns=\"video-generation|embeddings-execution|test-llm-response-truncation\" --testTimeout=120000",
+	"test:slow": "jest --forceExit --ci --testPathPatterns=\"tests/integration/(video-generation|embeddings-execution)|tests/api-discovery/test-llm-response-truncation\" --testTimeout=180000",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:verbose": "jest --verbose",
+    "test:tdd": "jest --watch --verbose --coverage",
+	"test:docker": "jest --testPathPatterns=tests/integration/docker",
+	"test:docker:watch": "jest --watch --testPathPatterns=tests/integration/docker",
+    "deploy:docker": "npm run build && docker restart n8n-chutes-test",
+    "tdd:full": "jest --watch --verbose --coverage",
+    "release": "release-it",
+    "release:dry": "release-it --dry-run",
+    "prepublishOnly": "npm run build && npm run lint nodes credentials package.json && npm test"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/ChutesApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Chutes/Chutes.node.js",
+      "dist/nodes/ChutesChatModel/ChutesChatModel.node.js",
+      "dist/nodes/ChutesAIAgent/ChutesAIAgent.node.js"
+    ]
+  },
+  "dependencies": {
+    "@langchain/core": "^0.3.0"
+  },
+  "devDependencies": {
+    "@release-it/conventional-changelog": "^10.0.4",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^18.0.0",
+    "@typescript-eslint/parser": "^5.0.0",
+    "dotenv": "^17.2.3",
+    "eslint": "^8.0.0",
+    "gulp": "^4.0.0",
+    "gulp-cli": "^2.3.0",
+    "jest": "^30.2.0",
+    "n8n-workflow": "*",
+    "prettier": "^2.0.0",
+    "release-it": "^19.1.0",
+    "ts-jest": "^29.4.5",
+    "typescript": "^5.3.0"
+  }
+}

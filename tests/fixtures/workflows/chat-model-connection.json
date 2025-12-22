@@ -1,0 +1,73 @@
+{
+	"name": "TEST_Chat_Model_Connection",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "manual-trigger",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [250, 300]
+		},
+		{
+			"parameters": {
+				"chuteUrl": "https://llm.chutes.ai",
+				"model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+				"temperature": 0.7,
+				"options": {
+					"maxTokens": 1000
+				}
+			},
+			"id": "chat-model",
+			"name": "Chutes Chat Model",
+			"type": "n8n-nodes-chutes.chutesChatModel",
+			"typeVersion": 1,
+			"position": [450, 200],
+			"credentials": {
+				"chutesApi": {
+					"id": "1",
+					"name": "Chutes.ai API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "Explain Test-Driven Development in one sentence.",
+				"options": {}
+			},
+			"id": "ai-agent",
+			"name": "Chutes AI Agent",
+			"type": "n8n-nodes-chutes.chutesAIAgent",
+			"typeVersion": 1,
+			"position": [450, 300]
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Chutes AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chutes Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Chutes AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null
+}
+

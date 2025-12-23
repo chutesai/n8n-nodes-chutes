@@ -2,7 +2,7 @@
 
 **Date:** 2025-12-22  
 **Package:** `n8n-nodes-chutes`  
-**Version:** 0.0.8  
+**Version:** 0.0.9  
 **Type:** n8n Community Node Package
 
 ## ✅ Publication Alignment Check
@@ -235,6 +235,6 @@ The test suite comprehensively covers all functionality that will be published t
 ---
 
 *Verification completed: 2025-12-22*  
-*Package verified: n8n-nodes-chutes@0.0.8*  
+*Package verified: n8n-nodes-chutes@0.0.9*  
 *Status: ✅ PRODUCTION READY*
 

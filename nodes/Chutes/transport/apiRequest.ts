@@ -81,7 +81,7 @@ export async function chutesApiRequest(
 		headers: {
 			'Content-Type': 'application/json',
 			'Accept': 'application/json',
-			'User-Agent': 'n8n-ChutesAI/0.0.8',
+			'User-Agent': 'n8n-ChutesAI/0.0.9',
 			'X-Chutes-Source': 'n8n-integration',
 			...headers,
 		},

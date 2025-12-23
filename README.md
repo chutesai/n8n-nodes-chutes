@@ -31,19 +31,21 @@ cd ~/.n8n
 npm install n8n-nodes-chutes
 ```
 
-## Authentication
+## Authentication (With Example)
 
 To use this node, you'll need an API key from Chutes.ai:
 
 1. Sign up at [chutes.ai](https://chutes.ai)
-2. Navigate to your [API Keys dashboard](https://chutes.ai/dashboard/api-keys)
-3. Create a new API key
+2. Navigate to your [API Keys dashboard](https://chutes.ai/app/api)
+3. Create a new API key (you will only be shown it once)
 4. Add the key to your n8n credentials:
    - Go to **Credentials** > **New**
    - Select **Chutes API**
    - Enter your API key
    - Choose your environment (Production/Sandbox)
    - Save
+
+![API Keys Example](examples\chutes_api_key_n8n2.gif)
 
 ## Features
 
@@ -73,7 +75,7 @@ This node provides complete access to all Chutes.ai playground features:
 - Seed for reproducibility
 - Batch generation support
 
-### 🔧 Inference
+### 🔧 Inference (coming soon)
 - **Predict**: Run custom model inference
 - **Batch**: Process multiple inputs efficiently
 - **Status**: Check job status for long-running operations
@@ -103,10 +105,10 @@ This package provides three complementary nodes for different use cases:
 
 ### 2. Chutes Chat Model
 
-**Use when:** You want to use Chutes.ai with n8n's official AI Agent node
+**Use when:** You want to use Chutes.ai with an available AI Agent node
 
 **Features:**
-- ✅ Works with n8n's AI Agent
+- ✅ Works with Chutes AI Agent
 - ✅ All Chutes LLM models (DeepSeek, Qwen, etc.)
 - ✅ Dynamic chute/model selection
 - ✅ Temperature and advanced parameters
@@ -122,7 +124,7 @@ This package provides three complementary nodes for different use cases:
 **Use when:** You want n8n's full AI Agent experience, but exclusively with Chutes.ai models
 
 **Features:**
-- 🤖 Complete 1:1 clone of n8n's AI Agent
+- 🤖 Functions identically to n8n's AI Agent
 - 🔒 **Whitelisted** - Only accepts Chutes Chat Model (ensures Chutes.ai integration)
 - 🛠️ Full support for Tools, Memory, and Output Parsers
 - 💬 Multi-turn conversations with context
@@ -148,7 +150,7 @@ This package provides three complementary nodes for different use cases:
 | Use Case | Recommended Node |
 |----------|-----------------|
 | Complex workflows with multiple AI operations | **Chutes** (Original) |
-| Using n8n's official AI Agent with Chutes models | **Chutes Chat Model** |
+| Using Chutes official AI Agent with Chutes models | **Chutes Chat Model** |
 | AI Agent that ONLY works with Chutes models | **Chutes AI Agent** |
 | Image/video/audio generation | **Chutes** (Original) |
 | Custom model inference | **Chutes** (Original) |
@@ -164,12 +166,12 @@ When you install `n8n-nodes-chutes`, you get all three nodes:
    - Full control over API parameters
    
 2. **Chutes Chat Model** - LangChain-compatible chat model node
-   - Connects to n8n's official AI Agent
+   - Connects to Chutes official AI Agent
    - Provides Chutes.ai LLM models to any AI Agent
    - `NodeConnectionType.AiLanguageModel` output
    
 3. **Chutes AI Agent** - Complete AI Agent with Chutes-only whitelist
-   - 1:1 clone of n8n's AI Agent structure
+   - Clone of n8n's AI Agent structure
    - **Only accepts Chutes Chat Model** (whitelisted at input level)
    - Full Tool, Memory, and Output Parser support
    - Perfect for workflows that must use Chutes.ai exclusively
@@ -184,92 +186,342 @@ Use the right node for your use case (see the comparison table above).
 
 Generate creative text using Chutes.ai's LLM models:
 
+![Basic Text Generation Example](examples\Basic_Text_Generation2.gif)
+
+<details>
+<summary>Click to see full JSON example node</summary>
+
 ```json
 {
-  "resource": "textGeneration",
-  "operation": "complete",
-  "model": "gpt-3.5-turbo",
-  "prompt": "Write a story about a robot discovering emotions",
-  "additionalOptions": {
-    "temperature": 0.8,
-    "maxTokens": 500,
-    "topP": 0.9
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "207576a8-03fc-427c-b6e3-475891b30a52",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "chuteUrl": "https://chutes-deepseek-ai-deepseek-v3-0324-tee.chutes.ai",
+        "prompt": "Write a story about a cat with a hat that sat on a fat stack of pancakes, with syrup dribbled down the side of the pancakes.",
+        "additionalOptions": {}
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ],
+      "id": "a5e63622-183d-4ac2-84f7-576b6e04ff0b",
+      "name": "Chutes",
+      "credentials": {
+        "chutesApi": {
+          "id": "Lv1zGZROIfHD4yIL",
+          "name": "Chutes account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Chutes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0766e26a38e4cf9836ab30499d93ee64e5c7b0eae3f1edb925460d34cf41d5c5"
   }
 }
 ```
+
+</details>
 
 ### Chat Conversation
 
-Have a multi-turn conversation with context:
+Have a multi-turn conversation with context (this example includes basic troubleshooting):
+
+![Chat Conversation Example](examples\Chat_Conversation.gif)
+
+
+<details>
+<summary>Click to see full JSON example node</summary>
 
 ```json
 {
-  "resource": "textGeneration",
-  "operation": "chat",
-  "model": "gpt-4",
-  "messages": [
+  "nodes": [
     {
-      "role": "system",
-      "content": "You are a helpful assistant specialized in technology."
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c7bf314b-4232-4f02-9146-439e30aa7437",
+      "name": "When clicking ‘Execute workflow’"
     },
     {
-      "role": "user",
-      "content": "Explain quantum computing in simple terms"
+      "parameters": {
+        "chuteUrl": "https://chutes-moonshotai-kimi-k2-thinking.chutes.ai",
+        "operation": "chat",
+        "messages": {
+          "messageValues": [
+            {
+              "role": "system",
+              "content": "you are the HAL9000 before it went insane, be helpful like the computer in the movie, you are to pretend you are in the movie 2001 a space odyssey, and will not break character. if the user asks questions they are also pretending to be in the movie."
+            },
+            {
+              "content": "can you guess how long before we reach Jupiter, HAL?"
+            }
+          ]
+        },
+        "additionalOptions": {
+          "maxTokens": 10000
+        }
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ],
+      "id": "7beb97a8-a59c-4041-b7f2-6be1901c79eb",
+      "name": "Chutes",
+      "credentials": {
+        "chutesApi": {
+          "id": "Lv1zGZROIfHD4yIL",
+          "name": "Chutes account"
+        }
+      }
     }
   ],
-  "additionalOptions": {
-    "temperature": 0.7,
-    "responseFormat": "json_object"
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Chutes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0766e26a38e4cf9836ab30499d93ee64e5c7b0eae3f1edb925460d34cf41d5c5"
   }
 }
 ```
+
+</details>
 
 ### Image Generation
 
 Create stunning images from text descriptions:
 
-```json
-{
-  "resource": "imageGeneration",
-  "operation": "generate",
-  "model": "dall-e-3",
-  "prompt": "A futuristic city with flying cars at sunset, cyberpunk style",
-  "size": "1024x1024",
-  "quality": "hd",
-  "style": "vivid",
-  "n": 2,
-  "additionalOptions": {
-    "seed": 12345,
-    "negativePrompt": "blurry, low quality"
-  }
-}
-```
+![Image Generation Example](examples\Image_Generation.gif)
 
-### Custom Model Inference
 
-Run inference on your deployed models:
+<details>
+<summary>Click to see full JSON example node</summary>
 
 ```json
 {
-  "resource": "inference",
-  "operation": "predict",
-  "modelId": "model_abc123",
-  "input": {
-    "text": "Analyze this sentiment"
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4bee9ada-56fe-4cc1-9490-ce87839077dd",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "resource": "imageGeneration",
+        "chuteUrl": "https://chutes-qwen-image.chutes.ai",
+        "prompt": "a cat in a hat that sat on a fat stack of pancakes, maple syrup flows down the side of the pancakes",
+        "additionalOptions": {}
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ],
+      "id": "13f40013-4da6-4bc6-b909-95e8e7b1594d",
+      "name": "Chutes",
+      "credentials": {
+        "chutesApi": {
+          "id": "Lv1zGZROIfHD4yIL",
+          "name": "Chutes account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Chutes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "additionalOptions": {
-    "timeout": 120,
-    "priority": "high"
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0766e26a38e4cf9836ab30499d93ee64e5c7b0eae3f1edb925460d34cf41d5c5"
   }
 }
 ```
+
+</details>
+
+### Video Generation
+
+Animate stunning images with Video using text descriptions :
+
+![Video Generation Example](examples\Image2Video_Generation.gif)
+
+
+<details>
+<summary>Click to see full JSON example node</summary>
+
+```json
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        0
+      ],
+      "id": "4bee9ada-56fe-4cc1-9490-ce87839077dd",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "resource": "imageGeneration",
+        "chuteUrl": "https://chutes-qwen-image.chutes.ai",
+        "prompt": "a cat in a hat that sat on a fat stack of pancakes, maple syrup flows down the side of the pancakes",
+        "additionalOptions": {}
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        20,
+        0
+      ],
+      "id": "13f40013-4da6-4bc6-b909-95e8e7b1594d",
+      "name": "Chutes",
+      "credentials": {
+        "chutesApi": {
+          "id": "Lv1zGZROIfHD4yIL",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "videoGeneration",
+        "chuteUrl": "https://chutes-wan-2-2-i2v-14b-fast.chutes.ai",
+        "operation": "image2video",
+        "prompt": "the maple syrup flows down the pancakes slowly while the cat wags his tail",
+        "additionalOptions": {}
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        240,
+        0
+      ],
+      "id": "6b881c17-31d5-4f2a-9553-4dbe5711d0a6",
+      "name": "Chutes1",
+      "credentials": {
+        "chutesApi": {
+          "id": "Lv1zGZROIfHD4yIL",
+          "name": "Chutes account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Chutes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chutes": {
+      "main": [
+        [
+          {
+            "node": "Chutes1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0766e26a38e4cf9836ab30499d93ee64e5c7b0eae3f1edb925460d34cf41d5c5"
+  }
+}
+```
+
+</details>
+
+### Use your Imagination
+
+String together as many n8n nodes as you like, for any reason, no matter how crazy. Chutes Nodes are made to work together :
+
+![Silly Generation Example](examples\Bing_Chilling_n8n.gif)
+
+This workflow can be found in the [Examples Directory](https://github.com/chutesai/n8n-nodes-chutes/tree/main/examples), you will also need [FFmpeg](https://github.com/FFmpeg/FFmpeg) installed to make a GIF - but that can easily be accomplished by [using the docker example found in the tests folder](https://github.com/chutesai/n8n-nodes-chutes/tree/main/tests/n8n-docker).
+
+![Purple Apple Generation Example](examples\a_purple_apple.gif)
 
 ## Advanced Features
 
 ### 🔄 Streaming Support
 Enable real-time streaming for text generation to get responses as they're generated, matching the Chutes.ai playground experience.
 
-### ⚡ Rate Limiting
+### ⚡ Rate Limiting (coming soon)
 The node automatically handles Chutes.ai rate limits with exponential backoff and retry logic, ensuring reliable operation even under heavy load.
 
 ### 🛡️ Error Handling
@@ -333,9 +585,9 @@ The node dynamically loads available chutes from the Chutes.ai Management API:
 - Each chute has its own subdomain: `https://{slug}.chutes.ai`
 - Automatically routes requests to the correct endpoint
 
-### Error Handling & Retries
+### Error Handling & Retries (better features coming soon)
 
-- Automatic retry logic with exponential backoff
+- Automatic retry logic with exponential backoff (coming soon)
 - Handles rate limiting (429 errors)
 - Clear error messages for authentication and API issues
 - Graceful degradation for optional features
@@ -343,8 +595,8 @@ The node dynamically loads available chutes from the Chutes.ai Management API:
 ## Resources
 
 - [Chutes.ai Documentation](https://docs.chutes.ai)
-- [API Reference](https://docs.chutes.ai/api)
-- [Playground](https://chutes.ai/playground)
+- [API Reference](https://chutes.ai/docs/api-reference/overview)
+- [Playground](https://chutes.ai/app)
 - [n8n Community Forum](https://community.n8n.io)
 - [Report Issues](https://github.com/chutesai/n8n-nodes-chutes/issues)
 
@@ -409,13 +661,13 @@ See [tests/README.md](tests/README.md) for detailed testing documentation.
 
 ## Compatibility
 
-- **n8n version**: 0.0.8 or higher
+- **n8n version**: 0.0.9 or higher
 - **Node.js**: 20.12.0 or higher (runtime), 20.12.0+ required for development
 - **Chutes.ai API**: v1
 
 ## Changelog
 
-### [0.0.8] - 2025-10-16
+### [0.0.9] - 2025-10-22
 #### Initial Release
 - Complete Chutes.ai playground feature parity
 - Support for all text generation models via Chat Completions API
@@ -433,11 +685,15 @@ See [tests/README.md](tests/README.md) for detailed testing documentation.
 
 [MIT](LICENSE)
 
+## Discord
+
+**Chutes**
+- Chutes Channel [Invite Link Here](https://discord.gg/chutes)
+
 ## Author
 
-**Ian Tuddenham**
-- Email: ian@tuddenham.dev
-- GitHub: [@chutesai](https://github.com/chutesai)
+**Vonkaiser**
+- GitHub: [@vonk](https://github.com/i-beck)
 
 ## Acknowledgments
 

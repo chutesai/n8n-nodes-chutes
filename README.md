@@ -45,7 +45,7 @@ To use this node, you'll need an API key from Chutes.ai:
    - Choose your environment (Production/Sandbox)
    - Save
 
-![API Keys Example](examples\chutes_api_key_n8n2.gif)
+![API Keys Example](examples/chutes_api_key_n8n2.gif)
 
 ## Features
 
@@ -186,7 +186,7 @@ Use the right node for your use case (see the comparison table above).
 
 Generate creative text using Chutes.ai's LLM models:
 
-![Basic Text Generation Example](examples\Basic_Text_Generation2.gif)
+![Basic Text Generation Example](examples/Basic_Text_Generation2.gif)
 
 <details>
 <summary>Click to see full JSON example node</summary>
@@ -254,7 +254,7 @@ Generate creative text using Chutes.ai's LLM models:
 
 Have a multi-turn conversation with context (this example includes basic troubleshooting):
 
-![Chat Conversation Example](examples\Chat_Conversation.gif)
+![Chat Conversation Example](examples/Chat_Conversation.gif)
 
 
 <details>
@@ -336,7 +336,7 @@ Have a multi-turn conversation with context (this example includes basic trouble
 
 Create stunning images from text descriptions:
 
-![Image Generation Example](examples\Image_Generation.gif)
+![Image Generation Example](examples/Image_Generation.gif)
 
 
 <details>
@@ -406,7 +406,7 @@ Create stunning images from text descriptions:
 
 Animate stunning images with Video using text descriptions :
 
-![Video Generation Example](examples\Image2Video_Generation.gif)
+![Video Generation Example](examples/Image2Video_Generation.gif)
 
 
 <details>
@@ -510,11 +510,11 @@ Animate stunning images with Video using text descriptions :
 
 String together as many n8n nodes as you like, for any reason, no matter how crazy. Chutes Nodes are made to work together :
 
-![Silly Generation Example](examples\Bing_Chilling_n8n.gif)
+![Silly Generation Example](examples/Bing_Chilling_n8n.gif)
 
 This workflow can be found in the [Examples Directory](https://github.com/chutesai/n8n-nodes-chutes/tree/main/examples), you will also need [FFmpeg](https://github.com/FFmpeg/FFmpeg) installed to make a GIF - but that can easily be accomplished by [using the docker example found in the tests folder](https://github.com/chutesai/n8n-nodes-chutes/tree/main/tests/n8n-docker).
 
-![Purple Apple Generation Example](examples\a_purple_apple.gif)
+![Purple Apple Generation Example](examples/a_purple_apple.gif)
 
 ## Advanced Features
 

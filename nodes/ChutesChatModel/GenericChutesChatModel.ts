@@ -146,7 +146,7 @@ export class GenericChutesChatModel extends SimpleChatModel {
 				'Content-Type': 'application/json',
 				'Accept': 'application/json',
 				'Authorization': `Bearer ${this.credentials.apiKey}`,
-				'User-Agent': 'n8n-ChutesAI-ChatModel/0.0.8',
+				'User-Agent': 'n8n-ChutesAI-ChatModel/0.0.9',
 				'X-Chutes-Source': 'n8n-ai-agent',
 			},
 			body,

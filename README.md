@@ -36,8 +36,8 @@ npm install n8n-nodes-chutes
 To use this node, you'll need an API key from Chutes.ai:
 
 1. Sign up at [chutes.ai](https://chutes.ai)
-2. Navigate to your [API Keys dashboard](https://chutes.ai/dashboard/api-keys)
-3. Create a new API key
+2. Navigate to your [API Keys dashboard](https://chutes.ai/app/api)
+3. Create a new API key (you will only be shown it once)
 4. Add the key to your n8n credentials:
    - Go to **Credentials** > **New**
    - Select **Chutes API**
@@ -103,10 +103,10 @@ This package provides three complementary nodes for different use cases:
 
 ### 2. Chutes Chat Model
 
-**Use when:** You want to use Chutes.ai with n8n's official AI Agent node
+**Use when:** You want to use Chutes.ai with an available AI Agent node
 
 **Features:**
-- ✅ Works with n8n's AI Agent
+- ✅ Works with Chutes AI Agent
 - ✅ All Chutes LLM models (DeepSeek, Qwen, etc.)
 - ✅ Dynamic chute/model selection
 - ✅ Temperature and advanced parameters
@@ -122,7 +122,7 @@ This package provides three complementary nodes for different use cases:
 **Use when:** You want n8n's full AI Agent experience, but exclusively with Chutes.ai models
 
 **Features:**
-- 🤖 Complete 1:1 clone of n8n's AI Agent
+- 🤖 Functions identically to n8n's AI Agent
 - 🔒 **Whitelisted** - Only accepts Chutes Chat Model (ensures Chutes.ai integration)
 - 🛠️ Full support for Tools, Memory, and Output Parsers
 - 💬 Multi-turn conversations with context
@@ -343,8 +343,8 @@ The node dynamically loads available chutes from the Chutes.ai Management API:
 ## Resources
 
 - [Chutes.ai Documentation](https://docs.chutes.ai)
-- [API Reference](https://docs.chutes.ai/api)
-- [Playground](https://chutes.ai/playground)
+- [API Reference](https://chutes.ai/docs/api-reference/overview)
+- [Playground](https://chutes.ai/app)
 - [n8n Community Forum](https://community.n8n.io)
 - [Report Issues](https://github.com/chutesai/n8n-nodes-chutes/issues)
 
@@ -409,13 +409,13 @@ See [tests/README.md](tests/README.md) for detailed testing documentation.
 
 ## Compatibility
 
-- **n8n version**: 0.0.8 or higher
+- **n8n version**: 0.0.9 or higher
 - **Node.js**: 20.12.0 or higher (runtime), 20.12.0+ required for development
 - **Chutes.ai API**: v1
 
 ## Changelog
 
-### [0.0.8] - 2025-10-16
+### [0.0.9] - 2025-10-22
 #### Initial Release
 - Complete Chutes.ai playground feature parity
 - Support for all text generation models via Chat Completions API
@@ -433,11 +433,15 @@ See [tests/README.md](tests/README.md) for detailed testing documentation.
 
 [MIT](LICENSE)
 
+## Discord
+
+**Chutes**
+- Chutes Channel [Invite Link Here](https://discord.gg/chutes)
+
 ## Author
 
-**Ian Tuddenham**
-- Email: ian@tuddenham.dev
-- GitHub: [@chutesai](https://github.com/chutesai)
+**Vonkaiser**
+- GitHub: [@vonk](https://github.com/i-beck)
 
 ## Acknowledgments
 

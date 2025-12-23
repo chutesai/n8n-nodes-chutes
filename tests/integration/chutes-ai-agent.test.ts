@@ -14,6 +14,7 @@ import {
 	CHUTES_API_KEY,
 	initializeTestChutes,
 	LLM_CHUTE_URL,
+	withRetry,
 } from './test-helpers';
 
 describe('AI Agent Integration Tests', () => {
@@ -184,15 +185,44 @@ describe('AI Agent Integration Tests', () => {
 		
 		console.log('Testing sequential requests...');
 		
-		// Make 3 sequential requests - just verify we get responses
-		for (let i = 1; i <= 3; i++) {
-			const result = await chatModel.invoke([new HumanMessage(`Say the number ${i}`)]);
-			expect(result.content).toBeDefined();
-			expect(String(result.content).length).toBeGreaterThan(0);
-			console.log(`  Request ${i}: ${String(result.content).substring(0, 50)}...`);
+		try {
+			// Make 3 sequential requests - just verify we get responses
+			for (let i = 1; i <= 3; i++) {
+				const result = await withRetry(async () => {
+					try {
+						return await chatModel.invoke([new HumanMessage(`Say the number ${i}`)]);
+					} catch (error: any) {
+						const errorMsg = String(error);
+						// Check for 429 or capacity errors
+						if (errorMsg.includes('429') || 
+						    errorMsg.includes('maximum capacity') ||
+						    errorMsg.includes('at maximum capacity')) {
+							throw new Error(`CHUTE_AT_CAPACITY: ${errorMsg}`);
+						}
+						throw error;
+					}
+				}, {
+					maxRetries: 5,
+					delayMs: 5000,
+					category: 'llm',
+					currentChuteUrl: LLM_CHUTE_URL || undefined,
+				});
+				
+				expect(result.content).toBeDefined();
+				expect(String(result.content).length).toBeGreaterThan(0);
+				console.log(`  Request ${i}: ${String(result.content).substring(0, 50)}...`);
+			}
+			
+			console.log('✅ Sequential requests test passed');
+		} catch (error) {
+			const errorMsg = String(error);
+			if (errorMsg.includes('CHUTE_AT_CAPACITY') || 
+			    errorMsg.includes('ALL_CHUTES_EXHAUSTED')) {
+				console.log('⏭️ Skipping - LLM chute(s) at capacity during sequential requests');
+				return; // Skip gracefully
+			}
+			throw error;
 		}
-		
-		console.log('✅ Sequential requests test passed');
 	}, EXTENDED_TIMEOUT);
 
 	testOrSkip('should handle error responses gracefully', async () => {

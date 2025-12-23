@@ -13,6 +13,7 @@ import {
 	getAuthHeaders,
 	initializeTestChutes,
 	LLM_CHUTE_URL,
+	withRetry,
 } from './test-helpers';
 
 // Type for chat completion response
@@ -47,52 +48,76 @@ describe('Text Generation Integration Tests', () => {
 			return;
 		}
 
-		const response = await fetch(`${LLM_CHUTE_URL}/v1/chat/completions`, {
-			method: 'POST',
-			headers: getAuthHeaders(),
-			body: JSON.stringify({
-				model: 'default', // Chutes ignores model param - uses the chute's model
-				messages: [
-					{ role: 'system', content: 'You are a helpful math assistant. Answer directly with the result.' },
-					{ role: 'user', content: 'What is 2 + 2? Just give the number.' },
-				],
-				max_tokens: 200, // Increased to allow reasoning models to complete their response
-				temperature: 0.1,
-			}),
-		});
+		try {
+			const result = await withRetry(async () => {
+				const response = await fetch(`${LLM_CHUTE_URL}/v1/chat/completions`, {
+					method: 'POST',
+					headers: getAuthHeaders(),
+					body: JSON.stringify({
+						model: 'default', // Chutes ignores model param - uses the chute's model
+						messages: [
+							{ role: 'system', content: 'You are a helpful math assistant. Answer directly with the result.' },
+							{ role: 'user', content: 'What is 2 + 2? Just give the number.' },
+						],
+						max_tokens: 200, // Increased to allow reasoning models to complete their response
+						temperature: 0.1,
+					}),
+				});
 
-		console.log('Response status:', response.status);
+				console.log('Response status:', response.status);
+				
+				if (!response.ok) {
+					const error = await response.text();
+					console.log('Error response:', error);
+					
+					// 429 means at capacity - try another LLM chute
+					if (response.status === 429) {
+						throw new Error(`CHUTE_AT_CAPACITY: 429 - ${error}`);
+					}
+					
+					throw new Error(`API error ${response.status}: ${error}`);
+				}
+				
+				return response;
+			}, {
+				maxRetries: 5,
+				delayMs: 5000,
+				category: 'llm',
+				currentChuteUrl: LLM_CHUTE_URL || undefined,
+			});
+
+			const data = await result.json() as ChatCompletionResponse;
+			
+		expect(data.choices).toBeDefined();
+		expect(data.choices.length).toBeGreaterThan(0);
+		expect(data.choices[0].message).toBeDefined();
+		expect(data.choices[0].message.content).toBeDefined();
 		
-		if (!response.ok) {
-			const error = await response.text();
-			console.log('Error response:', error);
+		const content = data.choices[0].message.content;
+		console.log('✅ Response:', content);
+		
+		// Robust validation: LLMs may provide reasoning, but the answer "4" should appear
+		// Extract just the numbers from the response to handle various formats
+		const numbers: string[] = content.match(/\b\d+\b/g) || [];
+		const containsFour = numbers.includes('4');
+		
+		// Also check for word form
+		const containsFourWord = /\bfour\b/i.test(content);
+		
+		// The response should contain "4" either as a digit or word
+		expect(containsFour || containsFourWord).toBe(true);
+		
+		// Verify the response is substantial (not just "4" alone, but actual completion)
+		expect(content.length).toBeGreaterThan(0);
+		} catch (error) {
+			const errorMsg = String(error);
+			if (errorMsg.includes('CHUTE_AT_CAPACITY') || 
+			    errorMsg.includes('ALL_CHUTES_EXHAUSTED')) {
+				console.log('⏭️ Skipping - LLM chute(s) at capacity or unavailable');
+				return; // Skip gracefully
+			}
+			throw error;
 		}
-		
-		expect(response.ok).toBe(true);
-		
-		const data = await response.json() as ChatCompletionResponse;
-		
-	expect(data.choices).toBeDefined();
-	expect(data.choices.length).toBeGreaterThan(0);
-	expect(data.choices[0].message).toBeDefined();
-	expect(data.choices[0].message.content).toBeDefined();
-	
-	const content = data.choices[0].message.content;
-	console.log('✅ Response:', content);
-	
-	// Robust validation: LLMs may provide reasoning, but the answer "4" should appear
-	// Extract just the numbers from the response to handle various formats
-	const numbers: string[] = content.match(/\b\d+\b/g) || [];
-	const containsFour = numbers.includes('4');
-	
-	// Also check for word form
-	const containsFourWord = /\bfour\b/i.test(content);
-	
-	// The response should contain "4" either as a digit or word
-	expect(containsFour || containsFourWord).toBe(true);
-	
-	// Verify the response is substantial (not just "4" alone, but actual completion)
-	expect(content.length).toBeGreaterThan(0);
 	}, DEFAULT_TIMEOUT);
 
 	testOrSkip('should respect max_tokens parameter', async () => {

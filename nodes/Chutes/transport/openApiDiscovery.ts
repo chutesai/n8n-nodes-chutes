@@ -29,6 +29,10 @@ export interface ChuteCapabilities {
 	textToVideoPath?: string;
 	imageToVideoPath?: string;
 	imageEditPath?: string;
+	supportsVideoToVideo: boolean;
+	supportsKeyframeInterp: boolean;
+	videoToVideoPath?: string;
+	keyframeInterpPath?: string;
 }
 
 /**
@@ -73,6 +77,8 @@ export async function discoverChuteCapabilities(
 		supportsTextToVideo: false,
 		supportsImageToVideo: false,
 		supportsImageEdit: false,
+		supportsVideoToVideo: false,
+		supportsKeyframeInterp: false,
 	};
 
 	// Parse schema if available
@@ -203,13 +209,21 @@ export async function discoverChuteCapabilities(
 				parameters: [
 					{ name: 'prompt', required: true, type: 'string' },
 					{ name: 'image', required: false, type: 'string' },
+					{ name: 'image_b64', required: false, type: 'string' },
+					{ name: 'image_url', required: false, type: 'string' },
+					{ name: 'video_b64', required: false, type: 'string' },
+					{ name: 'video_url', required: false, type: 'string' },
 					{ name: 'image_b64s', required: false, type: 'array' },
 					{ name: 'width', required: false, type: 'integer' },
 					{ name: 'height', required: false, type: 'integer' },
+					{ name: 'num_frames', required: false, type: 'integer' },
+					{ name: 'frame_rate', required: false, type: 'integer' },
 					{ name: 'negative_prompt', required: false, type: 'string' },
 					{ name: 'num_inference_steps', required: false, type: 'integer' },
+					{ name: 'cfg_guidance_scale', required: false, type: 'number' },
 					{ name: 'true_cfg_scale', required: false, type: 'number' },
 					{ name: 'seed', required: false, type: 'integer' },
+					{ name: 'distilled', required: false, type: 'boolean' },
 				],
 			},
 			{
@@ -243,7 +257,7 @@ export async function discoverChuteCapabilities(
 	// Modern chutes use /generate for both T2V and I2V
 	// Older chutes use specific /text2video and /image2video endpoints
 	if (!capabilities.textToVideoPath) {
-		capabilities.textToVideoPath = '/text2video';
+		capabilities.textToVideoPath = '/generate';
 	}
 	if (!capabilities.imageToVideoPath) {
 		// Default to /generate for I2V (Wan-2.2-I2V pattern)
@@ -340,9 +354,39 @@ export function buildRequestBody(
 	const requestBody: IDataObject = {};
 	const endpointParams = new Map(targetEndpoint.parameters.map((p) => [p.name, p]));
 
+	const modifiedInputs: IDataObject = { ...userInputs };
+	
+	// LTX-2: Convert resolution string to separate width/height integers
+	// Format: "1280*720" -> { width: 1280, height: 720 }
+	if (modifiedInputs.resolution && typeof modifiedInputs.resolution === 'string') {
+		const hasWidthParam = endpointParams.has('width');
+		const hasHeightParam = endpointParams.has('height');
+		const hasResolutionParam = endpointParams.has('resolution');
+		
+		// Only convert if endpoint expects width/height but not resolution
+		if ((hasWidthParam || hasHeightParam) && !hasResolutionParam) {
+			const parts = String(modifiedInputs.resolution).split('*');
+			if (parts.length === 2) {
+				let width = parseInt(parts[0], 10);
+				let height = parseInt(parts[1], 10);
+				
+				// LTX-2 requires dimensions divisible by 64
+				// Round to nearest multiple of 64 when converting resolution to width/height
+				// (Only applies when endpoint uses width/height params instead of resolution)
+				width = Math.round(width / 64) * 64;
+				height = Math.round(height / 64) * 64;
+				console.log(`[OpenAPI] Rounded dimensions to multiples of 64: ${parts[0]}x${parts[1]} -> ${width}x${height}`);
+				
+				modifiedInputs.width = width;
+				modifiedInputs.height = height;
+				delete modifiedInputs.resolution;
+				console.log(`[OpenAPI] Converted resolution "${userInputs.resolution}" to width=${width}, height=${height}`);
+			}
+		}
+	}
+	
 	// Convert width/height to size format if endpoint expects "size" parameter
 	// This is common for OpenAI-compatible endpoints like /v1/images/edits
-	const modifiedInputs: IDataObject = { ...userInputs };
 	if (modifiedInputs.width && modifiedInputs.height) {
 		// Check if endpoint expects "size" parameter
 		if (endpointParams.has('size')) {
@@ -380,7 +424,7 @@ export function buildRequestBody(
 		seed: ['seed', 'random_seed'],
 		n: ['n', 'num_images', 'num_outputs'], // Number of images/outputs
 		response_format: ['response_format', 'format', 'output_format'], // Response format (url, b64_json, etc.)
-		guidance_scale: ['guidance_scale', 'true_cfg_scale', 'cfg_scale'], // Guidance scale aliases
+		guidance_scale: ['cfg_guidance_scale', 'guidance_scale', 'true_cfg_scale', 'cfg_scale'], // LTX-2 uses cfg_guidance_scale
 		negative_prompt: ['negative_prompt', 'neg_prompt'], // Negative prompt aliases
 	};
 

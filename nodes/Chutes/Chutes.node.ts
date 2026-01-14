@@ -1700,7 +1700,18 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 		? Number(additionalOptions.fps) 
 		: 24; // Default 24 fps
 	
-	const frames = Math.round(duration * fps); // Calculate frames
+	let frames = Math.round(duration * fps); // Calculate frames
+	
+	// LTX-2 requires frames to follow formula: num_frames = 8n + 1
+	// Valid values: 9, 17, 25, 33, 41, 49, 57, 65, 73, 81, 89, 97, 105, 113, 121, etc.
+	if (chuteUrl.toLowerCase().includes('ltx')) {
+		const n = Math.round((frames - 1) / 8);
+		const roundedFrames = Math.max(9, 8 * n + 1); // Ensure minimum of 9 frames
+		if (roundedFrames !== frames) {
+			console.log(`[VideoGen] LTX-2 detected: Rounding frames ${frames} -> ${roundedFrames} (8×${n}+1)`);
+			frames = roundedFrames;
+		}
+	}
 	
 	userInputs.frames = frames;
 	userInputs.fps = fps;

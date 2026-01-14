@@ -370,12 +370,12 @@ export function buildRequestBody(
 				let width = parseInt(parts[0], 10);
 				let height = parseInt(parts[1], 10);
 				
-				// LTX-2 requires dimensions divisible by 64
-				// Round to nearest multiple of 64 when converting resolution to width/height
-				// (Only applies when endpoint uses width/height params instead of resolution)
-				width = Math.round(width / 64) * 64;
-				height = Math.round(height / 64) * 64;
-				console.log(`[OpenAPI] Rounded dimensions to multiples of 64: ${parts[0]}x${parts[1]} -> ${width}x${height}`);
+				// Video models require dimensions divisible by 32 (safe for both LTX-2 and Wan2.2)
+				// LTX-2: divisible by 32, Wan2.2: divisible by 16 (32 recommended)
+				// Round to nearest multiple of 32 when converting resolution to width/height
+				width = Math.round(width / 32) * 32;
+				height = Math.round(height / 32) * 32;
+				console.log(`[OpenAPI] Rounded dimensions to multiples of 32: ${parts[0]}x${parts[1]} -> ${width}x${height}`);
 				
 				modifiedInputs.width = width;
 				modifiedInputs.height = height;

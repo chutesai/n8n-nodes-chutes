@@ -54,7 +54,12 @@ describe('LTX-2 Video Generation (Integration)', () => {
 		// LTX-2 parameters for 19-second video
 		const duration = 19; // seconds
 		const fps = 25; // LTX-2 default frame rate
-		const frames = duration * fps; // 19 * 25 = 475 frames (will be mapped to num_frames)
+		
+		// LTX-2 requires frames to follow: num_frames = 8n + 1
+		let rawFrames = duration * fps; // 19 * 25 = 475
+		const n = Math.round((rawFrames - 1) / 8); // (475-1)/8 = 59.25 -> 59
+		const frames = 8 * n + 1; // 8*59+1 = 473 frames (valid for LTX-2)
+		console.log(`   Calculated frames: ${rawFrames} -> ${frames} (8×${n}+1 for LTX-2)`);
 
 		try {
 			// Get API key (same as real node does)

@@ -109,10 +109,10 @@ describe('LTX-2 Parameter Handling', () => {
 			const result = buildRequestBody('text2video', capabilities, userInputs);
 
 			expect(result).toBeDefined();
-			
-			// Should convert to separate integers and round to multiples of 64 for LTX-2
-			expect(result!.body.width).toBe(1280); // 1280 is already divisible by 64
-			expect(result!.body.height).toBe(704); // 720 rounded to nearest 64 (704)
+
+			// Should convert to separate integers and round to multiples of 32 (safe for both LTX-2 and Wan2.2)
+			expect(result!.body.width).toBe(1280); // 1280 is already divisible by 32
+			expect(result!.body.height).toBe(736); // 720 rounded to nearest 32 (736)
 			
 			// Should remove resolution
 			expect(result!.body.resolution).toBeUndefined();
@@ -151,7 +151,7 @@ describe('LTX-2 Parameter Handling', () => {
 			expect(result!.body.height).toBeUndefined();
 		});
 
-		test('should round width/height to multiples of 64 for LTX-2', () => {
+		test('should round width/height to multiples of 32 (safe for both models)', () => {
 			const capabilities: ChuteCapabilities = {
 				endpoints: [{
 					path: '/generate',
@@ -172,16 +172,16 @@ describe('LTX-2 Parameter Handling', () => {
 
 			const userInputs: IDataObject = {
 				prompt: 'test',
-				resolution: '1281*721', // Not divisible by 64
+				resolution: '1281*721', // Not divisible by 32
 			};
 
 			const result = buildRequestBody('text2video', capabilities, userInputs);
 
 			expect(result).toBeDefined();
-			
-			// Should round to nearest 64
+
+			// Should round to nearest 32
 			expect(result!.body.width).toBe(1280); // 1281 -> 1280
-			expect(result!.body.height).toBe(704); // 721 -> 704
+			expect(result!.body.height).toBe(736); // 721 -> 736
 		});
 	});
 

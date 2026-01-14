@@ -1869,21 +1869,22 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 			);
 		}
 
-		// Add image to user inputs (will be mapped to correct parameter name)
-		userInputs.image = imageBase64;
-
-		// Add I2V-specific parameters
-		// image_strength: controls how much the input image influences the output (default: 1.0)
-		if (additionalOptions.image_strength !== undefined) {
-			userInputs.image_strength = additionalOptions.image_strength;
-		} else {
-			userInputs.image_strength = 1.0; // API default
-		}
+		// Add image to user inputs using images array format (consistent with keyframe)
+		// I2V is just "keyframe with one image at frame 0"
+		const imageStrength = additionalOptions.image_strength !== undefined 
+			? (additionalOptions.image_strength as number) 
+			: 1.0; // API default
+		const imageFrameIndex = additionalOptions.image_frame_index !== undefined 
+			? (additionalOptions.image_frame_index as number) 
+			: 0; // First frame by default
 		
-		// image_frame_index: frame position for input image (default: 0 = first frame)
-		if (additionalOptions.image_frame_index !== undefined) {
-			userInputs.image_frame_index = additionalOptions.image_frame_index;
-		}
+		userInputs.images = [
+			{
+				image_b64: imageBase64,
+				frame_index: imageFrameIndex,
+				strength: imageStrength,
+			},
+		];
 
 		// Dynamically build request with discovered endpoint and parameters
 		// Note: We attempt the operation even if detection is uncertain
@@ -2072,8 +2073,23 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 				const imageParam = keyframe.image as string;
 				let imageBase64 = '';
 				
-				// Handle different image input formats (URL, data URL, base64)
-				if (imageParam) {
+				// PRIORITY 1: Try to get image from binary data first (from previous node)
+				// Note: For keyframe, binary data would typically be in the image parameter itself
+				// but we should still check the node's binary data as a fallback
+				const binaryData = this.getInputData()[itemIndex].binary;
+				if (binaryData && binaryData.data && !imageParam) {
+					// Image is coming from binary data in the workflow
+					try {
+						const imageBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, 'data');
+						imageBase64 = imageBuffer.toString('base64');
+					} catch (error) {
+						console.warn('Failed to get binary keyframe image data:', error);
+						// Continue to try other methods
+					}
+				}
+				
+				// PRIORITY 2: Handle different image input formats (URL, data URL, base64)
+				if (!imageBase64 && imageParam) {
 					if (imageParam.startsWith('http://') || imageParam.startsWith('https://')) {
 						// Image is a URL - download it and convert to base64
 						try {

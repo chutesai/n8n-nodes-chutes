@@ -224,6 +224,8 @@ export async function discoverChuteCapabilities(
 					{ name: 'true_cfg_scale', required: false, type: 'number' },
 					{ name: 'seed', required: false, type: 'integer' },
 					{ name: 'distilled', required: false, type: 'boolean' },
+					{ name: 'image_strength', required: false, type: 'number' },
+					{ name: 'image_frame_index', required: false, type: 'integer' },
 				],
 			},
 			{
@@ -313,6 +315,24 @@ export function buildRequestBody(
 			);
 		}
 		// Last resort: just use /generate
+		if (!targetEndpoint) {
+			targetEndpoint = capabilities.endpoints.find((e) => e.path === '/generate');
+		}
+	} else if (operation === 'video2video') {
+		// V2V always uses /generate with ic_lora pipeline
+		if (capabilities.videoToVideoPath) {
+			targetEndpoint = capabilities.endpoints.find((e) => e.path === capabilities.videoToVideoPath);
+		}
+		// Fallback to /generate
+		if (!targetEndpoint) {
+			targetEndpoint = capabilities.endpoints.find((e) => e.path === '/generate');
+		}
+	} else if (operation === 'keyframe') {
+		// Keyframe interpolation uses /generate with keyframe_interp pipeline
+		if (capabilities.keyframeInterpPath) {
+			targetEndpoint = capabilities.endpoints.find((e) => e.path === capabilities.keyframeInterpPath);
+		}
+		// Fallback to /generate
 		if (!targetEndpoint) {
 			targetEndpoint = capabilities.endpoints.find((e) => e.path === '/generate');
 		}

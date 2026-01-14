@@ -1718,6 +1718,36 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 
 	console.log(`[VideoGen] Duration: ${duration}s, FPS: ${fps}, Calculated Frames: ${frames}`);
 
+	// Process LoRA adapters (LTX-2 feature)
+	const lorasConfig = additionalOptions.loras as IDataObject | undefined;
+	if (lorasConfig && lorasConfig.loraItems && Array.isArray(lorasConfig.loraItems)) {
+		const loras = (lorasConfig.loraItems as Array<IDataObject>)
+			.map(item => ({
+				name: item.name as string,
+				strength: (item.strength as number) || 1.0,
+			}))
+			.filter(lora => lora.name); // Remove any entries without a name
+		
+		if (loras.length > 0) {
+			userInputs.loras = loras;
+			console.log(`[VideoGen] Added ${loras.length} LoRA adapter(s):`, loras.map(l => `${l.name}@${l.strength}`).join(', '));
+		}
+	}
+
+	// Add other LTX-2 specific options
+	if (additionalOptions.negativePrompt) {
+		userInputs.negative_prompt = additionalOptions.negativePrompt;
+	}
+	if (additionalOptions.pipeline) {
+		userInputs.pipeline = additionalOptions.pipeline;
+	}
+	if (additionalOptions.enhancePrompt !== undefined) {
+		userInputs.enhance_prompt = additionalOptions.enhancePrompt;
+	}
+	if (additionalOptions.guidance_scale !== undefined) {
+		userInputs.guidance_scale = additionalOptions.guidance_scale;
+	}
+
 	if (operation === 'text2video') {
 		// Text-to-video generation
 		// (frames and fps already calculated above)
@@ -1842,6 +1872,19 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 		// Add image to user inputs (will be mapped to correct parameter name)
 		userInputs.image = imageBase64;
 
+		// Add I2V-specific parameters
+		// image_strength: controls how much the input image influences the output (default: 1.0)
+		if (additionalOptions.image_strength !== undefined) {
+			userInputs.image_strength = additionalOptions.image_strength;
+		} else {
+			userInputs.image_strength = 1.0; // API default
+		}
+		
+		// image_frame_index: frame position for input image (default: 0 = first frame)
+		if (additionalOptions.image_frame_index !== undefined) {
+			userInputs.image_frame_index = additionalOptions.image_frame_index;
+		}
+
 		// Dynamically build request with discovered endpoint and parameters
 		// Note: We attempt the operation even if detection is uncertain
 		// The API will return proper error if operation is truly unsupported
@@ -1888,6 +1931,256 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 				binaryData: response,
 				mimeType: 'video/mp4',
 				fileName: `animated-video-${Date.now()}.mp4`,
+			};
+		}
+
+		// Otherwise return as JSON (e.g., if API returns URL)
+		return response;
+	
+	} else if (operation === 'video2video') {
+		// Video-to-video transformation (style transfer, effects via LoRA)
+		const videoParam = this.getNodeParameter('video', itemIndex, '') as string;
+		
+		let videoBase64: string = '';
+		
+		// PRIORITY 1: Try to get video from binary data first (from previous node)
+		const binaryData = this.getInputData()[itemIndex].binary;
+		if (binaryData && binaryData.data) {
+			// Video is coming from binary data in the workflow (e.g., HTTP Request, Read Binary File)
+			try {
+				const videoBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, 'data');
+				videoBase64 = videoBuffer.toString('base64');
+			} catch (error) {
+				console.warn('Failed to get binary video data:', error);
+				// Continue to try other methods
+			}
+		}
+		
+		// PRIORITY 2: If no binary data, check the video parameter
+		if (!videoBase64 && videoParam) {
+			if (videoParam.startsWith('http://') || videoParam.startsWith('https://')) {
+				// Video is a URL - download it and convert to base64
+				try {
+					const response = await this.helpers.request({
+						method: 'GET',
+						url: videoParam,
+						encoding: null, // Get binary data
+					});
+					const videoBuffer = Buffer.from(response);
+					videoBase64 = videoBuffer.toString('base64');
+				} catch (error) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Failed to download video from URL: ${(error as Error).message}`,
+						{ itemIndex },
+					);
+				}
+			} else if (videoParam.startsWith('data:')) {
+				// Data URL format (data:video/mp4;base64,...)
+				const matches = videoParam.match(/^data:([^;]+);base64,(.+)$/);
+				if (matches) {
+					videoBase64 = matches[2];
+				} else {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Invalid data URL format. Expected: data:video/TYPE;base64,BASE64_DATA',
+						{ itemIndex },
+					);
+				}
+			} else {
+				// Assume it's already base64 encoded video
+				videoBase64 = videoParam;
+			}
+		}
+
+		// Validate we have video data
+		if (!videoBase64) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'No video data found. Please connect a node with binary video data (HTTP Request, Read Binary File, etc.) or provide a video URL in the Input Video field.',
+				{ itemIndex },
+			);
+		}
+
+		// Add video to user inputs (will be mapped to correct parameter name)
+		userInputs.video_b64 = videoBase64;
+		
+		// V2V requires ic_lora pipeline
+		if (!userInputs.pipeline) {
+			userInputs.pipeline = 'ic_lora';
+		}
+
+		// Dynamically build request with discovered endpoint and parameters
+		const requestConfig = buildRequestBody('video2video', capabilities, userInputs, chuteUrl);
+		if (!requestConfig) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Could not find suitable endpoint for video-to-video transformation',
+				{ itemIndex },
+			);
+		}
+
+		console.log(`[VideoGen V2V] Using endpoint: ${requestConfig.endpoint}`);
+		console.log(`[VideoGen V2V] Request body keys:`, Object.keys(requestConfig.body));
+
+		// Make API call with discovered endpoint
+		const timeout = additionalOptions.timeout as number | undefined;
+		const response = await withTimeout(
+			chutesApiRequestWithRetry.call(
+				this,
+				'POST',
+				requestConfig.endpoint,
+				requestConfig.body,
+				{},
+				{},
+				{
+					// Request binary response for video data
+					encoding: null,
+					json: false,
+				},
+				'videoGeneration',
+				chuteUrl,
+			),
+			timeout,
+			this,
+			itemIndex,
+			'Video generation (video-to-video)',
+		);
+
+		// Check if response is binary (Buffer)
+		if (Buffer.isBuffer(response)) {
+			// Binary video data - return with metadata
+			return {
+				binaryData: response,
+				mimeType: 'video/mp4',
+				fileName: `transformed-video-${Date.now()}.mp4`,
+			};
+		}
+
+		// Otherwise return as JSON (e.g., if API returns URL)
+		return response;
+	
+	} else if (operation === 'keyframe') {
+		// Keyframe interpolation - generate video from multiple keyframe images
+		const keyframeImagesCollection = this.getNodeParameter('keyframeImages', itemIndex, {}) as IDataObject;
+		
+		// Process keyframe images
+		const images: Array<{image_b64: string; frame_index: number; strength: number}> = [];
+		
+		if (keyframeImagesCollection.images && Array.isArray(keyframeImagesCollection.images)) {
+			for (const keyframe of keyframeImagesCollection.images as Array<IDataObject>) {
+				const imageParam = keyframe.image as string;
+				let imageBase64 = '';
+				
+				// Handle different image input formats (URL, data URL, base64)
+				if (imageParam) {
+					if (imageParam.startsWith('http://') || imageParam.startsWith('https://')) {
+						// Image is a URL - download it and convert to base64
+						try {
+							const response = await this.helpers.request({
+								method: 'GET',
+								url: imageParam,
+								encoding: null, // Get binary data
+							});
+							const imageBuffer = Buffer.from(response);
+							imageBase64 = imageBuffer.toString('base64');
+						} catch (error) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Failed to download keyframe image from URL: ${(error as Error).message}`,
+								{ itemIndex },
+							);
+						}
+					} else if (imageParam.startsWith('data:')) {
+						// Data URL format (data:image/png;base64,...)
+						const matches = imageParam.match(/^data:([^;]+);base64,(.+)$/);
+						if (matches) {
+							imageBase64 = matches[2];
+						} else {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Invalid data URL format. Expected: data:image/TYPE;base64,BASE64_DATA',
+								{ itemIndex },
+							);
+						}
+					} else {
+						// Assume it's already base64 encoded image
+						imageBase64 = imageParam;
+					}
+				}
+				
+				if (imageBase64) {
+					images.push({
+						image_b64: imageBase64,
+						frame_index: keyframe.frameIndex as number || 0,
+						strength: keyframe.strength as number || 1.0,
+					});
+				}
+			}
+		}
+		
+		// Validate we have at least 2 keyframe images
+		if (images.length < 2) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Keyframe interpolation requires at least 2 keyframe images. Please add more keyframe images.',
+				{ itemIndex },
+			);
+		}
+		
+		// Add keyframe images to user inputs
+		userInputs.images = images;
+		
+		// Keyframe requires keyframe_interp pipeline
+		if (!userInputs.pipeline) {
+			userInputs.pipeline = 'keyframe_interp';
+		}
+
+		// Dynamically build request with discovered endpoint and parameters
+		const requestConfig = buildRequestBody('keyframe', capabilities, userInputs, chuteUrl);
+		if (!requestConfig) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Could not find suitable endpoint for keyframe interpolation',
+				{ itemIndex },
+			);
+		}
+
+		console.log(`[VideoGen Keyframe] Using endpoint: ${requestConfig.endpoint}`);
+		console.log(`[VideoGen Keyframe] Request body keys:`, Object.keys(requestConfig.body));
+		console.log(`[VideoGen Keyframe] Keyframe count:`, images.length);
+
+		// Make API call with discovered endpoint
+		const timeout = additionalOptions.timeout as number | undefined;
+		const response = await withTimeout(
+			chutesApiRequestWithRetry.call(
+				this,
+				'POST',
+				requestConfig.endpoint,
+				requestConfig.body,
+				{},
+				{},
+				{
+					// Request binary response for video data
+					encoding: null,
+					json: false,
+				},
+				'videoGeneration',
+				chuteUrl,
+			),
+			timeout,
+			this,
+			itemIndex,
+			'Video generation (keyframe interpolation)',
+		);
+
+		// Check if response is binary (Buffer)
+		if (Buffer.isBuffer(response)) {
+			// Binary video data - return with metadata
+			return {
+				binaryData: response,
+				mimeType: 'video/mp4',
+				fileName: `keyframe-video-${Date.now()}.mp4`,
 			};
 		}
 

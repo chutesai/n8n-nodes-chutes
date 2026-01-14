@@ -219,6 +219,42 @@ export const videoGenerationOperations: INodeProperties[] = [
 				placeholder: '12345',
 			},
 			{
+				displayName: 'Image Strength',
+				name: 'image_strength',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['videoGeneration'],
+						operation: ['image2video'],
+					},
+				},
+				default: 1.0,
+				description: 'How much the input image influences the output (0.0 to 1.0). Higher = more faithful to input image.',
+				placeholder: '1.0',
+				typeOptions: {
+					minValue: 0,
+					maxValue: 1,
+					numberPrecision: 2,
+				},
+			},
+			{
+				displayName: 'Image Frame Index',
+				name: 'image_frame_index',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['videoGeneration'],
+						operation: ['image2video'],
+					},
+				},
+				default: 0,
+				description: 'Frame position for the input image in the output video (0 = first frame)',
+				placeholder: '0',
+				typeOptions: {
+					minValue: 0,
+				},
+			},
+			{
 				displayName: 'Negative Prompt',
 				name: 'negativePrompt',
 				type: 'string',

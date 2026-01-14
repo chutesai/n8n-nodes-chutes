@@ -1869,22 +1869,31 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 			);
 		}
 
-		// Add image to user inputs using images array format (consistent with keyframe)
-		// I2V is just "keyframe with one image at frame 0"
-		const imageStrength = additionalOptions.image_strength !== undefined 
-			? (additionalOptions.image_strength as number) 
-			: 1.0; // API default
-		const imageFrameIndex = additionalOptions.image_frame_index !== undefined 
-			? (additionalOptions.image_frame_index as number) 
-			: 0; // First frame by default
+		// Determine which format to use based on the model
+		// LTX-2: uses images array format (new)
+		// Wan-2.2 and others: use singular image format (backward compatibility)
+		const isLTX2 = chuteUrl && chuteUrl.toLowerCase().includes('ltx');
 		
-		userInputs.images = [
-			{
-				image_b64: imageBase64,
-				frame_index: imageFrameIndex,
-				strength: imageStrength,
-			},
-		];
+		if (isLTX2) {
+			// LTX-2: images array format with frame_index and strength
+			const imageStrength = additionalOptions.image_strength !== undefined 
+				? (additionalOptions.image_strength as number) 
+				: 1.0; // API default
+			const imageFrameIndex = additionalOptions.image_frame_index !== undefined 
+				? (additionalOptions.image_frame_index as number) 
+				: 0; // First frame by default
+			
+			userInputs.images = [
+				{
+					image_b64: imageBase64,
+					frame_index: imageFrameIndex,
+					strength: imageStrength,
+				},
+			];
+		} else {
+			// Wan-2.2 and other models: singular image format (ORIGINAL FORMAT)
+			userInputs.image = imageBase64;
+		}
 
 		// Dynamically build request with discovered endpoint and parameters
 		// Note: We attempt the operation even if detection is uncertain

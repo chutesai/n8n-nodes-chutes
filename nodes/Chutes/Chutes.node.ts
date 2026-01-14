@@ -2077,27 +2077,73 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 		// Process keyframe images
 		const images: Array<{image_b64: string; frame_index: number; strength: number}> = [];
 		
+		// Get ALL input items - needed to search for binary data across merged items
+		const allInputItems = this.getInputData();
+		
 		if (keyframeImagesCollection.images && Array.isArray(keyframeImagesCollection.images)) {
 			for (const keyframe of keyframeImagesCollection.images as Array<IDataObject>) {
 				const imageParam = keyframe.image as string;
 				let imageBase64 = '';
 				
-				// PRIORITY 1: Try to get image from binary data first (from previous node)
-				// Note: For keyframe, binary data would typically be in the image parameter itself
-				// but we should still check the node's binary data as a fallback
-				const binaryData = this.getInputData()[itemIndex].binary;
-				if (binaryData && binaryData.data && !imageParam) {
-					// Image is coming from binary data in the workflow
-					try {
-						const imageBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, 'data');
-						imageBase64 = imageBuffer.toString('base64');
-					} catch (error) {
-						console.warn('Failed to get binary keyframe image data:', error);
-						// Continue to try other methods
+				// PRIORITY 1: Search ALL input items for the binary property name
+				// This is CRITICAL for Merge nodes that combine multiple binary items
+				// e.g., Item 0 has "start_frame_image", Item 1 has "data"
+				if (imageParam && !imageParam.startsWith('http') && !imageParam.startsWith('data:')) {
+					for (let idx = 0; idx < allInputItems.length; idx++) {
+						const itemBinary = allInputItems[idx].binary;
+						if (itemBinary && itemBinary[imageParam]) {
+							// Found the binary property in this item!
+							try {
+								const imageBuffer = await this.helpers.getBinaryDataBuffer(idx, imageParam);
+								imageBase64 = imageBuffer.toString('base64');
+								console.log(`[Keyframe] Found binary "${imageParam}" in item ${idx}, converted to base64`);
+								break; // Found it, stop searching
+							} catch (error) {
+								console.warn(`Failed to get binary data for "${imageParam}" from item ${idx}:`, error);
+							}
+						}
 					}
 				}
 				
-				// PRIORITY 2: Handle different image input formats (URL, data URL, base64)
+				// PRIORITY 2: Empty field - search ALL items for "data" property (STANDARD n8n pattern)
+				// Also handles case where keyframes map to sequential items
+				if (!imageBase64 && !imageParam) {
+					// For empty fields, try to use items in sequence based on keyframe order
+					const keyframeIdx = (keyframeImagesCollection.images as Array<IDataObject>).indexOf(keyframe);
+					
+					// First try: Use the item at the same index as this keyframe
+					if (keyframeIdx < allInputItems.length) {
+						const itemBinary = allInputItems[keyframeIdx].binary;
+						if (itemBinary && itemBinary.data) {
+							try {
+								const imageBuffer = await this.helpers.getBinaryDataBuffer(keyframeIdx, 'data');
+								imageBase64 = imageBuffer.toString('base64');
+								console.log(`[Keyframe] Using binary.data from item ${keyframeIdx} for keyframe ${keyframeIdx}`);
+							} catch (error) {
+								console.warn(`Failed to get binary.data from item ${keyframeIdx}:`, error);
+							}
+						}
+					}
+					
+					// Fallback: Search all items for any "data" property we haven't used yet
+					if (!imageBase64) {
+						for (let idx = 0; idx < allInputItems.length; idx++) {
+							const itemBinary = allInputItems[idx].binary;
+							if (itemBinary && itemBinary.data) {
+								try {
+									const imageBuffer = await this.helpers.getBinaryDataBuffer(idx, 'data');
+									imageBase64 = imageBuffer.toString('base64');
+									console.log(`[Keyframe] Fallback: Using binary.data from item ${idx}`);
+									break;
+								} catch (error) {
+									console.warn(`Failed to get binary.data from item ${idx}:`, error);
+								}
+							}
+						}
+					}
+				}
+				
+				// PRIORITY 3: Handle different image input formats (URL, data URL, base64)
 				if (!imageBase64 && imageParam) {
 					if (imageParam.startsWith('http://') || imageParam.startsWith('https://')) {
 						// Image is a URL - download it and convert to base64
@@ -2128,19 +2174,25 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 								{ itemIndex },
 							);
 						}
-					} else {
-						// Assume it's already base64 encoded image
-						imageBase64 = imageParam;
 					}
+					// NOTE: If imageParam is not a URL, data URL, or found as binary property,
+					// we do NOT assume it's base64 - that was causing the bug!
 				}
 				
-				if (imageBase64) {
-					images.push({
-						image_b64: imageBase64,
-						frame_index: keyframe.frameIndex as number || 0,
-						strength: keyframe.strength as number || 1.0,
-					});
+				// Validate we got image data for this keyframe
+				if (!imageBase64) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Could not find image data for keyframe. The value "${imageParam || '(empty)'}" was not found as a binary property in any input item, and is not a valid URL or base64 string.`,
+						{ itemIndex },
+					);
 				}
+				
+				images.push({
+					image_b64: imageBase64,
+					frame_index: keyframe.frameIndex as number || 0,
+					strength: keyframe.strength as number || 1.0,
+				});
 			}
 		}
 		

@@ -14,19 +14,21 @@ describe('Video Generation Operations', () => {
 			expect(videoGenerationOperations.length).toBeGreaterThan(0);
 		});
 
-		test('should have operation selector with text2video and image2video', () => {
-			const operationSelector = videoGenerationOperations.find(
-				(op) => op.name === 'operation',
-			) as INodeProperties;
+	test('should have operation selector with text2video and image2video', () => {
+		const operationSelector = videoGenerationOperations.find(
+			(op) => op.name === 'operation',
+		) as INodeProperties;
 
-			expect(operationSelector).toBeDefined();
-			expect(operationSelector.type).toBe('options');
-			expect(operationSelector.options).toHaveLength(2);
+		expect(operationSelector).toBeDefined();
+		expect(operationSelector.type).toBe('options');
+		expect(operationSelector.options).toHaveLength(4); // Updated: now includes video2video and keyframe
 
-			const operationValues = operationSelector.options?.map((opt: any) => opt.value);
-			expect(operationValues).toContain('text2video');
-			expect(operationValues).toContain('image2video');
-		});
+		const operationValues = operationSelector.options?.map((opt: any) => opt.value);
+		expect(operationValues).toContain('text2video');
+		expect(operationValues).toContain('image2video');
+		expect(operationValues).toContain('video2video'); // LTX-2 V2V
+		expect(operationValues).toContain('keyframe'); // LTX-2 Keyframe Interpolation
+	});
 
 		test('should have prompt field', () => {
 			const promptField = videoGenerationOperations.find(

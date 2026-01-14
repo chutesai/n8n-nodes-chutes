@@ -222,14 +222,8 @@ export const videoGenerationOperations: INodeProperties[] = [
 				displayName: 'Image Strength',
 				name: 'image_strength',
 				type: 'number',
-				displayOptions: {
-					show: {
-						resource: ['videoGeneration'],
-						operation: ['image2video'],
-					},
-				},
 				default: 1.0,
-				description: 'How much the input image influences the output (0.0 to 1.0). Higher = more faithful to input image.',
+				description: 'How much the input image influences the output (0.0 to 1.0). Higher = more faithful to input image. Only used for Image-to-Video operation.',
 				placeholder: '1.0',
 				typeOptions: {
 					minValue: 0,
@@ -241,14 +235,8 @@ export const videoGenerationOperations: INodeProperties[] = [
 				displayName: 'Image Frame Index',
 				name: 'image_frame_index',
 				type: 'number',
-				displayOptions: {
-					show: {
-						resource: ['videoGeneration'],
-						operation: ['image2video'],
-					},
-				},
 				default: 0,
-				description: 'Frame position for the input image in the output video (0 = first frame)',
+				description: 'Frame position for the input image in the output video (0 = first frame). Only used for Image-to-Video operation.',
 				placeholder: '0',
 				typeOptions: {
 					minValue: 0,

@@ -278,6 +278,7 @@ export function buildRequestBody(
 	operation: string,
 	capabilities: ChuteCapabilities,
 	userInputs: IDataObject,
+	chuteUrl?: string,
 ): { endpoint: string; body: IDataObject } | null {
 	let targetEndpoint: ChuteEndpoint | undefined;
 
@@ -370,12 +371,16 @@ export function buildRequestBody(
 				let width = parseInt(parts[0], 10);
 				let height = parseInt(parts[1], 10);
 				
-				// Video models require dimensions divisible by 32 (safe for both LTX-2 and Wan2.2)
-				// LTX-2: divisible by 32, Wan2.2: divisible by 16 (32 recommended)
-				// Round to nearest multiple of 32 when converting resolution to width/height
-				width = Math.round(width / 32) * 32;
-				height = Math.round(height / 32) * 32;
-				console.log(`[OpenAPI] Rounded dimensions to multiples of 32: ${parts[0]}x${parts[1]} -> ${width}x${height}`);
+				// LTX-2 specifically requires dimensions divisible by 64 (chute configuration)
+				// Other video models (Wan2.2, etc.) don't have this restriction
+				const isLTX2 = chuteUrl && chuteUrl.toLowerCase().includes('ltx');
+				if (isLTX2) {
+					width = Math.round(width / 64) * 64;
+					height = Math.round(height / 64) * 64;
+					console.log(`[OpenAPI] LTX-2 detected: Rounded dimensions to multiples of 64: ${parts[0]}x${parts[1]} -> ${width}x${height}`);
+				} else {
+					console.log(`[OpenAPI] Using dimensions as-is: ${width}x${height}`);
+				}
 				
 				modifiedInputs.width = width;
 				modifiedInputs.height = height;

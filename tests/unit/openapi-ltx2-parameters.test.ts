@@ -82,7 +82,7 @@ describe('LTX-2 Parameter Handling', () => {
 	});
 
 	describe('Resolution to Width/Height Conversion', () => {
-		test('should convert resolution string to width and height integers', () => {
+		test('should convert resolution string to width and height integers for LTX-2', () => {
 			const capabilities: ChuteCapabilities = {
 				endpoints: [{
 					path: '/generate',
@@ -106,13 +106,13 @@ describe('LTX-2 Parameter Handling', () => {
 				resolution: '1280*720', // User provides resolution string
 			};
 
-			const result = buildRequestBody('text2video', capabilities, userInputs);
+			const result = buildRequestBody('text2video', capabilities, userInputs, 'https://chutes-ltx-2.chutes.ai');
 
 			expect(result).toBeDefined();
 
-			// Should convert to separate integers and round to multiples of 32 (safe for both LTX-2 and Wan2.2)
-			expect(result!.body.width).toBe(1280); // 1280 is already divisible by 32
-			expect(result!.body.height).toBe(736); // 720 rounded to nearest 32 (736)
+			// LTX-2 should round to multiples of 64
+			expect(result!.body.width).toBe(1280); // 1280 is already divisible by 64
+			expect(result!.body.height).toBe(704); // 720 rounded to nearest 64 (704)
 			
 			// Should remove resolution
 			expect(result!.body.resolution).toBeUndefined();
@@ -151,7 +151,7 @@ describe('LTX-2 Parameter Handling', () => {
 			expect(result!.body.height).toBeUndefined();
 		});
 
-		test('should round width/height to multiples of 32 (safe for both models)', () => {
+		test('should round width/height to multiples of 64 for LTX-2', () => {
 			const capabilities: ChuteCapabilities = {
 				endpoints: [{
 					path: '/generate',
@@ -172,16 +172,49 @@ describe('LTX-2 Parameter Handling', () => {
 
 			const userInputs: IDataObject = {
 				prompt: 'test',
-				resolution: '1281*721', // Not divisible by 32
+				resolution: '1281*721', // Not divisible by 64
 			};
 
-			const result = buildRequestBody('text2video', capabilities, userInputs);
+			const result = buildRequestBody('text2video', capabilities, userInputs, 'https://chutes-ltx-2.chutes.ai');
 
 			expect(result).toBeDefined();
 
-			// Should round to nearest 32
+			// LTX-2 should round to nearest 64
 			expect(result!.body.width).toBe(1280); // 1281 -> 1280
-			expect(result!.body.height).toBe(736); // 721 -> 736
+			expect(result!.body.height).toBe(704); // 721 -> 704 (nearest 64)
+		});
+
+		test('should NOT round dimensions for non-LTX-2 models (Wan2.2)', () => {
+			const capabilities: ChuteCapabilities = {
+				endpoints: [{
+					path: '/generate',
+					method: 'POST',
+					parameters: [
+						{ name: 'prompt', required: true, type: 'string' },
+						{ name: 'width', required: false, type: 'integer' },
+						{ name: 'height', required: false, type: 'integer' },
+					],
+				}],
+				supportsTextToVideo: true,
+				supportsImageToVideo: false,
+				supportsImageEdit: false,
+				supportsVideoToVideo: false,
+				supportsKeyframeInterp: false,
+				textToVideoPath: '/generate',
+			};
+
+			const userInputs: IDataObject = {
+				prompt: 'test',
+				resolution: '1281*721', // Odd dimensions
+			};
+
+			const result = buildRequestBody('text2video', capabilities, userInputs, 'https://wan22-fast.chutes.ai');
+
+			expect(result).toBeDefined();
+
+			// Non-LTX-2 should keep dimensions as-is
+			expect(result!.body.width).toBe(1281); // No rounding
+			expect(result!.body.height).toBe(721); // No rounding
 		});
 	});
 

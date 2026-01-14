@@ -84,7 +84,7 @@ describe('LTX-2 Video Generation (Integration)', () => {
 
 			// Use Phase 1 buildRequestBody logic
 			console.log('   🔧 Building request body with Phase 1 logic...');
-			const requestData = buildRequestBody('text2video', capabilities, userInputs);
+			const requestData = buildRequestBody('text2video', capabilities, userInputs, LTX2_CHUTE_URL);
 			
 			if (!requestData) {
 				throw new Error('Failed to build request body');
@@ -204,7 +204,7 @@ describe('LTX-2 Video Generation (Integration)', () => {
 				guidance_scale: 3.0,
 			};
 
-			const requestData = buildRequestBody('text2video', capabilities, userInputs);
+			const requestData = buildRequestBody('text2video', capabilities, userInputs, LTX2_CHUTE_URL);
 			
 			if (!requestData) {
 				throw new Error('Failed to build request body');

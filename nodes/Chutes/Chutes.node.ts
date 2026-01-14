@@ -1725,7 +1725,7 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 		// Dynamically build request with discovered endpoint and parameters
 		// Note: We attempt the operation even if detection is uncertain
 		// The API will return proper error if operation is truly unsupported
-		const requestConfig = buildRequestBody('text2video', capabilities, userInputs);
+		const requestConfig = buildRequestBody('text2video', capabilities, userInputs, chuteUrl);
 		if (!requestConfig) {
 			throw new NodeOperationError(
 				this.getNode(),

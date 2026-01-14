@@ -74,7 +74,7 @@ describe('LTX-2 Video Generation (Integration)', () => {
 				fps, // Will be mapped to frame_rate
 				steps: 40, // Will be mapped to num_inference_steps
 				guidance_scale: 3.0, // Will be mapped to cfg_guidance_scale
-				seed: 42,
+				seed: Math.floor(Math.random() * 1000000), // Random seed each run
 			};
 
 			// Use Phase 1 buildRequestBody logic
@@ -146,7 +146,7 @@ describe('LTX-2 Video Generation (Integration)', () => {
 				fs.mkdirSync(outputDir, { recursive: true });
 			}
 
-			const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+			const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_');
 			const filename = `ltx2-cinematic-bamboo-crane-${timestamp}-${duration}s.mp4`;
 			const outputPath = path.join(outputDir, filename);
 			

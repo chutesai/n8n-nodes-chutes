@@ -884,11 +884,21 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 
 		console.log(`[ImageEdit] Using endpoint: ${requestConfig.endpoint}`);
 		console.log(`[ImageEdit] Request body keys:`, Object.keys(requestConfig.body));
-		
+
 		// Log full body for debugging (excluding image data to keep logs manageable)
 		const bodyForLogging = { ...requestConfig.body };
 		if (bodyForLogging.image) {
 			bodyForLogging.image = `[base64 data, ${String(bodyForLogging.image).length} chars]`;
+		}
+		if (bodyForLogging.image_b64) {
+			bodyForLogging.image_b64 = `[base64 data, ${String(bodyForLogging.image_b64).length} chars]`;
+		}
+		if (bodyForLogging.image_b64s && Array.isArray(bodyForLogging.image_b64s)) {
+			const totalChars = bodyForLogging.image_b64s.reduce((sum, img) => sum + (img?.length || 0), 0);
+			bodyForLogging.image_b64s = `[array of ${bodyForLogging.image_b64s.length} base64 images, total ${totalChars} chars]`;
+		}
+		if (bodyForLogging.image_url) {
+			bodyForLogging.image_url = `[image URL, ${String(bodyForLogging.image_url).length} chars]`;
 		}
 		console.log(`[ImageEdit] Full request body:`, JSON.stringify(bodyForLogging, null, 2));
 

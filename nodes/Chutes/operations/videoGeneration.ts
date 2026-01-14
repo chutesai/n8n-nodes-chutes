@@ -298,8 +298,15 @@ export const videoGenerationOperations: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: {},
-				description: 'LoRA adapters for style transfer and effects (LTX-2)',
+				default: {
+					loraItems: [
+						{
+							name: 'detailer',
+							strength: 1.0,
+						},
+					],
+				},
+				description: 'LoRA adapters for style transfer and effects (LTX-2). At least one LoRA is required for Video-to-Video operation.',
 				options: [
 					{
 						name: 'loraItems',

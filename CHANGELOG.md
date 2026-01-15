@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.0.10](https://github.com/chutesai/n8n-nodes-chutes/compare/v0.0.9...v0.0.10) (2026-01-15)
+
 ## 0.0.9 (2025-12-22)
 
 All notable changes to this project will be documented in this file.

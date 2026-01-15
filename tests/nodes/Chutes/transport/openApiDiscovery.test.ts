@@ -296,6 +296,8 @@ describe('OpenAPI Discovery Module', () => {
 			supportsTextToVideo: false,
 			supportsImageToVideo: true,
 			supportsImageEdit: false,
+			supportsVideoToVideo: false,
+			supportsKeyframeInterp: false,
 			imageToVideoPath: '/image2video',
 		};
 

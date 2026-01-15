@@ -15,8 +15,8 @@ describe('OpenAPI Discovery - Default Endpoints', () => {
 		// Verify the default I2V path is /generate (matching Wan-2.2-I2V pattern)
 		expect(capabilities.imageToVideoPath).toBe('/generate');
 		
-		// Verify T2V still uses the traditional endpoint
-		expect(capabilities.textToVideoPath).toBe('/text2video');
+		// Verify T2V also uses /generate (modern chutes like LTX-2 use /generate for everything)
+		expect(capabilities.textToVideoPath).toBe('/generate');
 	});
 
 	it('should include /generate in fallback endpoints', async () => {

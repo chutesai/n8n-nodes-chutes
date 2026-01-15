@@ -3,7 +3,7 @@
 ![Chutes.ai](https://img.shields.io/badge/Chutes.ai-Integration-blue)
 ![n8n](https://img.shields.io/badge/n8n-Community%20Node-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Tests](https://img.shields.io/badge/tests-480%2B%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-745%2B%20passing-brightgreen)
 ![Node](https://img.shields.io/badge/node-20%2B-blue)
 
 This is an n8n community node that provides complete access to Chutes.ai's AI services, replicating all features available in the Chutes.ai playground including text generation, image generation, and custom inference.
@@ -661,11 +661,22 @@ See [tests/README.md](tests/README.md) for detailed testing documentation.
 
 ## Compatibility
 
-- **n8n version**: 0.0.9 or higher
+- **n8n version**: 0.0.10 or higher
 - **Node.js**: 20.12.0 or higher (runtime), 20.12.0+ required for development
 - **Chutes.ai API**: v1
 
 ## Changelog
+
+### [0.0.10] - 2026-01-14
+#### LTX-2 Full Support
+- **Full LTX-2 video generation support** with automatic schema detection
+- **New video operations**: Video-to-Video (V2V) and Keyframe Interpolation
+- **LoRA adapter support**: 11 LTX-2 LoRAs including camera controls (dolly, jib, static), Canny/Depth/Pose control, and Detailer
+- **New I2V parameters**: `image_strength`, `image_frame_index`, `distilled` pipeline option
+- **Automatic parameter aliasing**: Maps between Wan2.2 and LTX-2 parameter names (`fps`/`frame_rate`, `frames`/`num_frames`, etc.)
+- **Resolution conversion**: Automatically converts resolution strings to width/height with LTX-2 rounding (multiples of 64)
+- **Backward compatible**: Wan2.2-fast and other video chutes continue to work without changes
+- **745+ tests passing** with comprehensive unit and integration test coverage
 
 ### [0.0.9] - 2025-10-22
 #### Initial Release

@@ -136,7 +136,26 @@ export class GenericChutesChatModel extends SimpleChatModel {
 
 	try {
 		console.log('[GenericChutesChatModel] Calling Chutes API:', `${this.chuteUrl}/v1/chat/completions`);
-		console.log('[GenericChutesChatModel] Request body:', JSON.stringify(body, null, 2));
+		
+		// Log body with image data redacted (for vision models)
+		const bodyForLogging = { ...body };
+		if (bodyForLogging.messages && Array.isArray(bodyForLogging.messages)) {
+			bodyForLogging.messages = bodyForLogging.messages.map((msg: any) => {
+				if (msg.content && Array.isArray(msg.content)) {
+					return {
+						...msg,
+						content: msg.content.map((item: any) => {
+							if (item.type === 'image_url' && item.image_url) {
+								return { type: 'image_url', image_url: '[redacted]' };
+							}
+							return item;
+						}),
+					};
+				}
+				return msg;
+			});
+		}
+		console.log('[GenericChutesChatModel] Request body:', JSON.stringify(bodyForLogging, null, 2));
 		
 		// Use n8n's request helper to call Chutes.ai API
 		const response = await this.requestHelper.request({

@@ -254,20 +254,22 @@ describe('OpenAPI Discovery Module', () => {
 							{ name: 'fps', required: false, type: 'number' },
 						],
 					},
-				],
+			],
 				supportsTextToVideo: true,
 				supportsImageToVideo: false,
 				supportsImageEdit: false,
+				supportsVideoToVideo: false,
+				supportsKeyframeInterp: false,
 				textToVideoPath: '/text2video',
-			};
+		};
 
-			const userInputs: IDataObject = {
-				prompt: 'a cat playing',
-				frames: 81,
-				fps: 24,
-			};
+		const userInputs: IDataObject = {
+			prompt: 'a cat playing',
+			frames: 81,
+			fps: 24,
+		};
 
-		const result = buildRequestBody('text2video', capabilities, userInputs);
+	const result = buildRequestBody('text2video', capabilities, userInputs);
 
 		expect(result).not.toBeNull();
 		expect(result?.endpoint).toBe('/text2video');
@@ -279,23 +281,25 @@ describe('OpenAPI Discovery Module', () => {
 		});
 	});
 
-		it('should build request for image-to-video', () => {
-			const capabilities = {
-				endpoints: [
-					{
-						path: '/image2video',
-						method: 'POST',
-						parameters: [
-							{ name: 'prompt', required: true, type: 'string' },
-							{ name: 'image_b64', required: true, type: 'string' },
-						],
-					},
-				],
-				supportsTextToVideo: false,
-				supportsImageToVideo: true,
-				supportsImageEdit: false,
-				imageToVideoPath: '/image2video',
-			};
+	it('should build request for image-to-video', () => {
+		const capabilities = {
+			endpoints: [
+				{
+					path: '/image2video',
+					method: 'POST',
+					parameters: [
+						{ name: 'prompt', required: true, type: 'string' },
+						{ name: 'image_b64', required: true, type: 'string' },
+					],
+				},
+			],
+			supportsTextToVideo: false,
+			supportsImageToVideo: true,
+			supportsImageEdit: false,
+			supportsVideoToVideo: false,
+			supportsKeyframeInterp: false,
+			imageToVideoPath: '/image2video',
+		};
 
 			const userInputs: IDataObject = {
 				prompt: 'animate this',
@@ -311,23 +315,25 @@ describe('OpenAPI Discovery Module', () => {
 		expect(result?.body.image_b64).toBe('base64encodedimage');
 	});
 
-		it('should map parameter names dynamically', () => {
-			const capabilities = {
-				endpoints: [
-					{
-						path: '/generate',
-						method: 'POST',
-						parameters: [
-							{ name: 'text', required: true, type: 'string' }, // Uses 'text' not 'prompt'!
-							{ name: 'image', required: false, type: 'string' },
-						],
-					},
-				],
+	it('should map parameter names dynamically', () => {
+		const capabilities = {
+			endpoints: [
+				{
+					path: '/generate',
+					method: 'POST',
+					parameters: [
+						{ name: 'text', required: true, type: 'string' }, // Uses 'text' not 'prompt'!
+						{ name: 'image', required: false, type: 'string' },
+					],
+				},
+			],
 				supportsTextToVideo: false,
 				supportsImageToVideo: true,
 				supportsImageEdit: false,
+				supportsVideoToVideo: false,
+				supportsKeyframeInterp: false,
 				imageToVideoPath: '/generate',
-			};
+		};
 
 			const userInputs: IDataObject = {
 				prompt: 'test prompt',
@@ -341,18 +347,20 @@ describe('OpenAPI Discovery Module', () => {
 		expect(result?.body.image).toBe('test-image');
 	});
 
-		it('should fallback to common endpoint if no specific path found', () => {
-			const capabilities = {
-				endpoints: [
-					{
-						path: '/generate',
-						method: 'POST',
-						parameters: [],
-					},
-				],
+	it('should fallback to common endpoint if no specific path found', () => {
+		const capabilities = {
+			endpoints: [
+				{
+					path: '/generate',
+					method: 'POST',
+					parameters: [],
+				},
+			],
 				supportsTextToVideo: false,
 				supportsImageToVideo: false,
 				supportsImageEdit: false,
+				supportsVideoToVideo: false,
+				supportsKeyframeInterp: false,
 			};
 
 			const userInputs: IDataObject = {
@@ -365,12 +373,14 @@ describe('OpenAPI Discovery Module', () => {
 			expect(result?.endpoint).toBe('/generate'); // Fallback
 		});
 
-		it('should return fallback endpoint even with empty capabilities', () => {
-			const capabilities = {
-				endpoints: [],
+	it('should return fallback endpoint even with empty capabilities', () => {
+		const capabilities = {
+			endpoints: [],
 				supportsTextToVideo: false,
 				supportsImageToVideo: false,
 				supportsImageEdit: false,
+				supportsVideoToVideo: false,
+				supportsKeyframeInterp: false,
 			};
 
 			const userInputs: IDataObject = {

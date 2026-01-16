@@ -431,6 +431,24 @@ export function buildRequestBody(
 	// Special handling: Convert singular image to image_b64s array ONLY for image edit operations
 	// (e.g., Qwen Image Edit expects array of 1-3 images, but video wants singular 'image')
 	const isImageEditOp = (operation === 'edit' || operation === 'image_edit');
+	
+	// Handle multi-image edit: images array → image_b64s
+	if (isImageEditOp && modifiedInputs.images && Array.isArray(modifiedInputs.images) && !modifiedInputs.image_b64s) {
+		const imagesArray = modifiedInputs.images as string[];
+		if (endpointParams.has('image_b64s')) {
+			// API expects image_b64s array (e.g., Qwen-Image-Edit-2511)
+			modifiedInputs.image_b64s = imagesArray;
+			delete modifiedInputs.images;
+			console.log(`[OpenAPI] Mapped images array to image_b64s (${imagesArray.length} images)`);
+		} else if (endpointParams.has('image') || endpointParams.has('image_b64')) {
+			// API expects singular image - use first image only
+			modifiedInputs.image = imagesArray[0];
+			delete modifiedInputs.images;
+			console.log(`[OpenAPI] Using first image from array for singular image API`);
+		}
+	}
+	
+	// Legacy: Handle singular image → image_b64s conversion (backward compatibility)
 	if (isImageEditOp && modifiedInputs.image && !modifiedInputs.image_b64s && endpointParams.has('image_b64s')) {
 		modifiedInputs.image_b64s = [modifiedInputs.image];
 		delete modifiedInputs.image;

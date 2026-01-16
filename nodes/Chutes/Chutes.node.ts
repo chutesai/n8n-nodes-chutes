@@ -768,26 +768,54 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 	} 
 	
 	else if (operation === 'edit') {
-		// Image editing operation
+		// Image editing operation with multi-image support
+		// Build array to hold all image base64 strings
+		const imageB64s: string[] = [];
+		
+		// Get ALL input items for multi-item binary search (like keyframes)
+		const allInputItems = this.getInputData();
+		
+		// Track which items we've used for sequential empty-field fallback
+		let nextSequentialItemIdx = 0;
+		
+		// === PRIMARY IMAGE (existing image field) ===
 		const imageParam = this.getNodeParameter('image', itemIndex, '') as string;
+		let primaryImageBase64 = '';
 		
-		let imageBase64: string = '';
-		
-		// PRIORITY 1: Try to get image from binary data first (from previous node)
-		const binaryData = this.getInputData()[itemIndex].binary;
-		if (binaryData && binaryData.data) {
-			// Image is coming from binary data in the workflow
-			try {
-				const imageBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, 'data');
-				imageBase64 = imageBuffer.toString('base64');
-			} catch (error) {
-				console.warn('Failed to get binary image data:', error);
-				// Continue to try other methods
+		// PRIORITY 1: Named binary property - search ALL items
+		if (imageParam && !imageParam.startsWith('http') && !imageParam.startsWith('data:')) {
+			for (let idx = 0; idx < allInputItems.length; idx++) {
+				const itemBinary = allInputItems[idx].binary;
+				if (itemBinary && itemBinary[imageParam]) {
+					try {
+						const imageBuffer = await this.helpers.getBinaryDataBuffer(idx, imageParam);
+						primaryImageBase64 = imageBuffer.toString('base64');
+						console.log(`[ImageEdit] Found primary binary "${imageParam}" in item ${idx}`);
+						break;
+					} catch (error) {
+						console.warn(`Failed to get binary "${imageParam}" from item ${idx}:`, error);
+					}
+				}
 			}
 		}
 		
-		// PRIORITY 2: If no binary data, check the image parameter
-		if (!imageBase64 && imageParam) {
+		// PRIORITY 2: Empty field - use binary.data from item 0 (standard n8n pattern)
+		if (!primaryImageBase64 && !imageParam) {
+			const itemBinary = allInputItems[0]?.binary;
+			if (itemBinary?.data) {
+				try {
+					const imageBuffer = await this.helpers.getBinaryDataBuffer(0, 'data');
+					primaryImageBase64 = imageBuffer.toString('base64');
+					console.log(`[ImageEdit] Using binary.data from item 0 for primary image`);
+					nextSequentialItemIdx = 1; // Next empty field uses item 1
+				} catch (error) {
+					console.warn('Failed to get binary.data from item 0:', error);
+				}
+			}
+		}
+		
+		// PRIORITY 3: URL/Data URL handling
+		if (!primaryImageBase64 && imageParam) {
 			if (imageParam.startsWith('http://') || imageParam.startsWith('https://')) {
 				// Image is a URL - download it and convert to base64
 				try {
@@ -797,7 +825,7 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 						encoding: null, // Get binary data
 					});
 					const imageBuffer = Buffer.from(response);
-					imageBase64 = imageBuffer.toString('base64');
+					primaryImageBase64 = imageBuffer.toString('base64');
 				} catch (error) {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -809,7 +837,7 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 				// Data URL format (data:image/png;base64,...)
 				const matches = imageParam.match(/^data:([^;]+);base64,(.+)$/);
 				if (matches) {
-					imageBase64 = matches[2];
+					primaryImageBase64 = matches[2];
 				} else {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -817,20 +845,108 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 						{ itemIndex },
 					);
 				}
-			} else {
-				// Assume it's already base64 encoded image
-				imageBase64 = imageParam;
 			}
+			// Note: Do NOT assume imageParam is base64 if not URL/data URL (that was the keyframe bug!)
 		}
 
-		// Validate we have image data
-		if (!imageBase64) {
+		// Validate we have primary image data
+		if (!primaryImageBase64) {
 			throw new NodeOperationError(
 				this.getNode(),
-				'No image data found. Please connect a node with binary image data (HTTP Request, Read Binary File, etc.) or provide an image URL in the Input Image field.',
+				`Could not find primary image data. The value "${imageParam || '(empty)'}" was not found as a binary property in any input item, and is not a valid URL or base64 string.`,
 				{ itemIndex },
 			);
 		}
+		
+		// Add primary image to array
+		imageB64s.push(primaryImageBase64);
+
+		// === ADDITIONAL IMAGES (from additionalOptions) ===
+		const additionalImagesCollection = additionalOptions.additionalImages as IDataObject;
+		
+		if (additionalImagesCollection?.images && Array.isArray(additionalImagesCollection.images)) {
+			for (const imgEntry of additionalImagesCollection.images as Array<IDataObject>) {
+				const sourceParam = imgEntry.source as string || '';
+				let imageBase64 = '';
+				
+				// PRIORITY 1: Named binary property - search ALL items
+				if (sourceParam && !sourceParam.startsWith('http') && !sourceParam.startsWith('data:')) {
+					for (let idx = 0; idx < allInputItems.length; idx++) {
+						const itemBinary = allInputItems[idx].binary;
+						if (itemBinary && itemBinary[sourceParam]) {
+							try {
+								const imageBuffer = await this.helpers.getBinaryDataBuffer(idx, sourceParam);
+								imageBase64 = imageBuffer.toString('base64');
+								console.log(`[ImageEdit] Found additional binary "${sourceParam}" in item ${idx}`);
+								break;
+							} catch (error) {
+								console.warn(`Failed to get binary "${sourceParam}" from item ${idx}:`, error);
+							}
+						}
+					}
+				}
+				
+				// PRIORITY 2: Empty field - use next sequential item's binary.data
+				if (!imageBase64 && !sourceParam) {
+					while (nextSequentialItemIdx < allInputItems.length) {
+						const itemBinary = allInputItems[nextSequentialItemIdx].binary;
+						if (itemBinary?.data) {
+							try {
+								const imageBuffer = await this.helpers.getBinaryDataBuffer(nextSequentialItemIdx, 'data');
+								imageBase64 = imageBuffer.toString('base64');
+								console.log(`[ImageEdit] Using binary.data from item ${nextSequentialItemIdx} for additional image`);
+								nextSequentialItemIdx++; // Move to next for next empty field
+								break;
+							} catch (error) {
+								console.warn(`Failed to get binary.data from item ${nextSequentialItemIdx}:`, error);
+							}
+						}
+						nextSequentialItemIdx++;
+					}
+				}
+				
+				// PRIORITY 3: URL/Data URL handling
+				if (!imageBase64 && sourceParam) {
+					if (sourceParam.startsWith('http://') || sourceParam.startsWith('https://')) {
+						try {
+							const response = await this.helpers.request({
+								method: 'GET',
+								url: sourceParam,
+								encoding: null,
+							});
+							imageBase64 = Buffer.from(response).toString('base64');
+						} catch (error) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Failed to download additional image from URL: ${(error as Error).message}`,
+								{ itemIndex },
+							);
+						}
+					} else if (sourceParam.startsWith('data:')) {
+						const matches = sourceParam.match(/^data:([^;]+);base64,(.+)$/);
+						if (matches) {
+							imageBase64 = matches[2];
+						} else {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Invalid data URL format for additional image. Expected: data:image/TYPE;base64,BASE64_DATA',
+								{ itemIndex },
+							);
+						}
+					}
+					// Note: Do NOT assume sourceParam is base64 if not URL/data URL
+				}
+				
+				// Add to array if we found image data
+				if (imageBase64) {
+					imageB64s.push(imageBase64);
+				} else {
+					console.warn(`[ImageEdit] Could not find image data for additional image with source: "${sourceParam || '(empty)'}"`);
+				}
+			}
+		}
+		
+		console.log(`[ImageEdit] Total images: ${imageB64s.length}`);
 
 		// Get API credentials for OpenAPI discovery
 		const credentials = await this.getCredentials('chutesApi');
@@ -846,7 +962,7 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 		// Prepare base user inputs for dynamic endpoint discovery
 		const baseUserInputs: IDataObject = {
 			prompt,
-			image: imageBase64,
+			images: imageB64s, // Pass array of images
 		};
 
 		// Add optional parameters to base inputs

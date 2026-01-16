@@ -218,6 +218,39 @@ export const imageGenerationOperations: INodeProperties[] = [
 				placeholder: '300',
 				hint: 'Recommended: 300 seconds (5 minutes) for complex images. Leave empty if generation needs more time.',
 			},
+			{
+				displayName: 'Additional Images',
+				name: 'additionalImages',
+				type: 'fixedCollection',
+				placeholder: 'Add Image',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				displayOptions: {
+					show: {
+						operation: ['edit'],
+					},
+				},
+				description: 'Additional images for multi-image editing (e.g., composition tasks like "place person A next to object B"). Some models support 2-3 images. Leave image source empty to auto-use binary data from merged input items.',
+				options: [
+					{
+						displayName: 'Images',
+						name: 'images',
+						values: [
+							{
+								displayName: 'Image Source',
+								name: 'source',
+								type: 'string',
+								default: '',
+								description: 'Binary property name (e.g., "background", "person"), URL, or leave empty to use binary.data from the next input item in sequence',
+								placeholder: 'e.g., background or https://example.com/image.png',
+								hint: 'Leave empty to auto-use binary data from merged input items (e.g., item 1 uses binary.data from input item 1)',
+							},
+						],
+					},
+				],
+			},
 		],
 	},
 ];

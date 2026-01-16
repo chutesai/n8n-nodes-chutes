@@ -227,12 +227,7 @@ export const imageGenerationOperations: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				displayOptions: {
-					show: {
-						operation: ['edit'],
-					},
-				},
-				description: 'Additional images for multi-image editing (e.g., composition tasks like "place person A next to object B"). Some models support 2-3 images. Leave image source empty to auto-use binary data from merged input items.',
+				description: 'Additional images for multi-image editing (e.g., composition tasks like "place person A next to object B"). Some models support 2-3 images. Only used for Edit operation. Leave image source empty to auto-use binary data from merged input items.',
 				options: [
 					{
 						displayName: 'Images',

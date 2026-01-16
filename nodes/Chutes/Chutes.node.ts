@@ -335,12 +335,34 @@ export class Chutes implements INodeType {
 				const resource = this.getNodeParameter('resource', i) as string;
 				let responseData: any;
 
-			if (resource === 'textGeneration') {
-				responseData = await handleTextGeneration.call(this, i);
-			} else if (resource === 'imageGeneration') {
-				responseData = await handleImageGeneration.call(this, i);
-		} else if (resource === 'videoGeneration') {
-			responseData = await handleVideoGeneration.call(this, i);
+		if (resource === 'textGeneration') {
+			responseData = await handleTextGeneration.call(this, i);
+		} else if (resource === 'imageGeneration') {
+			// Check if we should skip this iteration for multi-image edit
+			const operation = this.getNodeParameter('operation', i, '') as string;
+			if (operation === 'edit' && i > 0) {
+				const additionalOptions = this.getNodeParameter('additionalOptions', i, {}) as IDataObject;
+				const additionalImagesConfig = additionalOptions.additionalImages as IDataObject;
+				const isMultiImageEdit = (
+					additionalImagesConfig?.images && 
+					Array.isArray(additionalImagesConfig.images) && 
+					additionalImagesConfig.images.length > 0
+				);
+				if (isMultiImageEdit) {
+					console.log(`[Main Loop] Skipping imageGeneration itemIndex ${i} - multi-image edit processes all items on first iteration`);
+					continue; // Skip this iteration
+				}
+			}
+			responseData = await handleImageGeneration.call(this, i);
+	} else if (resource === 'videoGeneration') {
+		// Check if we should skip this iteration for keyframe (always multi-image)
+		const operation = this.getNodeParameter('operation', i, '') as string;
+		if (operation === 'keyframe' && i > 0) {
+			// Keyframe always processes all items on first iteration
+			console.log(`[Main Loop] Skipping videoGeneration itemIndex ${i} - keyframe processes all items on first iteration`);
+			continue;
+		}
+		responseData = await handleVideoGeneration.call(this, i);
 		} else if (resource === 'textToSpeech') {
 			responseData = await handleTextToSpeech.call(this, i);
 		} else if (resource === 'speechToText') {
@@ -769,6 +791,8 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 	
 	else if (operation === 'edit') {
 		// Image editing operation with multi-image support
+		// NOTE: Main loop handles skipping itemIndex > 0 for multi-image mode
+		
 		// Build array to hold all image base64 strings
 		const imageB64s: string[] = [];
 		
@@ -2188,8 +2212,10 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 	
 	} else if (operation === 'keyframe') {
 		// Keyframe interpolation - generate video from multiple keyframe images
-		const keyframeImagesCollection = this.getNodeParameter('keyframeImages', itemIndex, {}) as IDataObject;
+		// NOTE: Main loop handles skipping itemIndex > 0 for keyframe mode
 		
+		const keyframeImagesCollection = this.getNodeParameter('keyframeImages', itemIndex, {}) as IDataObject;
+
 		// Process keyframe images
 		const images: Array<{image_b64: string; frame_index: number; strength: number}> = [];
 		

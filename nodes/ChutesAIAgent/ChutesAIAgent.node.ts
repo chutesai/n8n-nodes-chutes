@@ -8,6 +8,7 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 import { SystemMessage, HumanMessage } from '@langchain/core/messages';
+import * as loadChutes from '../Chutes/methods/loadChutes';
 
 /**
  * Format tools for the model (function calling format)
@@ -138,6 +139,12 @@ export class ChutesAIAgent implements INodeType {
 				],
 			},
 		},
+		credentials: [
+			{
+				name: 'chutesApi',
+				required: true,
+			},
+		],
 		inputs: [
 			NodeConnectionTypes.Main,
 			{
@@ -169,14 +176,28 @@ export class ChutesAIAgent implements INodeType {
 		],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
-			{
-				displayName:
-					'Tip: This is an alternative to the official n8n AI Agent, configured to work exclusively with the Chutes Chat Model Node.',
-				name: 'chutesAgentNotice',
-				type: 'notice',
-				default: '',
+		{
+			displayName:
+				'Tip: This is an alternative to the official n8n AI Agent, configured to work exclusively with the Chutes Chat Model Node.',
+			name: 'chutesAgentNotice',
+			type: 'notice',
+			default: '',
+		},
+		{
+			displayName: 'Chute',
+			name: 'chuteUrl',
+			type: 'options',
+			noDataExpression: false,
+			required: false,
+			typeOptions: {
+				loadOptionsMethod: 'getLLMChutes',
 			},
-			promptTypeOptions,
+			default: 'https://llm.chutes.ai',
+			description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
+			placeholder: 'https://chutes-deepseek-ai-deepseek-v3-2.chutes.ai',
+			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
+		},
+		promptTypeOptions,
 			{
 				...textFromPreviousNode,
 				displayOptions: {
@@ -250,19 +271,22 @@ export class ChutesAIAgent implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			// Reuse load options methods from the main Chutes node
+			getLLMChutes: loadChutes.getLLMChutes,
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		console.log('[ChutesAIAgent] Execute method started');
 		const items = this.getInputData();
-		console.log('[ChutesAIAgent] Got input data:', items.length, 'items');
 		const returnData: INodeExecutionData[] = [];
 
 		// Get chat model from connection
-		console.log('[ChutesAIAgent] Getting chat model connection...');
 		const chatModelData = (await this.getInputConnectionData(
 			NodeConnectionTypes.AiLanguageModel,
 			0,
 		)) as any;
-		console.log('[ChutesAIAgent] Chat model data:', chatModelData ? 'exists' : 'null');
 
 		if (!chatModelData) {
 			throw new NodeOperationError(
@@ -272,40 +296,32 @@ export class ChutesAIAgent implements INodeType {
 		}
 
 		// Get connected tools (optional) - n8n returns ALL tools at index 0 as an array
-		console.log('[ChutesAIAgent] Getting tools...');
 		let tools: any[] = [];
 		try {
 			const connectedTools = (await this.getInputConnectionData(NodeConnectionTypes.AiTool, 0)) as any;
 			tools = connectedTools ? (Array.isArray(connectedTools) ? connectedTools : [connectedTools]).flat() : [];
-			console.log('[ChutesAIAgent] Found', tools.length, 'tools');
 		} catch (error) {
-			console.log('[ChutesAIAgent] No tools connected (this is OK)');
+			// No tools connected
 		}
 
 		// Get memory (optional)
-		console.log('[ChutesAIAgent] Getting memory...');
 		let memory: any = undefined;
 		try {
 			memory = (await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as any;
-			console.log('[ChutesAIAgent] Memory:', memory ? 'connected' : 'not connected');
 		} catch (error) {
-			console.log('[ChutesAIAgent] No memory connected (this is OK)');
+			// No memory connected
 		}
 
 		// Get output parser (optional)
-		console.log('[ChutesAIAgent] Getting output parser...');
 		let outputParser: any = undefined;
 		try {
 			outputParser = (await this.getInputConnectionData(NodeConnectionTypes.AiOutputParser, 0)) as any;
-			console.log('[ChutesAIAgent] Output parser:', outputParser ? 'connected' : 'not connected');
 		} catch (error) {
-			console.log('[ChutesAIAgent] No output parser connected (this is OK)');
+			// No output parser connected
 		}
 
 		// Process each input item
-		console.log('[ChutesAIAgent] Processing items...');
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			console.log('[ChutesAIAgent] Processing item', itemIndex);
 			try {
 				// Get prompt based on promptType setting
 				const promptType = this.getNodeParameter('promptType', itemIndex) as string;

@@ -5,7 +5,7 @@ import { IDataObject } from 'n8n-workflow';
 
 interface ChutesChatModelConfig {
 	chuteUrl: string;
-	model: string;
+	model?: string;
 	temperature?: number;
 	maxTokens?: number;
 	topP?: number;
@@ -33,7 +33,7 @@ export class GenericChutesChatModel extends SimpleChatModel {
 	constructor(config: ChutesChatModelConfig) {
 		super({});
 		this.chuteUrl = config.chuteUrl;
-		this.model = config.model;
+		this.model = config.model ?? '';
 		this.temperature = config.temperature ?? 0.7;
 		this.maxTokens = config.maxTokens ?? 1000;
 		this.topP = config.topP;

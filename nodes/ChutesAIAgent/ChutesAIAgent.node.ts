@@ -11,35 +11,41 @@ import { SystemMessage, HumanMessage } from '@langchain/core/messages';
 import * as loadChutes from '../Chutes/methods/loadChutes';
 
 /**
- * Format tools for the model (function calling format)
+ * Format tools for the model (OpenAI function calling format)
+ * Converts n8n tool format to OpenAI's {type: 'function', function: {...}} structure
  */
 function formatToolsForModel(tools: any[]): any[] {
 	return tools.map((tool: any) => ({
-		name: tool.name || 'unnamed_tool',
-		description: tool.description || 'No description provided',
-		parameters: tool.schema || {
-			type: 'object',
-			properties: {},
-			required: [],
+		type: 'function',
+		function: {
+			name: tool.name || 'unnamed_tool',
+			description: tool.description || 'No description provided',
+			parameters: tool.schema || {
+				type: 'object',
+				properties: {},
+				required: [],
+			},
 		},
 	}));
 }
 
 /**
- * Parse tool calls from model response
+ * Parse tool calls from model response (OpenAI format)
+ * Returns tool calls with id, name, and args - id is required for OpenAI tool response format
  */
-function parseToolCalls(response: any): Array<{ name: string; args: any }> {
-	const toolCalls: Array<{ name: string; args: any }> = [];
+function parseToolCalls(response: any): Array<{ id: string; name: string; args: any }> {
+	const toolCalls: Array<{ id: string; name: string; args: any }> = [];
 
 	// If response is a string, no tool calls
 	if (typeof response === 'string') {
 		return toolCalls;
 	}
 
-	// Check for function_call (OpenAI format)
+	// Check for function_call (OpenAI format - legacy single call)
 	if (response.function_call) {
 		try {
 			toolCalls.push({
+				id: response.id || `call_${Date.now()}`, // Generate ID if not provided
 				name: response.function_call.name,
 				args: typeof response.function_call.arguments === 'string'
 					? JSON.parse(response.function_call.arguments)
@@ -50,11 +56,12 @@ function parseToolCalls(response: any): Array<{ name: string; args: any }> {
 		}
 	}
 
-	// Check for tool_calls array (OpenAI format)
+	// Check for tool_calls array (OpenAI format - modern)
 	if (Array.isArray(response.tool_calls)) {
 		for (const call of response.tool_calls) {
 			try {
 				toolCalls.push({
+					id: call.id || `call_${Date.now()}`, // Extract call ID (required for OpenAI format)
 					name: call.function?.name || call.name,
 					args: typeof call.function?.arguments === 'string'
 						? JSON.parse(call.function.arguments)
@@ -450,71 +457,80 @@ export class ChutesAIAgent implements INodeType {
 						);
 					}
 
-					// Handle response - check if it's a tool call or final answer
-					const toolCalls = parseToolCalls(response);
+				// Handle response - check if it's a tool call or final answer
+				const toolCalls = parseToolCalls(response);
 
-					if (toolCalls.length === 0) {
-						// No tool calls - this is the final answer
-						agentOutput = typeof response === 'string' ? response : response.content || JSON.stringify(response);
-						break;
-					}
+				if (toolCalls.length === 0) {
+					// No tool calls - this is the final answer
+					agentOutput = typeof response === 'string' ? response : response.content || JSON.stringify(response);
+					break;
+				}
 
-					// Execute each tool call
-					for (const toolCall of toolCalls) {
-						const tool = tools.find((t: any) => t.name === toolCall.name);
-
-						if (!tool) {
-							const errorMsg = `Tool "${toolCall.name}" not found. Available tools: ${tools.map((t: any) => t.name).join(', ')}`;
-							currentMessages.push({
-								role: 'function',
-								name: toolCall.name,
-								content: JSON.stringify({ error: errorMsg }),
-							});
-							intermediateSteps.push({
-								action: toolCall,
-								observation: errorMsg,
-							});
-							continue;
+				// Add the assistant's message with tool_calls to conversation history
+				// This preserves the original LLM response before we execute the tools
+				currentMessages.push({
+					role: 'assistant',
+					content: response.content || null,
+					tool_calls: response.tool_calls || toolCalls.map(tc => ({
+						id: tc.id,
+						type: 'function',
+						function: {
+							name: tc.name,
+							arguments: JSON.stringify(tc.args)
 						}
+					}))
+				});
 
-						// Execute the tool
-						let toolResult: any;
-						try {
-							if (typeof tool.invoke === 'function') {
-								toolResult = await tool.invoke(toolCall.args);
-							} else if (typeof tool.call === 'function') {
-								toolResult = await tool.call(toolCall.args);
-							} else {
-								throw new Error(`Tool "${toolCall.name}" does not have invoke() or call() method`);
-							}
-						} catch (error: any) {
-							toolResult = { error: error.message };
-						}
+				// Execute each tool call
+				for (const toolCall of toolCalls) {
+					const tool = tools.find((t: any) => t.name === toolCall.name);
 
-						// Add tool result to conversation
+					if (!tool) {
+						const errorMsg = `Tool "${toolCall.name}" not found. Available tools: ${tools.map((t: any) => t.name).join(', ')}`;
 						currentMessages.push({
-							role: 'function',
-							name: toolCall.name,
-							content: typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult),
+							role: 'tool',
+							tool_call_id: toolCall.id,
+							content: JSON.stringify({ error: errorMsg }),
 						});
-
-						// Track intermediate step
 						intermediateSteps.push({
-							action: {
-								tool: toolCall.name,
-								toolInput: toolCall.args,
-								log: `Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
-							},
-							observation: typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult),
+							action: toolCall,
+							observation: errorMsg,
 						});
+						continue;
 					}
 
-					// Add assistant message indicating tool calls were made
+					// Execute the tool
+					let toolResult: any;
+					try {
+						if (typeof tool.invoke === 'function') {
+							toolResult = await tool.invoke(toolCall.args);
+						} else if (typeof tool.call === 'function') {
+							toolResult = await tool.call(toolCall.args);
+						} else {
+							throw new Error(`Tool "${toolCall.name}" does not have invoke() or call() method`);
+						}
+					} catch (error: any) {
+						toolResult = { error: error.message };
+					}
+
+					// Add tool result to conversation (OpenAI format: role='tool', tool_call_id)
 					currentMessages.push({
-						role: 'assistant',
-						content: `Used tools: ${toolCalls.map((t: any) => t.name).join(', ')}`,
+						role: 'tool',
+						tool_call_id: toolCall.id,
+						content: typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult),
+					});
+
+					// Track intermediate step
+					intermediateSteps.push({
+						action: {
+							tool: toolCall.name,
+							toolInput: toolCall.args,
+							log: `Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
+						},
+						observation: typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult),
 					});
 				}
+			}
 
 				if (!agentOutput) {
 					agentOutput = 'Max iterations reached without final answer. Please try rephrasing your question or reducing complexity.';

@@ -72,6 +72,14 @@ export class GenericChutesChatModel extends SimpleChatModel {
 		
 		// Convert LangChain messages to Chutes.ai chat completion format
 		const formattedMessages = messages.map((message, index) => {
+			// Handle plain message objects from ChutesAIAgent (with role already set)
+			if (typeof message === 'object' && 'role' in message && typeof message.role === 'string') {
+				// This is already a formatted message object from ChutesAIAgent
+				// Preserve all properties (role, content, tool_call_id, tool_calls, etc.)
+				console.log(`[GenericChutesChatModel] Message ${index}: Pre-formatted with role=${message.role}`);
+				return message as any;
+			}
+			
 			let role: 'system' | 'user' | 'assistant';
 			
 			try {
@@ -134,6 +142,20 @@ export class GenericChutesChatModel extends SimpleChatModel {
 			body.stop = options.stop;
 		}
 
+		// Add tools for function calling (if provided by AI Agent)
+		const optionsAny = options as any;
+		if (optionsAny.functions && Array.isArray(optionsAny.functions) && optionsAny.functions.length > 0) {
+			body.tools = optionsAny.functions.map((fn: any) => ({
+				type: 'function',
+				function: {
+					name: fn.name,
+					description: fn.description,
+					parameters: fn.parameters
+				}
+			}));
+			console.log('[GenericChutesChatModel] Added', (body.tools as any[]).length, 'tools to request');
+		}
+
 	try {
 		console.log('[GenericChutesChatModel] Calling Chutes API:', `${this.chuteUrl}/v1/chat/completions`);
 		
@@ -174,14 +196,22 @@ export class GenericChutesChatModel extends SimpleChatModel {
 		
 		console.log('[GenericChutesChatModel] Got API response');
 
-			// Stream tokens to callback manager if provided (for future streaming support)
-			if (runManager) {
-				await runManager.handleLLMNewToken(response.choices[0].message.content ?? '');
+			// Check if response contains tool calls
+			const message = response.choices[0]?.message;
+			if (message?.tool_calls && Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
+				console.log('[GenericChutesChatModel] Response contains', message.tool_calls.length, 'tool call(s)');
+				// Return full message object with tool_calls (ChutesAIAgent needs this)
+				return message as any;
 			}
 
-			// Extract and return the message content
+			// Stream tokens to callback manager if provided (for future streaming support)
+			if (runManager && message?.content) {
+				await runManager.handleLLMNewToken(message.content);
+			}
+
+			// Extract and return the message content (backwards compatibility for non-tool-calling usage)
 			// Chutes.ai follows OpenAI format: response.choices[0].message.content
-			return response.choices[0]?.message?.content ?? '';
+			return message?.content ?? '';
 		} catch (error: any) {
 			// Provide helpful error messages
 			const errorMessage = error.response?.data?.error?.message || error.message || 'Unknown error';

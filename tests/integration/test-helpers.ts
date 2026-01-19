@@ -694,13 +694,17 @@ export async function withRetry<T>(
 			lastError = error as Error;
 			const errorMsg = lastError.message;
 			
-			// Check if this is a 429 error (capacity issue)
+			// Check if this is a capacity or infrastructure unavailability error
 			const is429Error = errorMsg.includes('429') || 
 			                    errorMsg.includes('maximum capacity') ||
 			                    errorMsg.includes('Infrastructure is at maximum capacity');
 			
-			if (is429Error && category) {
-				console.log(`\n⚠️  Attempt ${attempt}/${maxRetries} failed with 429 error - trying alternative ${category} chute...`);
+			const isUnavailableError = errorMsg.includes('CHUTE_UNAVAILABLE') ||
+			                           errorMsg.includes('Infrastructure unavailable') ||
+			                           errorMsg.includes('No infrastructure available');
+			
+			if ((is429Error || isUnavailableError) && category) {
+				console.log(`\n⚠️  Attempt ${attempt}/${maxRetries} failed with infrastructure error - trying alternative ${category} chute...`);
 				
 				// Try to find an alternative chute
 				const alternativeChute = await findAlternativeChute(category, failedChutes);
@@ -720,7 +724,7 @@ export async function withRetry<T>(
 					console.log(`   ❌ No alternative ${category} chutes available`);
 					// If this is our last retry and we have no alternatives, throw skip-worthy error
 					if (attempt === maxRetries) {
-						throw new Error(`ALL_CHUTES_EXHAUSTED: All ${category} chutes are at capacity or unavailable (429 errors)`);
+						throw new Error(`ALL_CHUTES_EXHAUSTED: All ${category} chutes are at capacity or unavailable (infrastructure errors)`);
 					}
 					console.log(`   ⏳ Will retry with exponential backoff...`);
 				}

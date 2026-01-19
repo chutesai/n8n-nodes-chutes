@@ -145,14 +145,22 @@ export class GenericChutesChatModel extends SimpleChatModel {
 		// Add tools for function calling (if provided by AI Agent)
 		const optionsAny = options as any;
 		if (optionsAny.functions && Array.isArray(optionsAny.functions) && optionsAny.functions.length > 0) {
-			body.tools = optionsAny.functions.map((fn: any) => ({
-				type: 'function',
-				function: {
-					name: fn.name,
-					description: fn.description,
-					parameters: fn.parameters
-				}
-			}));
+			// Check if tools are already in OpenAI format (from formatToolsForModel in ChutesAIAgent)
+			const firstTool = optionsAny.functions[0];
+			if (firstTool.type === 'function' && firstTool.function) {
+				// Already in OpenAI format { type: 'function', function: {...} } - use directly
+				body.tools = optionsAny.functions;
+			} else {
+				// Legacy n8n format { name, description, parameters } - wrap in OpenAI format
+				body.tools = optionsAny.functions.map((fn: any) => ({
+					type: 'function',
+					function: {
+						name: fn.name,
+						description: fn.description,
+						parameters: fn.parameters
+					}
+				}));
+			}
 			console.log('[GenericChutesChatModel] Added', (body.tools as any[]).length, 'tools to request');
 		}
 

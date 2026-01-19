@@ -8,6 +8,60 @@ import * as path from 'path';
 
 describe('GenericChutesChatModel Tool Calling', () => {
 	describe('Sending tools to API', () => {
+		it('should NOT double-wrap tools already in OpenAI format', () => {
+			const GenericChutesChatModel = require('../../../nodes/ChutesChatModel/GenericChutesChatModel').GenericChutesChatModel;
+			const { HumanMessage } = require('@langchain/core/messages');
+			
+			// Tools already formatted by formatToolsForModel (OpenAI format)
+			const openAIFormattedTools = [
+				{
+					type: 'function',
+					function: {
+						name: 'calculator',
+						description: 'Do math',
+						parameters: { type: 'object', properties: { a: { type: 'number' } }, required: ['a'] }
+					}
+				}
+			];
+			
+			// Mock request helper that captures the request body
+			let capturedBody: any = null;
+			const mockRequestHelper = {
+				request: jest.fn((opts) => {
+					capturedBody = opts.body;
+					return Promise.resolve({
+						choices: [{ message: { content: 'test response' } }]
+					});
+				})
+			};
+			
+			const model = new GenericChutesChatModel({
+				chuteUrl: 'https://test.chutes.ai',
+				credentials: { apiKey: 'test-key' },
+				model: 'test-model',
+				requestHelper: mockRequestHelper
+			});
+			
+			// Call with OpenAI-formatted tools
+			const options = { functions: openAIFormattedTools } as any;
+			
+			return model._call([new HumanMessage('test')], options).then(() => {
+				// Verify tools were sent correctly (NOT double-wrapped)
+				expect(capturedBody.tools).toBeDefined();
+				expect(capturedBody.tools).toHaveLength(1);
+				expect(capturedBody.tools[0]).toEqual({
+					type: 'function',
+					function: {
+						name: 'calculator',
+						description: 'Do math',
+						parameters: { type: 'object', properties: { a: { type: 'number' } }, required: ['a'] }
+					}
+				});
+				// Should NOT be: { type: 'function', function: { name: undefined, description: undefined, parameters: undefined } }
+				expect(capturedBody.tools[0].function.name).toBe('calculator'); // Will fail if double-wrapped
+			});
+		});
+		
 		it('should send tools array in API request body when options.functions provided', () => {
 			const sourceFile = path.join(__dirname, '../../../nodes/ChutesChatModel/GenericChutesChatModel.ts');
 			const sourceCode = fs.readFileSync(sourceFile, 'utf8');

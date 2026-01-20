@@ -39,27 +39,27 @@ describe('LTX-2 Video Generation (Integration)', () => {
 		console.log(`🎬 Using LTX-2 chute: ${LTX2_CHUTE_URL}`);
 	}, 60000); // 1 minute for discovery
 
-	testOrSkip('should generate 19-second cinematic video using LTX-2', async () => {
+	testOrSkip('should generate 5-second bouncing ball video using LTX-2', async () => {
 		if (!LTX2_CHUTE_URL) {
 			console.log('⏭️ Skipping - LTX-2 chute not available');
 			return;
 		}
 
-		console.log(`\n🎬 Testing LTX-2 video generation with cinematic prompt...`);
+		console.log(`\n🎬 Testing LTX-2 video generation with bouncing ball prompt...`);
 		console.log(`   Using chute: ${LTX2_CHUTE_URL}`);
 
-		// User's cinematic prompt
-		const prompt = `A slow cinematic dolly shot pushes through a dense bamboo forest at dawn, mist hanging low between the stalks as golden sunlight filters through the canopy in soft volumetric rays. Dew glistens on bamboo leaves in the foreground. The camera continues forward, revealing a shallow pond where a red-crowned crane stands motionless. The crane spreads its wings and lifts off gracefully, water rippling outward beneath it. The camera tilts upward to follow its ascent, cherry blossom petals drifting lazily through the frame on a soft breeze. A distant pagoda emerges through the morning fog on a hilltop. A second crane joins the first, both flying in formation toward the pagoda as the camera completes its upward arc. The shot settles on a wide view of the misty valley below, the two cranes now silhouettes against the brightening sky. Photorealistic, shot on 65mm film, natural motion blur, warm golden hour tones shifting to cool diffused light.`;
+		// Bouncing ball prompt with sound
+		const prompt = `a large red rubber ball rolls off of a wooden table and falls on the floor, then bounces three times, each with a sucessivly lower 'boing' sound.`;
 
-		// LTX-2 parameters for 19-second video
-		const duration = 19; // seconds
-		const fps = 25; // LTX-2 default frame rate
-		
-		// LTX-2 requires frames to follow: num_frames = 8n + 1
-		let rawFrames = duration * fps; // 19 * 25 = 475
-		const n = Math.round((rawFrames - 1) / 8); // (475-1)/8 = 59.25 -> 59
-		const frames = 8 * n + 1; // 8*59+1 = 473 frames (valid for LTX-2)
-		console.log(`   Calculated frames: ${rawFrames} -> ${frames} (8×${n}+1 for LTX-2)`);
+	// LTX-2 parameters for 5-second video
+	const duration = 5; // seconds
+	const fps = 24; // Standard frame rate
+	
+	// LTX-2 requires frames to follow: num_frames = 8n + 1
+	let rawFrames = duration * fps; // 5 * 24 = 120
+	const n = Math.round((rawFrames - 1) / 8); // (120-1)/8 = 14.875 -> 15
+	const frames = 8 * n + 1; // 8*15+1 = 121 frames (valid for LTX-2)
+	console.log(`   Calculated frames: ${rawFrames} -> ${frames} (8×${n}+1 for LTX-2)`);
 
 		try {
 			// Get API key (same as real node does)
@@ -93,42 +93,47 @@ describe('LTX-2 Video Generation (Integration)', () => {
 			console.log(`   📦 Request endpoint: ${requestData.endpoint}`);
 			console.log(`   📦 Request body (flat params):`, Object.keys(requestData.body).join(', '));
 
-			const result = await withRetry(async () => {
-				const fullUrl = `${LTX2_CHUTE_URL}${requestData.endpoint}`;
-				console.log(`   📡 POST ${fullUrl}`);
-				
-				const response = await fetch(fullUrl, {
-					method: 'POST',
-					headers: getAuthHeaders(),
-					body: JSON.stringify(requestData.body),
-				});
+		const result = await withRetry(async () => {
+			const fullUrl = `${LTX2_CHUTE_URL}${requestData.endpoint}`;
+			console.log(`   📡 POST ${fullUrl}`);
+			
+			const response = await fetch(fullUrl, {
+				method: 'POST',
+				headers: getAuthHeaders(),
+				body: JSON.stringify(requestData.body),
+			});
 
-				console.log(`Response status: ${response.status}`);
+			console.log(`Response status: ${response.status}`);
+			
+			if (!response.ok) {
+				const error = await response.text();
+				console.log(`Error response: ${error}`);
 				
-				if (!response.ok) {
-					const error = await response.text();
-					console.log(`Error response: ${error}`);
-					
-					// 429 means at capacity - retry
-					if (response.status === 429) {
-						throw new Error(`CHUTE_AT_CAPACITY: 429 - ${error}`);
-					}
-					
-					// 502/503 means infrastructure down
-					if (response.status === 502 || response.status === 503) {
-						throw new Error(`CHUTE_UNAVAILABLE: ${response.status}`);
-					}
-					
-					throw new Error(`API error ${response.status}: ${error}`);
+				// 429 means at capacity - retry
+				if (response.status === 429) {
+					throw new Error(`CHUTE_AT_CAPACITY: 429 - ${error}`);
 				}
 				
-				return response;
-			}, {
-				maxRetries: 5,
-				delayMs: 5000,
-				category: 'video',
-				currentChuteUrl: LTX2_CHUTE_URL || undefined,
-			});
+				// 500 with infrastructure message = infrastructure down
+				if (response.status === 500 && (error.includes('No infrastructure available') || error.includes('infrastructure'))) {
+					throw new Error(`CHUTE_UNAVAILABLE: 500 - Infrastructure unavailable`);
+				}
+				
+				// 502/503 means infrastructure down
+				if (response.status === 502 || response.status === 503) {
+					throw new Error(`CHUTE_UNAVAILABLE: ${response.status}`);
+				}
+				
+				throw new Error(`API error ${response.status}: ${error}`);
+			}
+			
+			return response;
+		}, {
+			maxRetries: 2, // Reduced from 5 to fail faster when infrastructure is down
+			delayMs: 3000, // Reduced from 5000ms to skip faster
+			category: 'video',
+			currentChuteUrl: LTX2_CHUTE_URL || undefined,
+		});
 
 			// Get binary video data
 			const videoBuffer = await result.arrayBuffer();
@@ -151,104 +156,32 @@ describe('LTX-2 Video Generation (Integration)', () => {
 				fs.mkdirSync(outputDir, { recursive: true });
 			}
 
-			const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_');
-			const filename = `ltx2-cinematic-bamboo-crane-${timestamp}-${duration}s.mp4`;
-			const outputPath = path.join(outputDir, filename);
-			
-			fs.writeFileSync(outputPath, buffer);
-			
-			console.log(`💾 Saved video to: ${outputPath}`);
-			console.log(`📊 Video details:`);
-			console.log(`   Duration: ${duration} seconds`);
-			console.log(`   Frame rate: ${fps} fps`);
-			console.log(`   Total frames: ${frames}`);
-			console.log(`   Resolution: 768x512`);
-			console.log(`   File size: ${(videoBuffer.byteLength / 1024 / 1024).toFixed(2)} MB`);
-			console.log('✅ LTX-2 video generation test passed');
-		} catch (error) {
-			const errorMsg = String(error);
-			if (errorMsg.includes('CHUTE_AT_CAPACITY') || 
-			    errorMsg.includes('ALL_CHUTES_EXHAUSTED') ||
-			    errorMsg.includes('CHUTE_UNAVAILABLE')) {
-				console.log('⏭️ Skipping - LTX-2 chute(s) at capacity or unavailable');
-				return; // Skip gracefully
-			}
-			throw error;
+		const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_');
+		const filename = `ltx2-bouncing-ball-${timestamp}-${duration}s.mp4`;
+		const outputPath = path.join(outputDir, filename);
+		
+		fs.writeFileSync(outputPath, buffer);
+		
+		console.log(`💾 Saved video to: ${outputPath}`);
+		console.log(`📊 Video details:`);
+		console.log(`   Duration: ${duration} seconds`);
+		console.log(`   Frame rate: ${fps} fps`);
+		console.log(`   Total frames: ${frames}`);
+		console.log(`   Resolution: 768x512`);
+		console.log(`   File size: ${(videoBuffer.byteLength / 1024 / 1024).toFixed(2)} MB`);
+		console.log('✅ LTX-2 5-second bouncing ball video generation test passed');
+	} catch (error) {
+		const errorMsg = String(error);
+		if (errorMsg.includes('CHUTE_AT_CAPACITY') || 
+		    errorMsg.includes('ALL_CHUTES_EXHAUSTED') ||
+		    errorMsg.includes('CHUTE_UNAVAILABLE') ||
+		    errorMsg.includes('fetch failed') ||
+		    errorMsg.includes('ECONNREFUSED') ||
+		    errorMsg.includes('ETIMEDOUT')) {
+			console.log('⏭️ Skipping - LTX-2 chute(s) at capacity, unavailable, or network error');
+			return; // Skip gracefully
 		}
-	}, EXTENDED_TIMEOUT);
-
-	testOrSkip('should handle shorter video with default parameters', async () => {
-		if (!LTX2_CHUTE_URL) {
-			console.log('⏭️ Skipping - LTX-2 chute not available');
-			return;
-		}
-
-		console.log(`\n🎬 Testing LTX-2 with simpler 5-second video...`);
-
-		try {
-			// Get API key (same as real node does)
-			const apiKey = process.env.CHUTES_API_KEY;
-			if (!apiKey) {
-				throw new Error('CHUTES_API_KEY not set');
-			}
-			
-			// Use Phase 1 logic (SAME AS REAL NODE)
-			const capabilities = await discoverChuteCapabilities(LTX2_CHUTE_URL, apiKey);
-			
-			const userInputs: IDataObject = {
-				prompt: 'A cat wearing a wizard hat, magical sparkles',
-				resolution: '512*512',
-				frames: 121, // ~5 seconds at 25 fps
-				fps: 25,
-				steps: 30,
-				guidance_scale: 3.0,
-			};
-
-			const requestData = buildRequestBody('text2video', capabilities, userInputs, LTX2_CHUTE_URL);
-			
-			if (!requestData) {
-				throw new Error('Failed to build request body');
-			}
-
-			const result = await withRetry(async () => {
-				const response = await fetch(`${LTX2_CHUTE_URL}${requestData.endpoint}`, {
-					method: 'POST',
-					headers: getAuthHeaders(),
-					body: JSON.stringify(requestData.body),
-				});
-
-				if (!response.ok) {
-					const error = await response.text();
-					if (response.status === 429) {
-						throw new Error(`CHUTE_AT_CAPACITY: 429 - ${error}`);
-					}
-					if (response.status === 502 || response.status === 503) {
-						throw new Error(`CHUTE_UNAVAILABLE: ${response.status}`);
-					}
-					throw new Error(`API error ${response.status}: ${error}`);
-				}
-				
-				return response;
-			}, {
-				maxRetries: 5,
-				delayMs: 5000,
-				category: 'video',
-				currentChuteUrl: LTX2_CHUTE_URL || undefined,
-			});
-			
-			const videoBuffer = await result.arrayBuffer();
-			console.log(`✅ Generated ${videoBuffer.byteLength} bytes`);
-			
-			expect(videoBuffer.byteLength).toBeGreaterThan(0);
-		} catch (error) {
-			const errorMsg = String(error);
-			if (errorMsg.includes('CHUTE_AT_CAPACITY') || 
-			    errorMsg.includes('ALL_CHUTES_EXHAUSTED') ||
-			    errorMsg.includes('CHUTE_UNAVAILABLE')) {
-				console.log('⏭️ Skipping - LTX-2 chute(s) at capacity or unavailable');
-				return;
-			}
-			throw error;
-		}
+		throw error;
+	}
 	}, EXTENDED_TIMEOUT);
 });

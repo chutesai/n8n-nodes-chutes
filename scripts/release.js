@@ -46,6 +46,55 @@ if (branch === 'release') {
 } else if (branch.startsWith('beta-')) {
   console.log(`🧪 Beta release from "${branch}" branch`);
   console.log('');
+  
+  // Auto-sync with DEV first
+  console.log('🔄 Syncing with DEV branch...');
+  console.log('');
+  
+  const rebaseResult = spawnSync('git', ['rebase', 'DEV'], {
+    stdio: 'inherit',
+    shell: true
+  });
+  
+  if (rebaseResult.status !== 0) {
+    console.error('');
+    console.error('❌ Rebase from DEV failed');
+    console.error('');
+    console.error('This usually means there are conflicts to resolve.');
+    console.error('');
+    console.error('To fix:');
+    console.error('  1. Resolve conflicts in your editor');
+    console.error('  2. git add <conflicted-files>');
+    console.error('  3. git rebase --continue');
+    console.error('  4. Run: npm run release (again)');
+    console.error('');
+    console.error('Or to abort the rebase:');
+    console.error('  git rebase --abort');
+    process.exit(rebaseResult.status || 1);
+  }
+  
+  console.log('✅ Synced with DEV');
+  console.log('');
+  console.log('📤 Force pushing to remote...');
+  console.log('');
+  
+  const pushResult = spawnSync('git', ['push', '--force-with-lease'], {
+    stdio: 'inherit',
+    shell: true
+  });
+  
+  if (pushResult.status !== 0) {
+    console.error('');
+    console.error('❌ Force push failed');
+    console.error('');
+    console.error('Someone else may have pushed to this branch.');
+    console.error('Run: git pull --rebase');
+    process.exit(pushResult.status || 1);
+  }
+  
+  console.log('✅ Pushed to remote');
+  console.log('');
+  
   isBeta = true;
   releaseItArgs = ['--preRelease=beta'];
 } else {
@@ -151,7 +200,8 @@ rl.question('Press ENTER to publish, or Ctrl+C to cancel... ', () => {
     console.log('');
     console.log('   Next steps:');
     console.log('   1. Test the beta release');
-    console.log('   2. When ready, create PR: beta-* → DEV → main');
+    console.log('   2. To sync more DEV changes: just run npm run release again');
+    console.log('   3. When stable: merge DEV → main, delete beta branch');
   } else {
     console.log('✅ Stable release complete!');
     console.log('');

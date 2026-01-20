@@ -141,4 +141,34 @@ describe('ChutesAIAgent Tool Calling', () => {
 			expect(sectionText).toContain("role: 'assistant'");
 		});
 	});
+
+	describe('Tool argument normalization', () => {
+		it('should normalize single-property args object to string for simple LangChain tools (e.g. Wikipedia)', () => {
+			// This test reproduces the "undefined" bug where Wikipedia receives {query: "term"}
+			// but expects just "term", causing it to search for "undefined"
+			
+			const sourceFile = path.join(__dirname, '../../../nodes/ChutesAIAgent/ChutesAIAgent.node.ts');
+			const sourceCode = fs.readFileSync(sourceFile, 'utf8');
+			
+			// Find the tool execution section where we normalize and invoke
+			const toolExecutionMatch = sourceCode.match(/\/\/ Execute the tool[\s\S]{0,1500}tool\.invoke\(toolInput\)/);
+			expect(toolExecutionMatch).toBeDefined();
+			
+			const executionSection = toolExecutionMatch![0];
+			
+			// Before calling tool.invoke(toolCall.args), we should normalize the args
+			// For single-property objects like {query: "term"}, extract the value
+			// This prevents LangChain tools from receiving undefined when they expect a string
+			
+			// Should have normalization logic that creates toolInput
+			expect(executionSection).toContain('let toolInput = toolCall.args');
+			
+			// Should check if object has single property and extract that value
+			expect(executionSection).toContain('keys.length === 1');
+			expect(executionSection).toContain('toolInput = toolInput[keys[0]]');
+			
+			// Should pass normalized toolInput to tool.invoke()
+			expect(executionSection).toContain('tool.invoke(toolInput)');
+		});
+	});
 });

@@ -499,19 +499,33 @@ export class ChutesAIAgent implements INodeType {
 						continue;
 					}
 
-					// Execute the tool
-					let toolResult: any;
-					try {
-						if (typeof tool.invoke === 'function') {
-							toolResult = await tool.invoke(toolCall.args);
-						} else if (typeof tool.call === 'function') {
-							toolResult = await tool.call(toolCall.args);
-						} else {
-							throw new Error(`Tool "${toolCall.name}" does not have invoke() or call() method`);
+				// Execute the tool
+				let toolResult: any;
+				try {
+					// Normalize tool input for LangChain tools
+					// LangChain simple tools (Wikipedia, Calculator, etc.) expect a string,
+					// but the LLM returns args as an object like {query: "term"}
+					// Extract the value from single-property objects to prevent "undefined"
+					let toolInput = toolCall.args;
+					if (typeof toolInput === 'object' && toolInput !== null && !Array.isArray(toolInput)) {
+						const keys = Object.keys(toolInput);
+						if (keys.length === 1) {
+							// Single property - extract the value for simple tools
+							toolInput = toolInput[keys[0]];
 						}
-					} catch (error: any) {
-						toolResult = { error: error.message };
+						// Multi-property objects stay as-is for structured tools
 					}
+
+					if (typeof tool.invoke === 'function') {
+						toolResult = await tool.invoke(toolInput);
+					} else if (typeof tool.call === 'function') {
+						toolResult = await tool.call(toolInput);
+					} else {
+						throw new Error(`Tool "${toolCall.name}" does not have invoke() or call() method`);
+					}
+				} catch (error: any) {
+					toolResult = { error: error.message };
+				}
 
 					// Add tool result to conversation (OpenAI format: role='tool', tool_call_id)
 					currentMessages.push({

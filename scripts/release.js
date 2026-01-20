@@ -31,6 +31,59 @@ if (!fs.existsSync(releaseItPath) && !fs.existsSync(releaseItPathCmd)) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// Check DEV branch test status (GitHub Actions)
+// ═══════════════════════════════════════════════════════════
+
+let devTestsPassed = false;
+
+// First check if gh CLI is installed
+const ghCheckResult = spawnSync('gh', ['--version'], {
+  stdio: 'pipe',
+  shell: true
+});
+
+if (ghCheckResult.status !== 0) {
+  console.log('⚠️  GitHub CLI (gh) not installed - will run tests locally');
+  console.log('');
+} else {
+  // gh CLI is available, check DEV branch test status
+  try {
+    console.log('🔍 Checking DEV branch test status...');
+    console.log('');
+    
+    const ghResult = execSync('gh run list --branch DEV --limit 1 --json conclusion,status', {
+      encoding: 'utf-8',
+      stdio: 'pipe'
+    });
+    
+    const runs = JSON.parse(ghResult);
+    
+    if (runs.length > 0) {
+      const latestRun = runs[0];
+      devTestsPassed = latestRun.conclusion === 'success' && latestRun.status === 'completed';
+      
+      if (devTestsPassed) {
+        console.log('✅ DEV branch tests passed - will skip running tests again');
+        console.log('');
+        process.env.SKIP_TESTS = 'true';
+      } else {
+        console.log(`⚠️  DEV branch tests status: ${latestRun.conclusion} (${latestRun.status})`);
+        console.log('   Will run tests locally');
+        console.log('');
+      }
+    } else {
+      console.log('⚠️  No test runs found for DEV branch');
+      console.log('   Will run tests locally');
+      console.log('');
+    }
+  } catch (error) {
+    console.log('⚠️  Could not check DEV branch tests (not authenticated or API error)');
+    console.log('   Will run tests locally');
+    console.log('');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 // Branch detection
 // ═══════════════════════════════════════════════════════════
 
@@ -144,10 +197,52 @@ if (buildResult.status !== 0) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// Step 3: Prompt for npm publish
+// Step 3: Check npm login status
 // ═══════════════════════════════════════════════════════════
 
 console.log('');
+console.log('🔐 Checking npm login status...');
+console.log('');
+
+const whoamiResult = spawnSync('npm', ['whoami'], { 
+  encoding: 'utf-8',
+  stdio: 'pipe',
+  shell: true 
+});
+
+const username = whoamiResult.stdout?.trim();
+const isLoggedIn = whoamiResult.status === 0 && username && username.length > 0;
+
+if (isLoggedIn) {
+  console.log(`✅ Logged in to npm as: ${username}`);
+  console.log('');
+} else {
+  console.log('❌ Not logged in to npm');
+  console.log('');
+  console.log('🔐 Running npm login...');
+  console.log('   (This will open your browser for npm authentication)');
+  console.log('');
+  
+  const loginResult = spawnSync('npm', ['login'], {
+    stdio: 'inherit',
+    shell: true
+  });
+  
+  if (loginResult.status !== 0) {
+    console.error('');
+    console.error('❌ npm login failed or was cancelled');
+    process.exit(1);
+  }
+  
+  console.log('');
+  console.log('✅ npm login successful');
+  console.log('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// Step 4: Prompt for npm publish
+// ═══════════════════════════════════════════════════════════
+
 console.log('═══════════════════════════════════════════════════════════');
 console.log('');
 if (isBeta) {
@@ -157,8 +252,6 @@ if (isBeta) {
   console.log('📋 Ready to publish STABLE to npm');
   console.log('   Command: npm publish --access public');
 }
-console.log('');
-console.log('   This will open your browser for YubiKey authentication.');
 console.log('');
 console.log('═══════════════════════════════════════════════════════════');
 console.log('');

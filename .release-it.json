@@ -14,7 +14,7 @@
   },
   "hooks": {
     "before:init": [
-      "npm run test"
+      "node -e \"if (process.env.SKIP_TESTS !== 'true') { require('child_process').execSync('npm run test', {stdio:'inherit'}) } else { console.log('⏭️  Skipping tests (already passed on DEV branch)') }\""
     ]
   },
   "plugins": {

@@ -105,7 +105,10 @@ describe('Embeddings Execution', () => {
 			const errorMsg = String(error);
 			if (errorMsg.includes('CHUTE_UNAVAILABLE') || 
 			    errorMsg.includes('ALL_CHUTES_EXHAUSTED') ||
-			    errorMsg.includes('ENDPOINT_NOT_FOUND')) {
+			    errorMsg.includes('ENDPOINT_NOT_FOUND') ||
+			    errorMsg.includes('fetch failed') ||
+			    errorMsg.includes('ECONNREFUSED') ||
+			    errorMsg.includes('ETIMEDOUT')) {
 				console.log('⏭️ Skipping - embeddings chute(s) unavailable or endpoint not supported');
 				return; // Skip gracefully
 			}
@@ -176,7 +179,10 @@ describe('Embeddings Execution', () => {
 			if (errorMsg.includes('CHUTE_UNAVAILABLE') || 
 			    errorMsg.includes('ALL_CHUTES_EXHAUSTED') ||
 			    errorMsg.includes('ENDPOINT_NOT_FOUND') ||
-			    errorMsg.includes('Batch not supported')) {
+			    errorMsg.includes('Batch not supported') ||
+			    errorMsg.includes('fetch failed') ||
+			    errorMsg.includes('ECONNREFUSED') ||
+			    errorMsg.includes('ETIMEDOUT')) {
 				console.log('⏭️ Skipping - batch embeddings not supported or chute unavailable');
 				return; // Skip gracefully
 			}
@@ -246,7 +252,10 @@ describe('Embeddings Execution', () => {
 			const errorMsg = String(error);
 			if (errorMsg.includes('CHUTE_UNAVAILABLE') || 
 			    errorMsg.includes('ALL_CHUTES_EXHAUSTED') ||
-			    errorMsg.includes('ENDPOINT_NOT_FOUND')) {
+			    errorMsg.includes('ENDPOINT_NOT_FOUND') ||
+			    errorMsg.includes('fetch failed') ||
+			    errorMsg.includes('ECONNREFUSED') ||
+			    errorMsg.includes('ETIMEDOUT')) {
 				console.log('⏭️ Skipping - embeddings chute(s) unavailable or endpoint not supported');
 				return; // Skip gracefully
 			}

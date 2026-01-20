@@ -217,7 +217,10 @@ describe('AI Agent Integration Tests', () => {
 		} catch (error) {
 			const errorMsg = String(error);
 			if (errorMsg.includes('CHUTE_AT_CAPACITY') || 
-			    errorMsg.includes('ALL_CHUTES_EXHAUSTED')) {
+			    errorMsg.includes('ALL_CHUTES_EXHAUSTED') ||
+			    errorMsg.includes('fetch failed') ||
+			    errorMsg.includes('ECONNREFUSED') ||
+			    errorMsg.includes('ETIMEDOUT')) {
 				console.log('⏭️ Skipping - LLM chute(s) at capacity during sequential requests');
 				return; // Skip gracefully
 			}

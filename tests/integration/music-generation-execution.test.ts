@@ -149,7 +149,10 @@ describe('Music Generation Execution', () => {
 			const errorMsg = String(error);
 			if (errorMsg.includes('CHUTE_AT_CAPACITY') || 
 			    errorMsg.includes('ALL_CHUTES_EXHAUSTED') ||
-			    errorMsg.includes('CHUTE_UNAVAILABLE')) {
+			    errorMsg.includes('CHUTE_UNAVAILABLE') ||
+			    errorMsg.includes('fetch failed') ||
+			    errorMsg.includes('ECONNREFUSED') ||
+			    errorMsg.includes('ETIMEDOUT')) {
 				console.log('⏭️ Skipping - music chute(s) at capacity or unavailable');
 				return; // Skip gracefully
 			}
@@ -205,7 +208,10 @@ describe('Music Generation Execution', () => {
 			const errorMsg = String(error);
 			if (errorMsg.includes('CHUTE_AT_CAPACITY') || 
 			    errorMsg.includes('ALL_CHUTES_EXHAUSTED') ||
-			    errorMsg.includes('CHUTE_UNAVAILABLE')) {
+			    errorMsg.includes('CHUTE_UNAVAILABLE') ||
+			    errorMsg.includes('fetch failed') ||
+			    errorMsg.includes('ECONNREFUSED') ||
+			    errorMsg.includes('ETIMEDOUT')) {
 				console.log('⏭️ Skipping - music chute(s) at capacity or unavailable');
 				return;
 			}
@@ -256,7 +262,11 @@ describe('Music Generation Execution', () => {
 		} catch (error) {
 			const errorMsg = String(error);
 			if (errorMsg.includes('CHUTE_AT_CAPACITY') || 
-			    errorMsg.includes('ALL_CHUTES_EXHAUSTED')) {
+			    errorMsg.includes('ALL_CHUTES_EXHAUSTED') ||
+			    errorMsg.includes('CHUTE_UNAVAILABLE') ||
+			    errorMsg.includes('fetch failed') ||
+			    errorMsg.includes('ECONNREFUSED') ||
+			    errorMsg.includes('ETIMEDOUT')) {
 				console.log('⏭️ Skipping - music chute(s) at capacity or unavailable');
 				return;
 			}

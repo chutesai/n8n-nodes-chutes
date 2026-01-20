@@ -1,10 +1,13 @@
 /**
- * LTX-2 Video Generation Integration Test
+ * Text-to-Video Generation Integration Test
  * 
- * Tests the LTX-2 video generation chute with Phase 1 implementation:
+ * Tests text-to-video generation with Phase 1 implementation:
  * - Args wrapper support
  * - Resolution to width/height conversion
  * - Parameter aliasing (frames->num_frames, fps->frame_rate)
+ * 
+ * Uses the global warmup infrastructure to find an available, warmed T2V chute.
+ * Skips gracefully if no T2V-capable chute is available.
  * 
  * Saves output video to tests/test-output for manual inspection.
  */
@@ -18,35 +21,47 @@ import {
 	EXTENDED_TIMEOUT,
 	getAuthHeaders,
 	withRetry,
+	initializeTestChutes,
+	VIDEO_CHUTE_URL,
+	VIDEO_CHUTE_NAME,
+	supportsTextToVideo,
 } from './test-helpers';
 import { discoverChuteCapabilities, buildRequestBody } from '../../nodes/Chutes/transport/openApiDiscovery';
 import type { IDataObject } from 'n8n-workflow';
 
-// LTX-2 chute URL
-let LTX2_CHUTE_URL: string | null = null;
-
-describe('LTX-2 Video Generation (Integration)', () => {
-	// Discover chutes before running tests
+describe('Text-to-Video Generation (Integration)', () => {
+	// Initialize warmed chutes before running tests
 	beforeAll(async () => {
 		if (!hasApiKey()) {
 			console.log('⚠️ CHUTES_API_KEY not set - skipping integration tests');
 			return;
 		}
 		
-		// Directly construct LTX-2 chute URL
-		LTX2_CHUTE_URL = 'https://chutes-ltx-2.chutes.ai';
+		await initializeTestChutes();
 		
-		console.log(`🎬 Using LTX-2 chute: ${LTX2_CHUTE_URL}`);
+		if (!VIDEO_CHUTE_URL) {
+			console.log('⚠️ No video chute available - will skip video generation tests');
+		} else if (VIDEO_CHUTE_NAME && !supportsTextToVideo({ name: VIDEO_CHUTE_NAME })) {
+			console.log(`⚠️ Video chute "${VIDEO_CHUTE_NAME}" only supports I2V, not T2V - will skip T2V tests`);
+		} else {
+			console.log(`🎬 Using video chute: ${VIDEO_CHUTE_URL} (${VIDEO_CHUTE_NAME || 'unknown'})`);
+		}
 	}, 60000); // 1 minute for discovery
 
-	testOrSkip('should generate 5-second bouncing ball video using LTX-2', async () => {
-		if (!LTX2_CHUTE_URL) {
-			console.log('⏭️ Skipping - LTX-2 chute not available');
+	testOrSkip('should generate 5-second bouncing ball video using text-to-video', async () => {
+		if (!VIDEO_CHUTE_URL) {
+			console.log('⏭️ Skipping - no video chute available');
+			return;
+		}
+		
+		// Check if the video chute supports text-to-video
+		if (VIDEO_CHUTE_NAME && !supportsTextToVideo({ name: VIDEO_CHUTE_NAME })) {
+			console.log(`⏭️ Skipping - video chute "${VIDEO_CHUTE_NAME}" only supports I2V, not T2V`);
 			return;
 		}
 
-		console.log(`\n🎬 Testing LTX-2 video generation with bouncing ball prompt...`);
-		console.log(`   Using chute: ${LTX2_CHUTE_URL}`);
+		console.log(`\n🎬 Testing text-to-video generation with bouncing ball prompt...`);
+		console.log(`   Using chute: ${VIDEO_CHUTE_URL} (${VIDEO_CHUTE_NAME || 'unknown'})`);
 
 		// Bouncing ball prompt with sound
 		const prompt = `a large red rubber ball rolls off of a wooden table and falls on the floor, then bounces three times, each with a sucessivly lower 'boing' sound.`;
@@ -69,8 +84,8 @@ describe('LTX-2 Video Generation (Integration)', () => {
 			}
 			
 			// Use Phase 1 logic to discover capabilities and build request (SAME AS REAL NODE)
-			console.log('   🔍 Discovering LTX-2 capabilities...');
-			const capabilities = await discoverChuteCapabilities(LTX2_CHUTE_URL, apiKey);
+			console.log('   🔍 Discovering chute capabilities...');
+			const capabilities = await discoverChuteCapabilities(VIDEO_CHUTE_URL, apiKey);
 			// Build user inputs (as they would come from n8n UI)
 			const userInputs: IDataObject = {
 				prompt,
@@ -84,7 +99,7 @@ describe('LTX-2 Video Generation (Integration)', () => {
 
 			// Use Phase 1 buildRequestBody logic
 			console.log('   🔧 Building request body with Phase 1 logic...');
-			const requestData = buildRequestBody('text2video', capabilities, userInputs, LTX2_CHUTE_URL);
+			const requestData = buildRequestBody('text2video', capabilities, userInputs, VIDEO_CHUTE_URL!);
 			
 			if (!requestData) {
 				throw new Error('Failed to build request body');
@@ -94,7 +109,7 @@ describe('LTX-2 Video Generation (Integration)', () => {
 			console.log(`   📦 Request body (flat params):`, Object.keys(requestData.body).join(', '));
 
 		const result = await withRetry(async () => {
-			const fullUrl = `${LTX2_CHUTE_URL}${requestData.endpoint}`;
+			const fullUrl = `${VIDEO_CHUTE_URL}${requestData.endpoint}`;
 			console.log(`   📡 POST ${fullUrl}`);
 			
 			const response = await fetch(fullUrl, {
@@ -132,7 +147,7 @@ describe('LTX-2 Video Generation (Integration)', () => {
 			maxRetries: 2, // Reduced from 5 to fail faster when infrastructure is down
 			delayMs: 3000, // Reduced from 5000ms to skip faster
 			category: 'video',
-			currentChuteUrl: LTX2_CHUTE_URL || undefined,
+			currentChuteUrl: VIDEO_CHUTE_URL || undefined,
 		});
 
 			// Get binary video data
@@ -157,7 +172,9 @@ describe('LTX-2 Video Generation (Integration)', () => {
 			}
 
 		const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_');
-		const filename = `ltx2-bouncing-ball-${timestamp}-${duration}s.mp4`;
+		// Extract chute slug from URL for filename (e.g., "chutes-ltx-2" from "https://chutes-ltx-2.chutes.ai")
+		const chuteSlug = VIDEO_CHUTE_URL?.match(/https:\/\/([^.]+)\.chutes\.ai/)?.[1] || 't2v';
+		const filename = `${chuteSlug}-bouncing-ball-${timestamp}-${duration}s.mp4`;
 		const outputPath = path.join(outputDir, filename);
 		
 		fs.writeFileSync(outputPath, buffer);
@@ -169,7 +186,7 @@ describe('LTX-2 Video Generation (Integration)', () => {
 		console.log(`   Total frames: ${frames}`);
 		console.log(`   Resolution: 768x512`);
 		console.log(`   File size: ${(videoBuffer.byteLength / 1024 / 1024).toFixed(2)} MB`);
-		console.log('✅ LTX-2 5-second bouncing ball video generation test passed');
+		console.log('✅ Text-to-video 5-second bouncing ball video generation test passed');
 	} catch (error) {
 		const errorMsg = String(error);
 		if (errorMsg.includes('CHUTE_AT_CAPACITY') || 
@@ -178,7 +195,7 @@ describe('LTX-2 Video Generation (Integration)', () => {
 		    errorMsg.includes('fetch failed') ||
 		    errorMsg.includes('ECONNREFUSED') ||
 		    errorMsg.includes('ETIMEDOUT')) {
-			console.log('⏭️ Skipping - LTX-2 chute(s) at capacity, unavailable, or network error');
+			console.log('⏭️ Skipping - video chute(s) at capacity, unavailable, or network error');
 			return; // Skip gracefully
 		}
 		throw error;

@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-chutes",
-  "version": "0.0.10",
+  "version": "0.0.11-beta.0",
   "description": "Chutes.ai integration for n8n - AI text generation, image generation, and inference",
   "keywords": [
     "n8n-community-node-package",

@@ -24,7 +24,6 @@ function createMockSupplyDataContext(options: {
 
 	const defaultParams: Record<string, any> = {
 		chuteUrl: 'https://llm.chutes.ai',
-		model: 'deepseek-ai/DeepSeek-V3',
 		temperature: 0.7,
 		options: {
 			maxTokens: 1000,
@@ -74,7 +73,6 @@ describe('ChutesChatModel Execution Tests', () => {
 			const context = createMockSupplyDataContext({
 				nodeParameters: {
 					chuteUrl: 'https://custom-llm.chutes.ai',
-					model: 'custom-model',
 					temperature: 0.5,
 					options: {
 						maxTokens: 2000,
@@ -89,7 +87,7 @@ describe('ChutesChatModel Execution Tests', () => {
 			const model = result.response as GenericChutesChatModel;
 
 			expect(model.chuteUrl).toBe('https://custom-llm.chutes.ai');
-			expect(model.model).toBe('custom-model');
+			expect(model.model).toBe(''); // Model is empty - chute URL specifies the model
 			expect(model.temperature).toBe(0.5);
 			expect(model.maxTokens).toBe(2000);
 			expect(model.topP).toBe(0.9);
@@ -101,7 +99,6 @@ describe('ChutesChatModel Execution Tests', () => {
 			const context = createMockSupplyDataContext({
 				nodeParameters: {
 					chuteUrl: 'https://llm.chutes.ai',
-					model: '',
 					temperature: 0.7,
 					options: {},
 				},
@@ -142,7 +139,7 @@ describe('ChutesChatModel Execution Tests', () => {
 		it('should have correct _llmType', () => {
 			const model = new GenericChutesChatModel({
 				chuteUrl: 'https://llm.chutes.ai',
-				model: 'test-model',
+				model: '',
 				credentials: { apiKey: 'test-key' },
 				requestHelper: { request: jest.fn() },
 			});
@@ -150,7 +147,7 @@ describe('ChutesChatModel Execution Tests', () => {
 			expect(model._llmType()).toBe('chutes-chat-model');
 		});
 
-		it('should return model name', () => {
+		it('should return model name when specified', () => {
 			const model = new GenericChutesChatModel({
 				chuteUrl: 'https://llm.chutes.ai',
 				model: 'my-custom-model',
@@ -181,7 +178,7 @@ describe('ChutesChatModel Execution Tests', () => {
 
 			const model = new GenericChutesChatModel({
 				chuteUrl: 'https://llm.chutes.ai',
-				model: 'test-model',
+				model: '',
 				temperature: 0.7,
 				maxTokens: 1000,
 				credentials: { apiKey: 'test-key' },
@@ -245,7 +242,7 @@ describe('ChutesChatModel Execution Tests', () => {
 
 			const model = new GenericChutesChatModel({
 				chuteUrl: 'https://custom-chute.chutes.ai',
-				model: 'test-model',
+				model: '',
 				credentials: { apiKey: 'test-key' },
 				requestHelper: { request: mockRequest },
 			});
@@ -263,7 +260,7 @@ describe('ChutesChatModel Execution Tests', () => {
 
 			const model = new GenericChutesChatModel({
 				chuteUrl: 'https://llm.chutes.ai',
-				model: 'test-model',
+				model: '',
 				credentials: { apiKey: 'my-secret-key' },
 				requestHelper: { request: mockRequest },
 			});
@@ -281,7 +278,7 @@ describe('ChutesChatModel Execution Tests', () => {
 
 			const model = new GenericChutesChatModel({
 				chuteUrl: 'https://llm.chutes.ai',
-				model: 'test-model',
+				model: '',
 				credentials: { apiKey: 'test-key' },
 				requestHelper: { request: mockRequest },
 			});
@@ -298,7 +295,7 @@ describe('ChutesChatModel Execution Tests', () => {
 
 			const model = new GenericChutesChatModel({
 				chuteUrl: 'https://llm.chutes.ai',
-				model: 'test-model',
+				model: '',
 				credentials: { apiKey: 'test-key' },
 				requestHelper: { request: mockRequest },
 			});
@@ -313,7 +310,7 @@ describe('ChutesChatModel Execution Tests', () => {
 
 			const model = new GenericChutesChatModel({
 				chuteUrl: 'https://llm.chutes.ai',
-				model: 'test-model',
+				model: '',
 				credentials: { apiKey: 'test-key' },
 				requestHelper: { request: mockRequest },
 			});
@@ -329,7 +326,7 @@ describe('ChutesChatModel Execution Tests', () => {
 
 			const model = new GenericChutesChatModel({
 				chuteUrl: 'https://llm.chutes.ai',
-				model: 'test-model',
+				model: '',
 				credentials: { apiKey: 'test-key' },
 				requestHelper: { request: mockRequest },
 			});
@@ -365,7 +362,7 @@ describe('ChutesChatModel Execution Tests', () => {
 
 			const model = new GenericChutesChatModel({
 				chuteUrl: 'https://llm.chutes.ai',
-				model: 'test-model',
+				model: '',
 				credentials: { apiKey: 'test-key' },
 				requestHelper: { request: mockRequest },
 			});

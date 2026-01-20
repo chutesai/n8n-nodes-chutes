@@ -8,7 +8,6 @@ import {
 
 import { GenericChutesChatModel } from './GenericChutesChatModel';
 import * as loadChutes from '../Chutes/methods/loadChutes';
-import * as loadOptions from '../Chutes/methods/loadOptions';
 
 export class ChutesChatModel implements INodeType {
 	description: INodeTypeDescription = {
@@ -44,30 +43,20 @@ export class ChutesChatModel implements INodeType {
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		properties: [
-			{
-				displayName: 'Chute',
-				name: 'chuteUrl',
-				type: 'options',
-				required: true,
-				typeOptions: {
-					loadOptionsMethod: 'getLLMChutes',
-				},
-				default: 'https://llm.chutes.ai',
-				description: 'Select a Chutes.ai LLM chute to use',
-				hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>',
+		{
+			displayName: 'Chute',
+			name: 'chuteUrl',
+			type: 'options',
+			noDataExpression: false,
+			required: false,
+			typeOptions: {
+				loadOptionsMethod: 'getLLMChutes',
 			},
-			{
-				displayName: 'Model',
-				name: 'model',
-				type: 'options',
-				required: false,
-				typeOptions: {
-					loadOptionsMethod: 'getModelsForSelectedChute',
-				},
-				default: '',
-				description: 'Model to use (leave empty to use chute\'s default model)',
-				hint: 'Available models for the selected chute. Leave as "Default" to let the chute choose.',
-			},
+			default: 'https://llm.chutes.ai',
+			description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
+			placeholder: 'https://chutes-deepseek-ai-deepseek-v3-2.chutes.ai',
+			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
+		},
 			{
 				displayName: 'Temperature',
 				name: 'temperature',
@@ -143,7 +132,6 @@ export class ChutesChatModel implements INodeType {
 		loadOptions: {
 			// Reuse load options methods from the main Chutes node
 			getLLMChutes: loadChutes.getLLMChutes,
-			getModelsForSelectedChute: loadOptions.getModelsForSelectedChute,
 		},
 	};
 
@@ -158,7 +146,9 @@ export class ChutesChatModel implements INodeType {
 			const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex) as string;
 			console.log('[ChutesChatModel] chuteUrl:', chuteUrl);
 			
-			const model = this.getNodeParameter('model', itemIndex, '') as string;
+			// Model is determined by the chute URL itself (e.g., https://chutes-deepseek-ai-deepseek-v3-2.chutes.ai)
+			// No separate model parameter needed - leave empty string
+			const model = '';
 			console.log('[ChutesChatModel] model:', model);
 			
 			const temperature = this.getNodeParameter('temperature', itemIndex, 0.7) as number;

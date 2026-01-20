@@ -8,37 +8,44 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 import { SystemMessage, HumanMessage } from '@langchain/core/messages';
+import * as loadChutes from '../Chutes/methods/loadChutes';
 
 /**
- * Format tools for the model (function calling format)
+ * Format tools for the model (OpenAI function calling format)
+ * Converts n8n tool format to OpenAI's {type: 'function', function: {...}} structure
  */
 function formatToolsForModel(tools: any[]): any[] {
 	return tools.map((tool: any) => ({
-		name: tool.name || 'unnamed_tool',
-		description: tool.description || 'No description provided',
-		parameters: tool.schema || {
-			type: 'object',
-			properties: {},
-			required: [],
+		type: 'function',
+		function: {
+			name: tool.name || 'unnamed_tool',
+			description: tool.description || 'No description provided',
+			parameters: tool.schema || {
+				type: 'object',
+				properties: {},
+				required: [],
+			},
 		},
 	}));
 }
 
 /**
- * Parse tool calls from model response
+ * Parse tool calls from model response (OpenAI format)
+ * Returns tool calls with id, name, and args - id is required for OpenAI tool response format
  */
-function parseToolCalls(response: any): Array<{ name: string; args: any }> {
-	const toolCalls: Array<{ name: string; args: any }> = [];
+function parseToolCalls(response: any): Array<{ id: string; name: string; args: any }> {
+	const toolCalls: Array<{ id: string; name: string; args: any }> = [];
 
 	// If response is a string, no tool calls
 	if (typeof response === 'string') {
 		return toolCalls;
 	}
 
-	// Check for function_call (OpenAI format)
+	// Check for function_call (OpenAI format - legacy single call)
 	if (response.function_call) {
 		try {
 			toolCalls.push({
+				id: response.id || `call_${Date.now()}`, // Generate ID if not provided
 				name: response.function_call.name,
 				args: typeof response.function_call.arguments === 'string'
 					? JSON.parse(response.function_call.arguments)
@@ -49,11 +56,12 @@ function parseToolCalls(response: any): Array<{ name: string; args: any }> {
 		}
 	}
 
-	// Check for tool_calls array (OpenAI format)
+	// Check for tool_calls array (OpenAI format - modern)
 	if (Array.isArray(response.tool_calls)) {
 		for (const call of response.tool_calls) {
 			try {
 				toolCalls.push({
+					id: call.id || `call_${Date.now()}`, // Extract call ID (required for OpenAI format)
 					name: call.function?.name || call.name,
 					args: typeof call.function?.arguments === 'string'
 						? JSON.parse(call.function.arguments)
@@ -138,6 +146,12 @@ export class ChutesAIAgent implements INodeType {
 				],
 			},
 		},
+		credentials: [
+			{
+				name: 'chutesApi',
+				required: true,
+			},
+		],
 		inputs: [
 			NodeConnectionTypes.Main,
 			{
@@ -169,14 +183,28 @@ export class ChutesAIAgent implements INodeType {
 		],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
-			{
-				displayName:
-					'Tip: This is an alternative to the official n8n AI Agent, configured to work exclusively with the Chutes Chat Model Node.',
-				name: 'chutesAgentNotice',
-				type: 'notice',
-				default: '',
+		{
+			displayName:
+				'Tip: This is an alternative to the official n8n AI Agent, configured to work exclusively with the Chutes Chat Model Node.',
+			name: 'chutesAgentNotice',
+			type: 'notice',
+			default: '',
+		},
+		{
+			displayName: 'Chute',
+			name: 'chuteUrl',
+			type: 'options',
+			noDataExpression: false,
+			required: false,
+			typeOptions: {
+				loadOptionsMethod: 'getLLMChutes',
 			},
-			promptTypeOptions,
+			default: 'https://llm.chutes.ai',
+			description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
+			placeholder: 'https://chutes-deepseek-ai-deepseek-v3-2.chutes.ai',
+			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
+		},
+		promptTypeOptions,
 			{
 				...textFromPreviousNode,
 				displayOptions: {
@@ -250,19 +278,22 @@ export class ChutesAIAgent implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			// Reuse load options methods from the main Chutes node
+			getLLMChutes: loadChutes.getLLMChutes,
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		console.log('[ChutesAIAgent] Execute method started');
 		const items = this.getInputData();
-		console.log('[ChutesAIAgent] Got input data:', items.length, 'items');
 		const returnData: INodeExecutionData[] = [];
 
 		// Get chat model from connection
-		console.log('[ChutesAIAgent] Getting chat model connection...');
 		const chatModelData = (await this.getInputConnectionData(
 			NodeConnectionTypes.AiLanguageModel,
 			0,
 		)) as any;
-		console.log('[ChutesAIAgent] Chat model data:', chatModelData ? 'exists' : 'null');
 
 		if (!chatModelData) {
 			throw new NodeOperationError(
@@ -272,40 +303,32 @@ export class ChutesAIAgent implements INodeType {
 		}
 
 		// Get connected tools (optional) - n8n returns ALL tools at index 0 as an array
-		console.log('[ChutesAIAgent] Getting tools...');
 		let tools: any[] = [];
 		try {
 			const connectedTools = (await this.getInputConnectionData(NodeConnectionTypes.AiTool, 0)) as any;
 			tools = connectedTools ? (Array.isArray(connectedTools) ? connectedTools : [connectedTools]).flat() : [];
-			console.log('[ChutesAIAgent] Found', tools.length, 'tools');
 		} catch (error) {
-			console.log('[ChutesAIAgent] No tools connected (this is OK)');
+			// No tools connected
 		}
 
 		// Get memory (optional)
-		console.log('[ChutesAIAgent] Getting memory...');
 		let memory: any = undefined;
 		try {
 			memory = (await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as any;
-			console.log('[ChutesAIAgent] Memory:', memory ? 'connected' : 'not connected');
 		} catch (error) {
-			console.log('[ChutesAIAgent] No memory connected (this is OK)');
+			// No memory connected
 		}
 
 		// Get output parser (optional)
-		console.log('[ChutesAIAgent] Getting output parser...');
 		let outputParser: any = undefined;
 		try {
 			outputParser = (await this.getInputConnectionData(NodeConnectionTypes.AiOutputParser, 0)) as any;
-			console.log('[ChutesAIAgent] Output parser:', outputParser ? 'connected' : 'not connected');
 		} catch (error) {
-			console.log('[ChutesAIAgent] No output parser connected (this is OK)');
+			// No output parser connected
 		}
 
 		// Process each input item
-		console.log('[ChutesAIAgent] Processing items...');
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			console.log('[ChutesAIAgent] Processing item', itemIndex);
 			try {
 				// Get prompt based on promptType setting
 				const promptType = this.getNodeParameter('promptType', itemIndex) as string;
@@ -434,71 +457,94 @@ export class ChutesAIAgent implements INodeType {
 						);
 					}
 
-					// Handle response - check if it's a tool call or final answer
-					const toolCalls = parseToolCalls(response);
+				// Handle response - check if it's a tool call or final answer
+				const toolCalls = parseToolCalls(response);
 
-					if (toolCalls.length === 0) {
-						// No tool calls - this is the final answer
-						agentOutput = typeof response === 'string' ? response : response.content || JSON.stringify(response);
-						break;
-					}
+				if (toolCalls.length === 0) {
+					// No tool calls - this is the final answer
+					agentOutput = typeof response === 'string' ? response : response.content || JSON.stringify(response);
+					break;
+				}
 
-					// Execute each tool call
-					for (const toolCall of toolCalls) {
-						const tool = tools.find((t: any) => t.name === toolCall.name);
-
-						if (!tool) {
-							const errorMsg = `Tool "${toolCall.name}" not found. Available tools: ${tools.map((t: any) => t.name).join(', ')}`;
-							currentMessages.push({
-								role: 'function',
-								name: toolCall.name,
-								content: JSON.stringify({ error: errorMsg }),
-							});
-							intermediateSteps.push({
-								action: toolCall,
-								observation: errorMsg,
-							});
-							continue;
+				// Add the assistant's message with tool_calls to conversation history
+				// This preserves the original LLM response before we execute the tools
+				currentMessages.push({
+					role: 'assistant',
+					content: response.content || null,
+					tool_calls: response.tool_calls || toolCalls.map(tc => ({
+						id: tc.id,
+						type: 'function',
+						function: {
+							name: tc.name,
+							arguments: JSON.stringify(tc.args)
 						}
+					}))
+				});
 
-						// Execute the tool
-						let toolResult: any;
-						try {
-							if (typeof tool.invoke === 'function') {
-								toolResult = await tool.invoke(toolCall.args);
-							} else if (typeof tool.call === 'function') {
-								toolResult = await tool.call(toolCall.args);
-							} else {
-								throw new Error(`Tool "${toolCall.name}" does not have invoke() or call() method`);
-							}
-						} catch (error: any) {
-							toolResult = { error: error.message };
-						}
+				// Execute each tool call
+				for (const toolCall of toolCalls) {
+					const tool = tools.find((t: any) => t.name === toolCall.name);
 
-						// Add tool result to conversation
+					if (!tool) {
+						const errorMsg = `Tool "${toolCall.name}" not found. Available tools: ${tools.map((t: any) => t.name).join(', ')}`;
 						currentMessages.push({
-							role: 'function',
-							name: toolCall.name,
-							content: typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult),
+							role: 'tool',
+							tool_call_id: toolCall.id,
+							content: JSON.stringify({ error: errorMsg }),
 						});
-
-						// Track intermediate step
 						intermediateSteps.push({
-							action: {
-								tool: toolCall.name,
-								toolInput: toolCall.args,
-								log: `Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
-							},
-							observation: typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult),
+							action: toolCall,
+							observation: errorMsg,
 						});
+						continue;
 					}
 
-					// Add assistant message indicating tool calls were made
+				// Execute the tool
+				let toolResult: any;
+				try {
+					// Normalize tool input for LangChain tools
+					// LangChain simple tools (Wikipedia, Calculator, etc.) expect a string,
+					// but the LLM returns args as an object like {query: "term"}
+					// Extract the value from single-property objects to prevent "undefined"
+					let toolInput = toolCall.args;
+					if (typeof toolInput === 'object' && toolInput !== null && !Array.isArray(toolInput)) {
+						const keys = Object.keys(toolInput);
+						if (keys.length === 1) {
+							// Single property - extract the value for simple tools
+							toolInput = toolInput[keys[0]];
+						}
+						// Multi-property objects stay as-is for structured tools
+					}
+
+					if (typeof tool.invoke === 'function') {
+						toolResult = await tool.invoke(toolInput);
+					} else if (typeof tool.call === 'function') {
+						toolResult = await tool.call(toolInput);
+					} else {
+						throw new Error(`Tool "${toolCall.name}" does not have invoke() or call() method`);
+					}
+				} catch (error: any) {
+					toolResult = { error: error.message };
+				}
+
+					// Add tool result to conversation (OpenAI format: role='tool', tool_call_id)
 					currentMessages.push({
-						role: 'assistant',
-						content: `Used tools: ${toolCalls.map((t: any) => t.name).join(', ')}`,
+						role: 'tool',
+						tool_call_id: toolCall.id,
+						content: typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult),
+					});
+
+					// Track intermediate step
+					intermediateSteps.push({
+						action: {
+							tool: toolCall.name,
+							toolInput: toolCall.args,
+							log: `Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
+						},
+						observation: typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult),
 					});
 				}
+			}
 
 				if (!agentOutput) {
 					agentOutput = 'Max iterations reached without final answer. Please try rephrasing your question or reducing complexity.';

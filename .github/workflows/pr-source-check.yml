@@ -15,13 +15,21 @@ jobs:
       - name: Check source branch is DEV or beta-*
         run: |
           SOURCE="${{ github.head_ref }}"
+          TARGET="${{ github.base_ref }}"
+          
           echo "📋 PR Details:"
           echo "   Source branch: $SOURCE"
-          echo "   Target branch: ${{ github.base_ref }}"
+          echo "   Target branch: $TARGET"
           
+          # Only enforce restriction for PRs to main
+          if [[ "$TARGET" != "main" ]]; then
+            echo "✅ Target is $TARGET (not main) - no source branch restrictions"
+            exit 0
+          fi
+          
+          # For PRs to main, source must be DEV or beta-*
           if [[ "$SOURCE" == "DEV" || "$SOURCE" == beta-* ]]; then
-            echo "✅ Valid source branch: $SOURCE"
-            echo "   PRs to main must come from DEV or beta-* branches"
+            echo "✅ Valid source branch for main: $SOURCE"
             exit 0
           else
             echo "❌ Invalid source branch: $SOURCE"

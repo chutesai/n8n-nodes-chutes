@@ -14,7 +14,6 @@
   },
   "hooks": {
     "before:init": [
-      "node -e \"if (!process.env.DRY_RUN) { const { execSync } = require('child_process'); const branch = execSync('git rev-parse --abbrev-ref HEAD').toString().trim(); if (branch !== 'release') { console.error('ERROR: Must be on branch release'); process.exit(1); } }\"",
       "npm run test"
     ]
   },

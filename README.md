@@ -3,7 +3,7 @@
 ![Chutes.ai](https://img.shields.io/badge/Chutes.ai-Integration-blue)
 ![n8n](https://img.shields.io/badge/n8n-Community%20Node-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Tests](https://img.shields.io/badge/tests-745%2B%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-779%20passing-brightgreen)
 ![Node](https://img.shields.io/badge/node-20%2B-blue)
 
 This is an n8n community node that provides complete access to Chutes.ai's AI services, replicating all features available in the Chutes.ai playground including text generation, image generation, and custom inference.
@@ -608,12 +608,35 @@ The node dynamically loads available chutes from the Chutes.ai Management API:
 
 ## Development
 
-To contribute or modify this node:
+### Contributing
+
+We welcome contributions! Please follow this workflow:
+
+1. **Fork the repository** on GitHub
+2. **Clone your fork** and create a branch from `DEV`:
+   ```bash
+   git clone https://github.com/YOUR-USERNAME/n8n-nodes-chutes.git
+   cd n8n-nodes-chutes
+   git checkout DEV
+   git checkout -b feature/your-feature-name
+   ```
+3. **Make your changes** and write tests
+4. **Create a Pull Request to `DEV`** (not `main`)
+
+**Important:**
+- ❌ Do NOT create PRs directly to `main` - they will be rejected
+- ✅ All PRs must target the `DEV` branch
+- ✅ All tests must pass before merge
+
+### Local Development Setup
 
 ```bash
 # Clone the repository
 git clone https://github.com/chutesai/n8n-nodes-chutes.git
 cd n8n-nodes-chutes
+
+# Checkout DEV branch (always develop from DEV)
+git checkout DEV
 
 # Install dependencies
 npm install
@@ -661,11 +684,27 @@ See [tests/README.md](tests/README.md) for detailed testing documentation.
 
 ## Compatibility
 
-- **n8n version**: 0.0.10 or higher
 - **Node.js**: 20.12.0 or higher (runtime), 20.12.0+ required for development
 - **Chutes.ai API**: v1
 
 ## Changelog
+
+### [0.1.1] - 2026-02-15
+#### AI Agent & Tool Calling Overhaul
+- **Fully implemented Chutes AI Agent** with complete tool calling support
+- **Fixed tool calling for Chat Model nodes** - now correctly handles OpenAI-compatible tool call format
+- **Tool argument normalization** - automatically extracts values from single-property objects for simple LangChain tools (Wikipedia, Calculator, etc.)
+- **Proper tool response format** - sends tool results with correct `role: 'tool'` and `tool_call_id`
+
+#### Image Edit Multi-Image Support
+- **Image edit operations now handle multiple images** - process batches of images in a single execution
+- **Improved binary data handling** for image operations
+
+#### Development & CI/CD Improvements
+- **Automated release script** (`scripts/release.js`) - handles both stable and beta releases
+- **Beta branch auto-sync** - beta branches automatically rebase from DEV before each release
+- **PR source restrictions** - PRs to `main` can only come from `DEV` or `beta-*` branches
+- **Updated documentation** for contributor workflow
 
 ### [0.0.10] - 2026-01-14
 #### LTX-2 Full Support
@@ -676,7 +715,7 @@ See [tests/README.md](tests/README.md) for detailed testing documentation.
 - **Automatic parameter aliasing**: Maps between Wan2.2 and LTX-2 parameter names (`fps`/`frame_rate`, `frames`/`num_frames`, etc.)
 - **Resolution conversion**: Automatically converts resolution strings to width/height with LTX-2 rounding (multiples of 64)
 - **Backward compatible**: Wan2.2-fast and other video chutes continue to work without changes
-- **745+ tests passing** with comprehensive unit and integration test coverage
+- **779 tests passing** with comprehensive unit and integration test coverage
 
 ### [0.0.9] - 2025-10-22
 #### Initial Release

@@ -8,6 +8,7 @@
 | **Integration Tests** | `npm run test:integration` | ~2-7min | ✅ YES (skips gracefully) | PRs & beta pushes |
 | **Slow Tests** | `npm run test:slow` | ~10-30min | ✅ YES (skips gracefully) | PRs & beta pushes |
 | **Build Check** | `npm run build` | ~1min | ✅ YES | All PRs & pushes |
+| **PR Source Check** | Workflow | Instant | ✅ YES (main only) | PRs to main |
 
 ## What Tests Block PRs?
 
@@ -163,4 +164,88 @@ Result: Tests pass (by skipping) instead of failing with 404/429 errors.
 
 **TL;DR**: Unit tests block PRs. Integration/slow tests warn but don't block. You can merge confidently when your code is correct.
 
+---
+
+## Release Workflow
+
+### Branch Structure
+
+```
+main (stable, production)
+  ↑ PR from DEV or beta-* only
+  │
+DEV (development, integration)
+  ↑ Feature PRs merge here
+  │
+beta-* (long-lived beta branches for testing)
+  ↑ Created from main, syncs from DEV via rebase
+```
+
+### PR Source Restrictions
+
+**PRs to `main` can ONLY come from:**
+- `DEV` branch
+- `beta-*` branches (e.g., `beta-26-01-25`)
+
+This is enforced by `.github/workflows/pr-source-check.yml`.
+
+### Automated Release Script
+
+The release process is fully automated via `scripts/release.js`:
+
+```bash
+npm run release
+```
+
+#### On `release` branch (stable release):
+1. ✅ Runs release-it with version bump
+2. ✅ Runs all tests
+3. ✅ Creates git tag and GitHub release
+4. ✅ Builds dist/
+5. ⏸️ Pauses for npm publish confirmation
+6. ✅ Publishes to npm with `@latest` tag
+
+#### On `beta-*` branch (beta release):
+1. ✅ **Automatically rebases from DEV** (syncs latest features)
+2. ✅ **Force pushes** (required after rebase)
+3. ✅ Runs release-it with `--preRelease=beta`
+4. ✅ Runs all tests
+5. ✅ Creates git tag and GitHub pre-release
+6. ✅ Builds dist/
+7. ⏸️ Pauses for npm publish confirmation
+8. ✅ Publishes to npm with `@beta` tag
+
+### Beta Branch Workflow
+
+Beta branches are **long-lived** and stay in sync with DEV automatically:
+
+```bash
+# Create beta branch (weeks before release date)
+git checkout main
+git checkout -b beta-26-01-25
+
+# Publish first beta (auto-syncs with DEV)
+npm run release  # → 0.0.11-beta.0
+
+# Week later, DEV has updates - just run release again
+npm run release  # → Auto-rebases from DEV, creates 0.0.11-beta.1
+
+# Repeat as needed until release date
+```
+
+**Key Points:**
+- ✅ Each `npm run release` automatically rebases from DEV
+- ✅ No merge conflicts (rebase replays release commits on top)
+- ✅ Force push is safe (only you work on beta branches)
+- ❌ Never merge beta → DEV or beta → main (would pollute with beta versions)
+
+### Quick Release Commands
+
+| Action | Command |
+|--------|---------|
+| Preview release | `npm run release:dry` |
+| Stable release | `git checkout -b release && npm run release` |
+| Beta release | `git checkout beta-* && npm run release` |
+
+For full documentation, see `.cursor/RELEASE-PROCESS.md`.
 

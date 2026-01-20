@@ -51,30 +51,16 @@ describe('ChutesChatModel Node', () => {
 			const chuteUrlProp = chatModelNode.description.properties.find(p => p.name === 'chuteUrl');
 			expect(chuteUrlProp).toBeDefined();
 			expect(chuteUrlProp?.type).toBe('options');
-			expect(chuteUrlProp?.required).toBe(false); // Changed from true to allow expressions
+			expect(chuteUrlProp?.required).toBe(true);
 			expect(chuteUrlProp?.default).toBe('https://llm.chutes.ai');
 		});
 
-		it('should have chuteUrl with noDataExpression: false to allow expressions', () => {
-			const chuteUrlProp = chatModelNode.description.properties.find(p => p.name === 'chuteUrl');
-			expect((chuteUrlProp as any)?.noDataExpression).toBe(false);
+		it('should have model property', () => {
+			const modelProp = chatModelNode.description.properties.find(p => p.name === 'model');
+			expect(modelProp).toBeDefined();
+			expect(modelProp?.type).toBe('options');
+			expect(modelProp?.required).toBe(false);
 		});
-
-		it('should have chuteUrl with placeholder for better UX', () => {
-			const chuteUrlProp = chatModelNode.description.properties.find(p => p.name === 'chuteUrl');
-			expect((chuteUrlProp as any)?.placeholder).toBeDefined();
-			expect((chuteUrlProp as any)?.placeholder).toContain('chutes.ai');
-		});
-
-		it('should have chuteUrl with improved hint mentioning expressions', () => {
-			const chuteUrlProp = chatModelNode.description.properties.find(p => p.name === 'chuteUrl');
-			expect((chuteUrlProp as any)?.hint).toContain('expression');
-		});
-
-	it('should NOT have model property (chute URL specifies the model)', () => {
-		const modelProp = chatModelNode.description.properties.find(p => p.name === 'model');
-		expect(modelProp).toBeUndefined();
-	});
 
 		it('should have temperature property with correct range', () => {
 			const tempProp = chatModelNode.description.properties.find(p => p.name === 'temperature');
@@ -128,6 +114,10 @@ describe('ChutesChatModel Node', () => {
 		it('should have getLLMChutes method', () => {
 			expect(chatModelNode.methods?.loadOptions?.getLLMChutes).toBeDefined();
 		});
+
+		it('should have getModelsForSelectedChute method', () => {
+			expect(chatModelNode.methods?.loadOptions?.getModelsForSelectedChute).toBeDefined();
+		});
 	});
 
 	describe('supplyData Method', () => {
@@ -142,6 +132,7 @@ describe('ChutesChatModel Node', () => {
 				getNodeParameter: jest.fn((paramName: string, _itemIndex: number, defaultValue?: any) => {
 					const params: any = {
 						chuteUrl: 'https://llm.chutes.ai',
+						model: 'deepseek-ai/DeepSeek-V3',
 						temperature: 0.7,
 						options: {},
 					};
@@ -167,6 +158,7 @@ describe('ChutesChatModel Node', () => {
 				getNodeParameter: jest.fn((paramName: string, _itemIndex: number, defaultValue?: any) => {
 					const params: any = {
 						chuteUrl: 'https://custom.chutes.ai',
+						model: 'test-model',
 						temperature: 1.2,
 						options: {
 							maxTokens: 2000,
@@ -189,7 +181,7 @@ describe('ChutesChatModel Node', () => {
 			const model = result.response as any;
 
 			expect(model.chuteUrl).toBe('https://custom.chutes.ai');
-			expect(model.model).toBe(''); // Model is empty - chute URL specifies the model
+			expect(model.model).toBe('test-model');
 			expect(model.temperature).toBe(1.2);
 			expect(model.maxTokens).toBe(2000);
 			expect(model.topP).toBe(0.95);
@@ -202,6 +194,7 @@ describe('ChutesChatModel Node', () => {
 				getNodeParameter: jest.fn((paramName: string, _itemIndex: number, defaultValue?: any) => {
 					const params: any = {
 						chuteUrl: 'https://llm.chutes.ai',
+						model: '',
 						temperature: 0.7,
 						options: {},
 					};

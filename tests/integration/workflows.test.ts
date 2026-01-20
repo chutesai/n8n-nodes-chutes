@@ -8,6 +8,7 @@ import { createMockExecuteFunctions } from '../helpers/mocks';
 import {
 	mockTextCompletionResponse,
 	mockChatCompletionResponse,
+	mockImageGenerationResponse,
 } from '../helpers/fixtures';
 
 describe('Workflow Integration Tests', () => {
@@ -82,37 +83,23 @@ describe('Workflow Integration Tests', () => {
 	describe('Image Generation Workflow', () => {
 		test('should complete image generation workflow successfully', async () => {
 			const mockFunctions = createMockExecuteFunctions();
-			
-			// Create a mock binary image buffer (PNG header)
-			const mockImageBuffer = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
-			
 			(mockFunctions.getNodeParameter as jest.Mock)
-				.mockReturnValueOnce('imageGeneration') // resource (from execute main loop)
-				.mockReturnValueOnce('generate') // operation (from main loop skip logic check)
+				.mockReturnValueOnce('imageGeneration') // resource (from execute)
 				.mockReturnValueOnce('generate') // operation (from handleImageGeneration)
+				.mockReturnValueOnce('dall-e-3') // model (from handleImageGeneration)
 				.mockReturnValueOnce('https://image.chutes.ai') // chuteUrl (from handleImageGeneration)
 				.mockReturnValueOnce('A futuristic city') // prompt (from handleImageGeneration)
 				.mockReturnValueOnce('1024x1024') // size (from handleImageGeneration)
-				.mockReturnValueOnce(1) // n (single image for simpler test)
+				.mockReturnValueOnce(2) // n (from handleImageGeneration)
 				.mockReturnValueOnce({}); // additionalOptions (from handleImageGeneration)
 
-			// Mock requestWithAuthentication (used by chutesApiRequest)
-			// Return binary image data
-			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(mockImageBuffer);
-			
-			// Mock prepareBinaryData (used when handling binary responses)
-			(mockFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue({
-				data: mockImageBuffer.toString('base64'),
-				mimeType: 'image/png',
-				fileName: 'generated-image.png',
-			});
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				mockImageGenerationResponse,
+			);
 
 			const result = await node.execute.call(mockFunctions);
 
-			// Result should have binary data from image generation
-			expect(result).toBeDefined();
-			expect(result[0]).toBeDefined();
-			expect(result[0].length).toBeGreaterThan(0);
+			expect(result[0][0].json).toHaveProperty('data');
 			expect(result[0][0].json.source).toBe('chutes.ai');
 		});
 	});

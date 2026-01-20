@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.0.11-beta.1](https://github.com/chutesai/n8n-nodes-chutes/compare/v0.0.10...v0.0.11-beta.1) (2026-01-20)
+
 ## [0.0.11-beta.0](https://github.com/chutesai/n8n-nodes-chutes/compare/v0.0.10...v0.0.11-beta.0) (2026-01-20)
 
 ## [0.0.10](https://github.com/chutesai/n8n-nodes-chutes/compare/v0.0.9...v0.0.10) (2026-01-15)

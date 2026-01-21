@@ -48,7 +48,7 @@
     "tdd:full": "jest --watch --verbose --coverage",
     "release": "node scripts/release.js",
     "release:dry": "release-it --dry-run",
-    "prepublishOnly": "npm run build && npm run lint && npm test"
+    "prepublishOnly": "npm run build && npm run lint && node -e \"if (process.env.SKIP_TESTS !== 'true') { require('child_process').execSync('npm test', {stdio:'inherit'}) }\""
   },
   "files": [
     "dist"

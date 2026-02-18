@@ -1,5 +1,55 @@
 # Changelog
 
+# [0.1.0](https://github.com/chutesai/n8n-nodes-chutes/compare/v0.0.10...v0.1.0) (2026-02-18)
+
+
+### Reverts
+
+* Revert "Merge pull request #16 from chutesai/feature-alignment-ai-agent-and-chat-model-nodes" ([7156fee](https://github.com/chutesai/n8n-nodes-chutes/commit/7156fee002d7c06711a586b35a345f1604004808)), closes [#16](https://github.com/chutesai/n8n-nodes-chutes/issues/16)
+
+## [0.1.0](https://github.com/chutesai/n8n-nodes-chutes/compare/v0.0.10...v0.1.0) (2026-02-18)
+
+### Added
+
+#### Tool Calling Support (AI Agent)
+- **Full OpenAI-compatible tool calling** in Chutes AI Agent and Chat Model nodes
+- **Tool argument normalization** - automatically extracts values from single-property objects for simple LangChain tools (Wikipedia, Calculator, SerpAPI, Code Tool)
+- **Proper tool response format** - sends results with correct `role: 'tool'` and `tool_call_id` per OpenAI spec
+- **Assistant message preservation** - maintains original LLM response with `tool_calls` in conversation history
+- Works with DeepSeek, Qwen, and other models supporting function calling
+
+#### ChutesAIAgent & ChutesChatModel Improvements
+- **Direct chute selection** in Chutes AI Agent - no longer requires separate Chat Model node
+- **Added credentials block** to Chutes AI Agent for standalone operation
+- **Removed redundant Model dropdown** from ChutesChatModel (chute URL specifies the model)
+- **Expression support** for chute URL field (`noDataExpression: false`)
+- **Removed 15 debug console.log statements** from production code
+
+#### Multi-Image Edit Support
+- **Additional Images collection** for image edit operations
+- **Compose multiple images** using models like Qwen-Image-Edit-2511
+- **Flexible input methods**: named binary properties, URLs, or sequential auto-mapping
+- Support for 1-3 images per edit operation
+
+### Fixed
+
+#### Multi-Image Duplicate Execution Bug
+- **Fixed critical bug** where multi-image edit and keyframe operations executed once per input item instead of once total
+- **50% cost savings** - no more duplicate API calls with different seeds
+- **50% faster execution** - eliminated redundant processing
+- Single-image workflows remain unchanged (backward compatible)
+
+#### n8n Framework Compliance
+- **Fixed displayOptions placement** in imageGeneration.ts - child parameters within collections cannot have displayOptions
+- **Expanded test coverage** to check all 9 operation files for n8n framework violations
+- Added comprehensive validation preventing similar bugs in future
+
+### Technical Details
+
+- All changes implemented using strict TDD methodology
+- 766 tests passing, 0 regressions
+- Full backward compatibility maintained
+
 ## [0.0.10](https://github.com/chutesai/n8n-nodes-chutes/compare/v0.0.9...v0.0.10) (2026-01-15)
 
 ## 0.0.9 (2025-12-22)

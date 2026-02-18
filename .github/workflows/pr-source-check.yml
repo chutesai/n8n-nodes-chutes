@@ -28,7 +28,7 @@ jobs:
           fi
           
           # For PRs to main, source must be DEV or beta-*
-          if [[ "$SOURCE" == "DEV" || "$SOURCE" == beta-* ]]; then
+          if [[ "$SOURCE" == "DEV" || "$SOURCE" == "release" || "$SOURCE" == beta-* ]]; then
             echo "✅ Valid source branch for main: $SOURCE"
             exit 0
           else
@@ -36,6 +36,7 @@ jobs:
             echo ""
             echo "PRs to main must come from:"
             echo "  - DEV branch"
+            echo "  - release branch (stable releases)"
             echo "  - beta-* branches (e.g. beta-1.0.0)"
             echo ""
             echo "Please merge your changes to DEV first, then create a PR from DEV to main."

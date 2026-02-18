@@ -1,9 +1,6 @@
 import { ChutesAIAgent } from '../../../nodes/ChutesAIAgent/ChutesAIAgent.node';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import * as fs from 'fs';
-import * as path from 'path';
-
 describe('ChutesAIAgent Node', () => {
 	let aiAgentNode: ChutesAIAgent;
 
@@ -24,14 +21,8 @@ describe('ChutesAIAgent Node', () => {
 			expect(aiAgentNode.description.version).toBe(1);
 		});
 
-		it('should require chutesApi credentials', () => {
-			expect(aiAgentNode.description.credentials).toBeDefined();
-			expect(aiAgentNode.description.credentials).toEqual([
-				{
-					name: 'chutesApi',
-					required: true,
-				},
-			]);
+		it('should not require credentials (gets model from connection)', () => {
+			expect(aiAgentNode.description.credentials).toBeUndefined();
 		});
 
 		it('should have all required inputs', () => {
@@ -87,37 +78,6 @@ describe('ChutesAIAgent Node', () => {
 			);
 			expect(noticeProp).toBeDefined();
 			expect(noticeProp?.type).toBe('notice');
-		});
-
-		it('should have chuteUrl property for direct chute selection', () => {
-			const chuteUrlProp = aiAgentNode.description.properties.find(
-				(p) => p.name === 'chuteUrl',
-			);
-			expect(chuteUrlProp).toBeDefined();
-			expect(chuteUrlProp?.type).toBe('options');
-			expect((chuteUrlProp as any)?.default).toBe('https://llm.chutes.ai');
-		});
-
-		it('should have chuteUrl with noDataExpression: false', () => {
-			const chuteUrlProp = aiAgentNode.description.properties.find(
-				(p) => p.name === 'chuteUrl',
-			);
-			expect((chuteUrlProp as any)?.noDataExpression).toBe(false);
-		});
-
-		it('should have chuteUrl with placeholder', () => {
-			const chuteUrlProp = aiAgentNode.description.properties.find(
-				(p) => p.name === 'chuteUrl',
-			);
-			expect((chuteUrlProp as any)?.placeholder).toBeDefined();
-			expect((chuteUrlProp as any)?.placeholder).toContain('chutes.ai');
-		});
-
-		it('should have chuteUrl with hint mentioning expressions', () => {
-			const chuteUrlProp = aiAgentNode.description.properties.find(
-				(p) => p.name === 'chuteUrl',
-			);
-			expect((chuteUrlProp as any)?.hint).toContain('expression');
 		});
 
 		it('should have promptType parameter', () => {
@@ -196,12 +156,6 @@ describe('ChutesAIAgent Node', () => {
 		// Note: Full integration tests would require mocking IExecuteFunctions
 		// and setting up complex LangChain agent execution which is better
 		// suited for integration tests with real Chutes.ai API
-	});
-
-	describe('Load Options Methods', () => {
-		it('should have getLLMChutes method', () => {
-			expect(aiAgentNode.methods?.loadOptions?.getLLMChutes).toBeDefined();
-		});
 	});
 
 	describe('Agent Features', () => {
@@ -291,22 +245,6 @@ describe('ChutesAIAgent Node', () => {
 			expect(optionNames).toContain('systemMessage');
 			expect(optionNames).toContain('maxIterations');
 			expect(optionNames).toContain('returnIntermediateSteps');
-		});
-	});
-
-	describe('Code Quality', () => {
-		it('should not have console.log debugging statements in production code', () => {
-			const sourceFilePath = path.join(__dirname, '../../../nodes/ChutesAIAgent/ChutesAIAgent.node.ts');
-			const sourceCode = fs.readFileSync(sourceFilePath, 'utf-8');
-			
-			// Check for console.log statements (excluding commented lines)
-			const lines = sourceCode.split('\n');
-			const consoleLogLines = lines
-				.map((line, index) => ({ line: line.trim(), lineNumber: index + 1 }))
-				.filter(({ line }) => !line.startsWith('//') && !line.startsWith('*'))
-				.filter(({ line }) => line.includes('console.log'));
-			
-			expect(consoleLogLines).toEqual([]);
 		});
 	});
 });

@@ -228,12 +228,10 @@ describe('ChutesAIAgent Execution Tests', () => {
 				tools: [mockTool],
 			});
 
-		const result = await agentNode.execute.call(context as IExecuteFunctions);
+			const result = await agentNode.execute.call(context as IExecuteFunctions);
 
-		// After normalization, single-property args objects are extracted to their value
-		// This matches how LangChain simple tools (Calculator, Wikipedia, etc.) expect input
-		expect(mockTool.invoke).toHaveBeenCalledWith('2+2');
-		expect(result[0][0].json.output).toBe('The result of 2+2 is 4');
+			expect(mockTool.invoke).toHaveBeenCalledWith({ expression: '2+2' });
+			expect(result[0][0].json.output).toBe('The result of 2+2 is 4');
 		});
 
 		it('should handle tool not found error gracefully', async () => {

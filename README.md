@@ -67,6 +67,9 @@ This node provides complete access to all Chutes.ai playground features:
 
 ### 🎨 Image Generation
 - **Generate**: Create images from text prompts
+- **Edit**: Modify existing images with text prompts
+  - **Multi-image composition**: Combine multiple images using models like Qwen-Image-Edit-2511
+  - Support for 1-3 images per edit (named binaries, URLs, or auto-mapped)
 - Multiple size options (256x256 to 1792x1024)
 - Quality settings (Standard/HD)
 - Style presets (Natural/Vivid)
@@ -109,6 +112,7 @@ This package provides three complementary nodes for different use cases:
 
 **Features:**
 - ✅ Works with Chutes AI Agent
+- ✅ **Full tool calling support** - passes tools to API correctly
 - ✅ All Chutes LLM models (DeepSeek, Qwen, etc.)
 - ✅ Dynamic chute/model selection
 - ✅ Temperature and advanced parameters
@@ -126,7 +130,9 @@ This package provides three complementary nodes for different use cases:
 **Features:**
 - 🤖 Functions identically to n8n's AI Agent
 - 🔒 **Whitelisted** - Only accepts Chutes Chat Model (ensures Chutes.ai integration)
-- 🛠️ Full support for Tools, Memory, and Output Parsers
+- 🛠️ **Full tool calling support** - Works with n8n built-in tools (Wikipedia, Calculator, SerpAPI, Code Tool, HTTP Request, Workflow)
+- 📞 **OpenAI-compatible function calling** - Works with DeepSeek, Qwen, and other models supporting tools
+- 🎯 Direct chute selection (no separate Chat Model node required)
 - 💬 Multi-turn conversations with context
 - 🎯 System message configuration
 - 🔄 Max iterations control
@@ -135,13 +141,11 @@ This package provides three complementary nodes for different use cases:
 **Perfect for:** Full AI Agent workflows that must use Chutes.ai models only
 
 **Quick Start:**
-1. Add **Chutes Chat Model** node
-2. Configure your chute and model
-3. Add **Chutes AI Agent** node
-4. Connect Chutes Chat Model to its Chat Model input
-5. (Optional) Add Tools, Memory, Output Parser
-6. Configure prompt and system message
-7. Execute!
+1. Add **Chutes AI Agent** node
+2. Configure your chute directly (or connect a Chutes Chat Model node)
+3. (Optional) Add Tools, Memory, Output Parser
+4. Configure prompt and system message
+5. Execute!
 
 **Why This Node?** n8n's official AI Agent has a hardcoded whitelist that can limit community model integration. The Chutes AI Agent provides the same functionality while ensuring seamless Chutes.ai integration.
 
@@ -164,15 +168,18 @@ When you install `n8n-nodes-chutes`, you get all three nodes:
 1. **Chutes** - Traditional workflow node for direct API calls to all Chutes.ai features
    - Text generation, image generation, speech, video, embeddings, etc.
    - Full control over API parameters
+   - Multi-image edit support for composition workflows
    
 2. **Chutes Chat Model** - LangChain-compatible chat model node
    - Connects to Chutes official AI Agent
    - Provides Chutes.ai LLM models to any AI Agent
+   - Full tool calling support (OpenAI-compatible)
    - `NodeConnectionType.AiLanguageModel` output
    
 3. **Chutes AI Agent** - Complete AI Agent with Chutes-only whitelist
    - Clone of n8n's AI Agent structure
-   - **Only accepts Chutes Chat Model** (whitelisted at input level)
+   - **Direct chute selection** (no separate Chat Model required)
+   - **Full tool calling support** with LangChain tools
    - Full Tool, Memory, and Output Parser support
    - Perfect for workflows that must use Chutes.ai exclusively
 
@@ -689,22 +696,26 @@ See [tests/README.md](tests/README.md) for detailed testing documentation.
 
 ## Changelog
 
-### [0.1.1] - 2026-02-15
-#### AI Agent & Tool Calling Overhaul
-- **Fully implemented Chutes AI Agent** with complete tool calling support
-- **Fixed tool calling for Chat Model nodes** - now correctly handles OpenAI-compatible tool call format
-- **Tool argument normalization** - automatically extracts values from single-property objects for simple LangChain tools (Wikipedia, Calculator, etc.)
-- **Proper tool response format** - sends tool results with correct `role: 'tool'` and `tool_call_id`
+### [0.1.0] - 2026-02-15 Official Release
+#### Tool Calling Support (AI Agent)
+- **Full OpenAI-compatible tool calling** in Chutes AI Agent and Chat Model nodes
+- **Tool argument normalization** - automatically extracts values from single-property objects for simple LangChain tools (Wikipedia, Calculator, SerpAPI, Code Tool)
+- **Proper tool response format** - sends results with correct `role: 'tool'` and `tool_call_id`
+- Works with DeepSeek, Qwen, and other models supporting function calling
 
-#### Image Edit Multi-Image Support
-- **Image edit operations now handle multiple images** - process batches of images in a single execution
-- **Improved binary data handling** for image operations
+#### ChutesAIAgent & ChutesChatModel Improvements
+- **Direct chute selection** in Chutes AI Agent - no longer requires separate Chat Model node
+- **Removed redundant Model dropdown** from ChutesChatModel
+- **Expression support** for chute URL field in both nodes
 
-#### Development & CI/CD Improvements
-- **Automated release script** (`scripts/release.js`) - handles both stable and beta releases
-- **Beta branch auto-sync** - beta branches automatically rebase from DEV before each release
-- **PR source restrictions** - PRs to `main` can only come from `DEV` or `beta-*` branches
-- **Updated documentation** for contributor workflow
+#### Multi-Image Edit Support
+- **Additional Images collection** for image edit operations
+- **Compose multiple images** using models like Qwen-Image-Edit-2511
+- Support for 1-3 images per edit operation
+
+#### Bug Fixes
+- **Fixed duplicate execution bug** in multi-image edit and keyframe operations (50% cost savings)
+- **Fixed n8n framework compliance** issues with displayOptions placement
 
 ### [0.0.10] - 2026-01-14
 #### LTX-2 Full Support

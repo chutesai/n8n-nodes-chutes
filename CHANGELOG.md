@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.1.0](https://github.com/chutesai/n8n-nodes-chutes/compare/v0.0.10...v0.1.0) (2026-02-18)
+
+
+### Reverts
+
+* Revert "Merge pull request #16 from chutesai/feature-alignment-ai-agent-and-chat-model-nodes" ([7156fee](https://github.com/chutesai/n8n-nodes-chutes/commit/7156fee002d7c06711a586b35a345f1604004808)), closes [#16](https://github.com/chutesai/n8n-nodes-chutes/issues/16)
+
 ## [0.1.0](https://github.com/chutesai/n8n-nodes-chutes/compare/v0.0.10...v0.1.0) (2026-02-18)
 
 ### Added

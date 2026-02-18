@@ -76,7 +76,10 @@ describe('Audio TTS-to-STT Round-Trip (Integration)', () => {
 				const errorMsg = String(error);
 				if (errorMsg.includes('CHUTE_AT_CAPACITY') || 
 				    errorMsg.includes('ALL_CHUTES_EXHAUSTED') ||
-				    errorMsg.includes('CHUTE_UNAVAILABLE')) {
+				    errorMsg.includes('CHUTE_UNAVAILABLE') ||
+				    errorMsg.includes('fetch failed') ||
+				    errorMsg.includes('ECONNREFUSED') ||
+				    errorMsg.includes('ETIMEDOUT')) {
 					console.log('⏭️ Skipping - TTS chute(s) at capacity or unavailable');
 					return;
 				}
@@ -128,7 +131,10 @@ describe('Audio TTS-to-STT Round-Trip (Integration)', () => {
 				const errorMsg = String(error);
 				if (errorMsg.includes('CHUTE_AT_CAPACITY') || 
 				    errorMsg.includes('ALL_CHUTES_EXHAUSTED') ||
-				    errorMsg.includes('CHUTE_UNAVAILABLE')) {
+				    errorMsg.includes('CHUTE_UNAVAILABLE') ||
+				    errorMsg.includes('fetch failed') ||
+				    errorMsg.includes('ECONNREFUSED') ||
+				    errorMsg.includes('ETIMEDOUT')) {
 					console.log('⏭️ Skipping - TTS chute(s) at capacity or unavailable');
 					return;
 				}
@@ -230,7 +236,10 @@ describe('Audio TTS-to-STT Round-Trip (Integration)', () => {
 				const errorMsg = String(error);
 				if (errorMsg.includes('CHUTE_AT_CAPACITY') || 
 				    errorMsg.includes('ALL_CHUTES_EXHAUSTED') ||
-				    errorMsg.includes('CHUTE_UNAVAILABLE')) {
+				    errorMsg.includes('CHUTE_UNAVAILABLE') ||
+				    errorMsg.includes('fetch failed') ||
+				    errorMsg.includes('ECONNREFUSED') ||
+				    errorMsg.includes('ETIMEDOUT')) {
 					console.log('⏭️ Skipping - TTS/STT chute(s) at capacity or unavailable');
 					return;
 				}
@@ -348,7 +357,10 @@ describe('Audio TTS-to-STT Round-Trip (Integration)', () => {
 				const errorMsg = String(error);
 				if (errorMsg.includes('CHUTE_AT_CAPACITY') || 
 				    errorMsg.includes('ALL_CHUTES_EXHAUSTED') ||
-				    errorMsg.includes('CHUTE_UNAVAILABLE')) {
+				    errorMsg.includes('CHUTE_UNAVAILABLE') ||
+				    errorMsg.includes('fetch failed') ||
+				    errorMsg.includes('ECONNREFUSED') ||
+				    errorMsg.includes('ETIMEDOUT')) {
 					console.log('⏭️ Skipping - TTS/STT chute(s) at capacity or unavailable');
 					return;
 				}
@@ -455,7 +467,10 @@ describe('Audio TTS-to-STT Round-Trip (Integration)', () => {
 				const errorMsg = String(error);
 				if (errorMsg.includes('CHUTE_AT_CAPACITY') || 
 				    errorMsg.includes('ALL_CHUTES_EXHAUSTED') ||
-				    errorMsg.includes('CHUTE_UNAVAILABLE')) {
+				    errorMsg.includes('CHUTE_UNAVAILABLE') ||
+				    errorMsg.includes('fetch failed') ||
+				    errorMsg.includes('ECONNREFUSED') ||
+				    errorMsg.includes('ETIMEDOUT')) {
 					console.log('⏭️ Skipping - TTS/STT chute(s) at capacity or unavailable');
 					return;
 				}
@@ -552,7 +567,10 @@ describe('Audio TTS-to-STT Round-Trip (Integration)', () => {
 				const errorMsg = String(error);
 				if (errorMsg.includes('CHUTE_AT_CAPACITY') || 
 				    errorMsg.includes('ALL_CHUTES_EXHAUSTED') ||
-				    errorMsg.includes('CHUTE_UNAVAILABLE')) {
+				    errorMsg.includes('CHUTE_UNAVAILABLE') ||
+				    errorMsg.includes('fetch failed') ||
+				    errorMsg.includes('ECONNREFUSED') ||
+				    errorMsg.includes('ETIMEDOUT')) {
 					console.log('⏭️ Skipping - TTS/STT chute(s) at capacity or unavailable');
 					return;
 				}

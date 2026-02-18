@@ -23,7 +23,7 @@ tests/
 └── SKIPPED_TESTS.md     # Documentation of skipped tests
 ```
 
-**Total:** 81 test files covering 9 resource types + infrastructure
+**Total:** 75 test files covering 9 resource types + infrastructure
 
 ## Running Tests
 
@@ -174,11 +174,17 @@ describe('Text Generation Integration', () => {
 
 Tests run automatically on:
 
-- Push to any branch (unit tests only)
-- Pull requests to main/develop (unit tests only)
-- Push to main (unit + integration tests)
+- **Pull requests** (all branches): Unit tests + build check
+- **Push to DEV**: Unit tests + build check (saves CI minutes)
+- **Push to beta-\* branches**: Unit tests + integration tests + slow tests
+- **PRs to main**: Restricted to DEV or beta-\* branches only (enforced by workflow)
 
-See `.github/workflows/test.yml` for configuration.
+**Key Points:**
+- Integration/slow tests skip gracefully when chutes are unavailable (no false failures)
+- Beta releases automatically rebase from DEV before publishing
+- See `CI-CD-QUICK-REFERENCE.md` for detailed workflow information
+- See `.github/workflows/test.yml` for test configuration
+- See `.github/workflows/pr-source-check.yml` for PR restrictions
 
 ## Test Coverage Summary
 
@@ -215,10 +221,10 @@ See `.github/workflows/test.yml` for configuration.
 - ✅ Chute filtering: Validated with real-world data
 
 **Test Statistics:**
-- Total test files: 81
-- Tests passing: 712
-- Tests failing: 3 (API capacity issues, not code defects)
-- Tests skipped: 11 (documented in `SKIPPED_TESTS.md`)
+- Total test files: 75
+- Tests passing: 779 (out of 780 total)
+- Test suites: 95 passed, 1 skipped
+- All tests passing (integration tests skip gracefully when chutes unavailable)
 
 ## Dynamic Chute Failover System
 

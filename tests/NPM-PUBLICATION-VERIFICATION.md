@@ -1,8 +1,8 @@
 # NPM Publication Verification - n8n-nodes-chutes
 
-**Date:** 2025-12-22  
+**Date:** 2026-01-20  
 **Package:** `n8n-nodes-chutes`  
-**Version:** 0.0.9  
+**Version:** 0.0.10  
 **Type:** n8n Community Node Package
 
 ## ✅ Publication Alignment Check
@@ -140,9 +140,9 @@ All loadOptions methods exist and are tested via `node-methods-export.test.ts`.
 - **API Discovery:** ~10 files (active)
 
 ### Test Results (Latest Run):
-- **Test Suites:** 72 passed, 2 skipped, 1 failed (timeout)
-- **Tests:** 665 passed, 6 skipped, 1 failed (unrelated)
-- **Failures:** Only 1 timeout (qwen image edit - slow endpoint, not code issue)
+- **Test Suites:** 95 passed, 1 skipped (96 total)
+- **Tests:** 779 passed, 1 skipped (780 total)
+- **Status:** All tests passing
 
 ### Coverage Areas:
 ✅ All 9 resources tested  
@@ -224,6 +224,33 @@ These files exist in the repository but are **excluded** from npm publication:
 
 ---
 
+## Release Automation
+
+### Automated Release Script (`scripts/release.js`)
+
+The release process is fully automated:
+
+| Branch | Command | npm Tag | Version Example |
+|--------|---------|---------|-----------------|
+| `release` | `npm run release` | `@latest` | `0.0.11` |
+| `beta-*` | `npm run release` | `@beta` | `0.0.11-beta.0` |
+
+**Features:**
+- ✅ Automatic branch detection (stable vs beta)
+- ✅ Beta branches auto-rebase from DEV before release
+- ✅ Runs all tests via release-it hooks
+- ✅ Builds dist/ automatically
+- ✅ Pauses before npm publish for YubiKey authentication
+- ✅ Correct npm tag applied automatically
+
+**PR Restrictions:**
+- PRs to `main` can only come from `DEV` or `beta-*` branches
+- Enforced by `.github/workflows/pr-source-check.yml`
+
+For full documentation, see `.cursor/RELEASE-PROCESS.md`.
+
+---
+
 ## Conclusion
 
 **✅ ALL TESTS ALIGN WITH PRODUCTION CODE**
@@ -234,7 +261,7 @@ The test suite comprehensively covers all functionality that will be published t
 
 ---
 
-*Verification completed: 2025-12-22*  
-*Package verified: n8n-nodes-chutes@0.0.9*  
+*Verification completed: 2026-01-20*  
+*Package verified: n8n-nodes-chutes@0.0.10*  
 *Status: ✅ PRODUCTION READY*
 

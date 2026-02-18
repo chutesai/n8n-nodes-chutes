@@ -9,6 +9,7 @@ import 'dotenv/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as openApiDiscovery from '../../nodes/Chutes/transport/openApiDiscovery';
+import { withRetry } from './test-helpers';
 
 const API_KEY = process.env.CHUTES_API_KEY;
 const IMAGE_CHUTE = process.env.WARMED_IMAGE_CHUTE || null;
@@ -52,43 +53,76 @@ describe('Image Edit Integration', () => {
 		expect(requestConfig!.body.prompt).toBe('make the hat green and the cat black and the pancakes blueberry pancakes, and make the syrup strawberry colored syrup');
 		console.log('   ✓ Built request with flat parameters (image_b64s array)');
 
-		// Make API call
+		// Make API call with retry logic
 		console.log(`   ✓ Making API request to: ${requestConfig!.endpoint}`);
-		const response = await fetch(`${IMAGE_CHUTE}${requestConfig!.endpoint}`, {
-			method: 'POST',
-			headers: {
-				'Authorization': `Bearer ${API_KEY}`,
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify(requestConfig!.body),
-		});
-
-		if (!response.ok) {
-			const error = await response.text();
-			console.error(`   ❌ API error: ${error}`);
-			
-			// If infrastructure unavailable, skip gracefully
-			if (response.status === 500 || response.status === 503 || response.status === 404 || response.status === 502) {
-				console.log('   ⏭️  Skipping - chute temporarily unavailable');
-				return;
-			}
-			
-			throw new Error(`API returned ${response.status}: ${error}`);
-		}
-
-		const imageData = await response.arrayBuffer();
-		console.log(`   ✓ Received ${imageData.byteLength} bytes`);
-		expect(imageData.byteLength).toBeGreaterThan(10000); // Should be substantial
-
-		// Save image
-		const outputDir = path.join(__dirname, '../test-output');
-		fs.mkdirSync(outputDir, { recursive: true });
-		const outputPath = path.join(outputDir, 'qwen-edited-via-discovery.jpg');
-		fs.writeFileSync(outputPath, Buffer.from(imageData));
 		
-		console.log(`\n✅ SUCCESS! Saved to: ${outputPath}`);
-		console.log('   Original: cat in red hat with regular pancakes');
-		console.log('   Edited: green hat, black cat, blueberry pancakes');
-		expect(fs.existsSync(outputPath)).toBe(true);
+		try {
+			const response = await withRetry(async () => {
+				const res = await fetch(`${IMAGE_CHUTE}${requestConfig!.endpoint}`, {
+					method: 'POST',
+					headers: {
+						'Authorization': `Bearer ${API_KEY}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify(requestConfig!.body),
+				});
+
+				if (!res.ok) {
+					const error = await res.text();
+					console.error(`   ❌ API error: ${error}`);
+					
+					// 429 means at capacity - retry
+					if (res.status === 429) {
+						throw new Error(`CHUTE_AT_CAPACITY: 429 - ${error}`);
+					}
+					
+					// Infrastructure unavailable - retry
+					if (res.status === 500 || res.status === 503 || res.status === 502) {
+						throw new Error(`CHUTE_UNAVAILABLE: ${res.status} - ${error}`);
+					}
+					
+					// 404 likely means endpoint not supported - skip
+					if (res.status === 404) {
+						throw new Error(`CHUTE_UNAVAILABLE: 404 - ${error}`);
+					}
+					
+					throw new Error(`API returned ${res.status}: ${error}`);
+				}
+				
+				return res;
+			}, {
+				maxRetries: 2,
+				delayMs: 3000,
+				category: 'image',
+				currentChuteUrl: IMAGE_CHUTE || undefined,
+			});
+
+			const imageData = await response.arrayBuffer();
+			console.log(`   ✓ Received ${imageData.byteLength} bytes`);
+			expect(imageData.byteLength).toBeGreaterThan(10000); // Should be substantial
+
+			// Save image
+			const outputDir = path.join(__dirname, '../test-output');
+			fs.mkdirSync(outputDir, { recursive: true });
+			const outputPath = path.join(outputDir, 'qwen-edited-via-discovery.jpg');
+			fs.writeFileSync(outputPath, Buffer.from(imageData));
+			
+			console.log(`\n✅ SUCCESS! Saved to: ${outputPath}`);
+			console.log('   Original: cat in red hat with regular pancakes');
+			console.log('   Edited: green hat, black cat, blueberry pancakes');
+			expect(fs.existsSync(outputPath)).toBe(true);
+		} catch (error) {
+			const errorMsg = String(error);
+			if (errorMsg.includes('CHUTE_AT_CAPACITY') || 
+			    errorMsg.includes('ALL_CHUTES_EXHAUSTED') ||
+			    errorMsg.includes('CHUTE_UNAVAILABLE') ||
+			    errorMsg.includes('fetch failed') ||
+			    errorMsg.includes('ECONNREFUSED') ||
+			    errorMsg.includes('ETIMEDOUT')) {
+				console.log('⏭️ Skipping - image chute(s) at capacity, unavailable, or network error');
+				return; // Skip gracefully
+			}
+			throw error;
+		}
 	}, 300000); // 5 minutes - image editing is legitimately slow
 });

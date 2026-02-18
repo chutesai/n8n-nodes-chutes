@@ -533,6 +533,7 @@ export let IMAGE_CHUTE_URL: string | null = null;
 export let TTS_CHUTE_URL: string | null = null;
 export let STT_CHUTE_URL: string | null = null;
 export let VIDEO_CHUTE_URL: string | null = null;
+export let VIDEO_CHUTE_NAME: string | null = null; // For T2V vs I2V capability checking
 export let MUSIC_CHUTE_URL: string | null = null;
 export let EMBEDDINGS_CHUTE_URL: string | null = null;
 export let MODERATION_CHUTE_URL: string | null = null;
@@ -556,6 +557,7 @@ export async function initializeTestChutes(): Promise<void> {
 	TTS_CHUTE_URL = getTTSChuteUrl();
 	STT_CHUTE_URL = getSTTChuteUrl();
 	VIDEO_CHUTE_URL = getVideoChuteUrl();
+	VIDEO_CHUTE_NAME = process.env.WARMED_VIDEO_CHUTE_NAME || null; // For T2V vs I2V capability checking
 	MUSIC_CHUTE_URL = getMusicChuteUrl();
 	EMBEDDINGS_CHUTE_URL = getEmbeddingsChuteUrl();
 	MODERATION_CHUTE_URL = getModerationChuteUrl();

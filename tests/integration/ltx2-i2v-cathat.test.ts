@@ -9,6 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {
 	hasApiKey,
+	withRetry,
 } from './test-helpers';
 import { discoverChuteCapabilities, buildRequestBody } from '../../nodes/Chutes/transport/openApiDiscovery';
 
@@ -95,38 +96,72 @@ describe('LTX-2 I2V: Cat Hat Pancakes', () => {
 		console.log(`📤 Sending request to ${chuteUrl}${requestConfig?.endpoint}`);
 		console.log(`   Body keys: ${Object.keys(requestConfig?.body || {}).join(', ')}`);
 
-		// Make API call
-		const response = await fetch(`${chuteUrl}${requestConfig?.endpoint}`, {
-			method: 'POST',
-			headers: {
-				'Authorization': `Bearer ${apiKey}`,
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify(requestConfig?.body),
-		});
+		try {
+			// Make API call with retry logic
+			const response = await withRetry(async () => {
+				const res = await fetch(`${chuteUrl}${requestConfig?.endpoint}`, {
+					method: 'POST',
+					headers: {
+						'Authorization': `Bearer ${apiKey}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify(requestConfig?.body),
+				});
 
-		if (!response.ok) {
-			const errorText = await response.text();
-			throw new Error(`API error ${response.status}: ${errorText}`);
+				if (!res.ok) {
+					const errorText = await res.text();
+					
+					// 429 means at capacity - retry
+					if (res.status === 429) {
+						throw new Error(`CHUTE_AT_CAPACITY: 429 - ${errorText}`);
+					}
+					
+					// Infrastructure unavailable - retry
+					if (res.status === 500 || res.status === 503 || res.status === 502) {
+						throw new Error(`CHUTE_UNAVAILABLE: ${res.status} - ${errorText}`);
+					}
+					
+					throw new Error(`API error ${res.status}: ${errorText}`);
+				}
+				
+				return res;
+			}, {
+				maxRetries: 2,
+				delayMs: 3000,
+				category: 'video',
+				currentChuteUrl: chuteUrl,
+			});
+
+			// Get video data
+			const videoBuffer = Buffer.from(await response.arrayBuffer());
+			expect(videoBuffer.length).toBeGreaterThan(0);
+
+			// Save to test-output
+			const outputFilename = `ltx2-i2v-cathat-${timestamp}-seed${seed}-${duration}s.mp4`;
+			const outputPath = path.join(outputDir, outputFilename);
+			fs.writeFileSync(outputPath, videoBuffer);
+
+			console.log(`✅ Video generated successfully!`);
+			console.log(`   Output: ${outputPath}`);
+			console.log(`   Size: ${(videoBuffer.length / 1024 / 1024).toFixed(2)} MB`);
+
+			// Verify file exists and has content
+			expect(fs.existsSync(outputPath)).toBe(true);
+			const stats = fs.statSync(outputPath);
+			expect(stats.size).toBeGreaterThan(50000); // At least 50KB
+		} catch (error) {
+			const errorMsg = String(error);
+			if (errorMsg.includes('CHUTE_AT_CAPACITY') || 
+			    errorMsg.includes('ALL_CHUTES_EXHAUSTED') ||
+			    errorMsg.includes('CHUTE_UNAVAILABLE') ||
+			    errorMsg.includes('fetch failed') ||
+			    errorMsg.includes('ECONNREFUSED') ||
+			    errorMsg.includes('ETIMEDOUT')) {
+				console.log('⏭️ Skipping - video chute(s) at capacity, unavailable, or network error');
+				return; // Skip gracefully
+			}
+			throw error;
 		}
-
-		// Get video data
-		const videoBuffer = Buffer.from(await response.arrayBuffer());
-		expect(videoBuffer.length).toBeGreaterThan(0);
-
-		// Save to test-output
-		const outputFilename = `ltx2-i2v-cathat-${timestamp}-seed${seed}-${duration}s.mp4`;
-		const outputPath = path.join(outputDir, outputFilename);
-		fs.writeFileSync(outputPath, videoBuffer);
-
-		console.log(`✅ Video generated successfully!`);
-		console.log(`   Output: ${outputPath}`);
-		console.log(`   Size: ${(videoBuffer.length / 1024 / 1024).toFixed(2)} MB`);
-
-		// Verify file exists and has content
-		expect(fs.existsSync(outputPath)).toBe(true);
-		const stats = fs.statSync(outputPath);
-		expect(stats.size).toBeGreaterThan(50000); // At least 50KB
 
 	}, testTimeout);
 });

@@ -81,6 +81,147 @@ describe('Load Chutes Methods', () => {
 		expect(options).toHaveLength(0);
 	});
 
+		it('should fall back to the public catalog when authenticated discovery is forbidden', async () => {
+			const requestWithAuthentication = jest.fn().mockRejectedValue({
+				httpCode: '403',
+				message: '403 - {"detail":"Token does not have permission for this resource"}',
+				error: {
+					detail: 'Token does not have permission for this resource',
+				},
+			});
+			const request = jest.fn().mockResolvedValue({
+				total: 1,
+				page: 0,
+				limit: 500,
+				items: [
+					{
+						chute_id: 'public-image-1',
+						name: 'public-image',
+						tagline: 'A public image generation chute',
+						slug: 'public-image',
+						standard_template: 'diffusion',
+						public: true,
+						user: { username: 'chutes' },
+					},
+				],
+				cord_refs: {},
+			});
+			const mockContext = createMockLoadOptionsFunctions({
+				helpers: {
+					request,
+					requestWithAuthentication,
+				} as any,
+			});
+
+			const options = await getImageChutes.call(mockContext);
+
+			expect(requestWithAuthentication).toHaveBeenCalledTimes(1);
+			expect(request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					json: true,
+					method: 'GET',
+					url: 'https://api.chutes.ai/chutes/?include_public=true&limit=500',
+				}),
+			);
+			expect(options).toHaveLength(1);
+			expect(options[0]).toMatchObject({
+				value: 'https://public-image.chutes.ai',
+				description: 'diffusion | @chutes',
+			});
+		});
+
+		it('should fall back to the public catalog when the first load runs before credentials are attached', async () => {
+			const requestWithAuthentication = jest
+				.fn()
+				.mockRejectedValue(new Error('Node does not have any credentials set'));
+			const request = jest.fn().mockResolvedValue({
+				total: 1,
+				page: 0,
+				limit: 500,
+				items: [
+					{
+						chute_id: 'public-llm-1',
+						name: 'public-llm',
+						tagline: 'A public language model',
+						slug: 'public-llm',
+						standard_template: 'vllm',
+						public: true,
+						user: { username: 'chutes' },
+					},
+				],
+				cord_refs: {},
+			});
+			const mockContext = createMockLoadOptionsFunctions({
+				helpers: {
+					request,
+					requestWithAuthentication,
+				} as any,
+			});
+
+			const options = await getLLMChutes.call(mockContext);
+
+			expect(requestWithAuthentication).toHaveBeenCalledTimes(1);
+			expect(request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					json: true,
+					method: 'GET',
+					url: 'https://api.chutes.ai/chutes/?include_public=true&limit=500',
+				}),
+			);
+			expect(options).toHaveLength(1);
+			expect(options[0]).toMatchObject({
+				value: 'https://public-llm.chutes.ai',
+				description: 'vllm | @chutes',
+			});
+		});
+
+		it('should fall back to the public catalog when authenticated discovery uses a stale token', async () => {
+			const requestWithAuthentication = jest.fn().mockRejectedValue({
+				httpCode: '401',
+				message: '401 - {"detail":"Invalid token or user not found"}',
+				description: 'Invalid token or user not found',
+			});
+			const request = jest.fn().mockResolvedValue({
+				total: 1,
+				page: 0,
+				limit: 500,
+				items: [
+					{
+						chute_id: 'public-video-1',
+						name: 'public-video',
+						tagline: 'A public video generation chute',
+						slug: 'public-video',
+						standard_template: 'video',
+						public: true,
+						user: { username: 'chutes' },
+					},
+				],
+				cord_refs: {},
+			});
+			const mockContext = createMockLoadOptionsFunctions({
+				helpers: {
+					request,
+					requestWithAuthentication,
+				} as any,
+			});
+
+			const options = await getChutes.call(mockContext);
+
+			expect(requestWithAuthentication).toHaveBeenCalledTimes(1);
+			expect(request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					json: true,
+					method: 'GET',
+					url: 'https://api.chutes.ai/chutes/?include_public=true&limit=500',
+				}),
+			);
+			expect(options).toHaveLength(1);
+			expect(options[0]).toMatchObject({
+				value: 'https://public-video.chutes.ai',
+				description: 'video | @chutes',
+			});
+		});
+
 		it('should truncate long taglines', async () => {
 			const longTagline = 'A'.repeat(150);
 			const mockContext = createMockLoadOptionsFunctions();
@@ -237,4 +378,3 @@ describe('Load Chutes Methods', () => {
 	});
 	});
 });
-

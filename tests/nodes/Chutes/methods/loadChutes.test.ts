@@ -2,10 +2,53 @@
  * Tests for loadChutes methods
  */
 
-import { getChutes, getChutesByType, getLLMChutes, getImageChutes, getChuteUrl } from '../../../../nodes/Chutes/methods/loadChutes';
+import {
+	getChutes,
+	getChutesByType,
+	getLLMChutes,
+	getImageChutes,
+	getChutesForSelectedResource,
+	getChuteUrl,
+} from '../../../../nodes/Chutes/methods/loadChutes';
 import { createMockLoadOptionsFunctions } from '../../../helpers/mocks';
 
 describe('Load Chutes Methods', () => {
+	const mixedChutesResponse = {
+		total: 3,
+		page: 0,
+		limit: 500,
+		items: [
+			{
+				chute_id: 'llm-1',
+				name: 'deepseek-ai/DeepSeek-R1',
+				tagline: 'A powerful reasoning model',
+				slug: 'chutes-deepseek-r1',
+				standard_template: 'vllm',
+				public: true,
+				user: { username: 'chutes' },
+			},
+			{
+				chute_id: 'image-1',
+				name: 'qwen-image-edit',
+				tagline: 'Image generation and editing',
+				slug: 'chutes-qwen-image-edit',
+				standard_template: 'diffusion',
+				public: true,
+				user: { username: 'chutes' },
+			},
+			{
+				chute_id: 'video-1',
+				name: 'wan-video',
+				tagline: 'Video generation',
+				slug: 'chutes-wan-video',
+				standard_template: 'video',
+				public: true,
+				user: { username: 'chutes' },
+			},
+		],
+		cord_refs: {},
+	};
+
 	describe('getChuteUrl', () => {
 		it('should construct correct chute URL from slug', () => {
 			const slug = 'chutes-deepseek-ai-deepseek-r1';
@@ -376,5 +419,55 @@ describe('Load Chutes Methods', () => {
 		expect(options[0].value).toBe('https://custom-image-slug.chutes.ai');
 		expect(options[0].name).toContain('custom-image');
 	});
+	});
+
+	describe('getChutesForSelectedResource', () => {
+		it('should return only llm chutes for text generation', async () => {
+			const mockContext = createMockLoadOptionsFunctions({
+				getCurrentNodeParameter: jest.fn().mockImplementation((name: string) => {
+					if (name === 'resource') return 'textGeneration';
+					return undefined;
+				}),
+			});
+
+			(mockContext.helpers.request as jest.Mock).mockResolvedValue(mixedChutesResponse);
+
+			const options = await getChutesForSelectedResource.call(mockContext);
+
+			expect(options).toHaveLength(1);
+			expect(options[0].value).toBe('https://chutes-deepseek-r1.chutes.ai');
+		});
+
+		it('should return only image chutes for image generation', async () => {
+			const mockContext = createMockLoadOptionsFunctions({
+				getCurrentNodeParameter: jest.fn().mockImplementation((name: string) => {
+					if (name === 'resource') return 'imageGeneration';
+					if (name === 'operation') return 'generate';
+					return undefined;
+				}),
+			});
+
+			(mockContext.helpers.request as jest.Mock).mockResolvedValue(mixedChutesResponse);
+
+			const options = await getChutesForSelectedResource.call(mockContext);
+
+			expect(options).toHaveLength(1);
+			expect(options[0].value).toBe('https://chutes-qwen-image-edit.chutes.ai');
+		});
+
+		it('should fall back to the generic chute catalog for inference', async () => {
+			const mockContext = createMockLoadOptionsFunctions({
+				getCurrentNodeParameter: jest.fn().mockImplementation((name: string) => {
+					if (name === 'resource') return 'inference';
+					return undefined;
+				}),
+			});
+
+			(mockContext.helpers.request as jest.Mock).mockResolvedValue(mixedChutesResponse);
+
+			const options = await getChutesForSelectedResource.call(mockContext);
+
+			expect(options).toHaveLength(3);
+		});
 	});
 });

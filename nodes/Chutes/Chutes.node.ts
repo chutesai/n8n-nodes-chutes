@@ -97,202 +97,24 @@ export class Chutes implements INodeType {
 				default: 'textGeneration',
 			},
 
-	// Chute selector for Text Generation
-	{
-		displayName: 'Chute',
-		name: 'chuteUrl',
-		type: 'options',
-		noDataExpression: false,
-		required: false,
-		displayOptions: {
-			show: {
-				resource: ['textGeneration'],
+			// Use a single chute field so n8n's NDV does not reuse stale dynamic-options
+			// state across multiple resource-specific properties that all share the same path.
+			{
+				displayName: 'Chute',
+				name: 'chuteUrl',
+				type: 'options',
+				noDataExpression: false,
+				required: false,
+				typeOptions: {
+					loadOptionsMethod: 'getChutesForSelectedResource',
+					loadOptionsDependsOn: ['resource', 'operation'],
+				},
+				default: 'https://llm.chutes.ai',
+				description:
+					'Select a chute for the chosen resource or enter a custom chute URL (for example, from a previous node using expressions).',
+				placeholder: 'https://llm.chutes.ai',
+				hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
 			},
-		},
-			typeOptions: {
-				loadOptionsMethod: 'getLLMChutes',
-				loadOptionsDependsOn: ['resource'],
-			},
-			default: 'https://llm.chutes.ai',
-			description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
-			placeholder: 'https://chutes-deepseek-ai-deepseek-v3-2.chutes.ai',
-			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
-		},
-
-	// Chute selector for Image Generation
-	{
-		displayName: 'Chute',
-		name: 'chuteUrl',
-		type: 'options',
-		noDataExpression: false,
-		required: false,
-		displayOptions: {
-			show: {
-				resource: ['imageGeneration'],
-			},
-		},
-			typeOptions: {
-				loadOptionsMethod: 'getImageChutes',
-				loadOptionsDependsOn: ['resource', 'operation'], // Reload when operation changes for smart sorting
-			},
-			default: 'https://image.chutes.ai',
-			description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
-			placeholder: 'https://chutes-flux-1-dev.chutes.ai',
-			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
-		},
-
-	// Chute selector for Video Generation
-	{
-		displayName: 'Chute',
-		name: 'chuteUrl',
-		type: 'options',
-		noDataExpression: false,
-		required: false,
-		displayOptions: {
-			show: {
-				resource: ['videoGeneration'],
-			},
-		},
-			typeOptions: {
-				loadOptionsMethod: 'getVideoChutes',
-				loadOptionsDependsOn: ['resource'],
-			},
-			default: 'https://video.chutes.ai',
-			description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
-			placeholder: 'https://chutes-wan2-1-14b.chutes.ai',
-			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
-		},
-
-	// Chute selector for Text-to-Speech
-	{
-		displayName: 'Chute',
-		name: 'chuteUrl',
-		type: 'options',
-		noDataExpression: false,
-		required: false,
-		displayOptions: {
-			show: {
-				resource: ['textToSpeech'],
-			},
-		},
-			typeOptions: {
-				loadOptionsMethod: 'getTTSChutes',
-				loadOptionsDependsOn: ['resource'],
-			},
-			default: 'https://tts.chutes.ai',
-			description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
-			placeholder: 'https://chutes-kokoro.chutes.ai',
-			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
-		},
-
-	// Chute selector for Speech-to-Text
-	{
-		displayName: 'Chute',
-		name: 'chuteUrl',
-		type: 'options',
-		noDataExpression: false,
-		required: false,
-		displayOptions: {
-			show: {
-				resource: ['speechToText'],
-			},
-		},
-			typeOptions: {
-				loadOptionsMethod: 'getSTTChutes',
-				loadOptionsDependsOn: ['resource'],
-			},
-			default: 'https://stt.chutes.ai',
-			description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
-			placeholder: 'https://chutes-whisper-large-v3.chutes.ai',
-			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
-		},
-
-	// Chute selector for Music Generation
-	{
-		displayName: 'Chute',
-		name: 'chuteUrl',
-		type: 'options',
-		noDataExpression: false,
-		required: false,
-		displayOptions: {
-			show: {
-				resource: ['musicGeneration'],
-			},
-		},
-			typeOptions: {
-				loadOptionsMethod: 'getMusicChutes',
-				loadOptionsDependsOn: ['resource'],
-			},
-			default: 'https://music.chutes.ai',
-			description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
-			placeholder: 'https://chutes-diffrhythm.chutes.ai',
-			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
-		},
-
-	// Chute selector for Embeddings
-	{
-		displayName: 'Chute',
-		name: 'chuteUrl',
-		type: 'options',
-		noDataExpression: false,
-		required: false,
-		displayOptions: {
-			show: {
-				resource: ['embeddings'],
-			},
-		},
-			typeOptions: {
-				loadOptionsMethod: 'getEmbeddingChutes',
-				loadOptionsDependsOn: ['resource'],
-			},
-			default: 'https://embeddings.chutes.ai',
-			description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
-			placeholder: 'https://chutes-qwen-qwen3-embedding-0-6b.chutes.ai',
-			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
-		},
-
-	// Chute selector for Content Moderation
-	{
-		displayName: 'Chute',
-		name: 'chuteUrl',
-		type: 'options',
-		noDataExpression: false,
-		required: false,
-		displayOptions: {
-			show: {
-				resource: ['contentModeration'],
-			},
-		},
-			typeOptions: {
-				loadOptionsMethod: 'getModerationChutes',
-				loadOptionsDependsOn: ['resource'],
-			},
-		default: 'https://moderation.chutes.ai',
-		description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
-		placeholder: 'https://chutes-nsfw-classifier.chutes.ai',
-		hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
-	},
-
-	// Chute selector for Inference
-	{
-		displayName: 'Chute',
-		name: 'chuteUrl',
-		type: 'options',
-		noDataExpression: false,
-		required: false,
-		displayOptions: {
-			show: {
-				resource: ['inference'],
-			},
-		},
-			typeOptions: {
-				loadOptionsMethod: 'getChutes',
-				loadOptionsDependsOn: ['resource'],
-			},
-			default: 'https://llm.chutes.ai',
-			description: 'Select a specific chute to use for custom inference.',
-			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>',
-		},
 
 			// Operations
 			...textGenerationOperations,
@@ -314,6 +136,7 @@ export class Chutes implements INodeType {
 			getChutesImageModels: loadOptions.getChutesImageModels,
 			getModelsForSelectedChute: loadOptions.getModelsForSelectedChute, // OPTION A: Dynamic model loading
 			// Chute loading methods
+			getChutesForSelectedResource: loadChutes.getChutesForSelectedResource,
 			getChutes: loadChutes.getChutes,
 			getLLMChutes: loadChutes.getLLMChutes,
 			getImageChutes: loadChutes.getImageChutes,

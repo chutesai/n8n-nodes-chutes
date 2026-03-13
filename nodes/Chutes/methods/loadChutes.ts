@@ -259,6 +259,48 @@ export async function getChutes(
 	}
 }
 
+function getCurrentResource(context: ILoadOptionsFunctions): string {
+	try {
+		return (context.getCurrentNodeParameter('resource') as string) || 'textGeneration';
+	} catch {
+		return 'textGeneration';
+	}
+}
+
+/**
+ * Load chutes for the currently selected resource through a single NDV field.
+ * This avoids stale option-state reuse when multiple resource-specific fields
+ * share the same path in n8n's node details view.
+ */
+export async function getChutesForSelectedResource(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const resource = getCurrentResource(this);
+
+	switch (resource) {
+		case 'textGeneration':
+			return await getLLMChutes.call(this);
+		case 'imageGeneration':
+			return await getImageChutes.call(this);
+		case 'videoGeneration':
+			return await getVideoChutes.call(this);
+		case 'textToSpeech':
+			return await getTTSChutes.call(this);
+		case 'speechToText':
+			return await getSTTChutes.call(this);
+		case 'musicGeneration':
+			return await getMusicChutes.call(this);
+		case 'embeddings':
+			return await getEmbeddingChutes.call(this);
+		case 'contentModeration':
+			return await getModerationChutes.call(this);
+		case 'inference':
+			return await getChutes.call(this);
+		default:
+			return await getChutes.call(this);
+	}
+}
+
 /**
  * Load chutes filtered by type/template
  * 

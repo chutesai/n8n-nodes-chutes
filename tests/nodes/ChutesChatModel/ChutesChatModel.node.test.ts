@@ -52,7 +52,7 @@ describe('ChutesChatModel Node', () => {
 			expect(chuteUrlProp).toBeDefined();
 			expect(chuteUrlProp?.type).toBe('options');
 			expect(chuteUrlProp?.required).toBe(true);
-			expect(chuteUrlProp?.default).toBe('https://llm.chutes.ai');
+			expect(chuteUrlProp?.default).toBe('');
 		});
 
 		it('should have model property', () => {

@@ -111,10 +111,10 @@ export class Chutes implements INodeType {
 					// operation causes extra NDV reloads with stale cross-resource state.
 					loadOptionsDependsOn: ['resource'],
 				},
-				default: 'https://llm.chutes.ai',
+				default: '',
 				description:
 					'Select a chute for the chosen resource or enter a custom chute URL (for example, from a previous node using expressions).',
-				placeholder: 'https://llm.chutes.ai',
+				placeholder: 'Select a chute...',
 				hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
 			},
 
@@ -336,7 +336,7 @@ async function withTimeout<T>(
 	async function handleTextGeneration(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
 		const operation = this.getNodeParameter('operation', itemIndex) as string;
 		// Model parameter removed - chute URL already specifies the model
-		const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex, 'https://llm.chutes.ai') as string;
+		const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex, '') as string;
 		const additionalOptions = this.getNodeParameter('additionalOptions', itemIndex, {}) as IDataObject;
 
 	let body: IDataObject = {
@@ -1069,7 +1069,7 @@ async function handleSpeechToText(this: IExecuteFunctions, itemIndex: number): P
 
 async function handleInference(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
 		const operation = this.getNodeParameter('operation', itemIndex) as string;
-		const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex, 'https://llm.chutes.ai') as string;
+		const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex, '') as string;
 		const additionalOptions = this.getNodeParameter('additionalOptions', itemIndex, {}) as IDataObject;
 
 		if (operation === 'predict') {

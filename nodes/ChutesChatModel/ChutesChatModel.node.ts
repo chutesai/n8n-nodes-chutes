@@ -52,7 +52,8 @@ export class ChutesChatModel implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getLLMChutes',
 				},
-				default: 'https://llm.chutes.ai',
+				default: '',
+				placeholder: 'Select a chute...',
 				description: 'Select a Chutes.ai LLM chute to use',
 				hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>',
 			},

@@ -41,13 +41,16 @@ export function createMockExecuteFunctions(overrides?: Partial<IExecuteFunctions
 export function createMockLoadOptionsFunctions(
 	overrides?: Partial<ILoadOptionsFunctions>,
 ): ILoadOptionsFunctions {
+	const requestMock = jest.fn();
+
 	return {
 		getCredentials: jest.fn().mockResolvedValue({
 			apiKey: 'test-api-key',
 			environment: 'production',
 		}),
 		helpers: {
-			request: jest.fn(),
+			request: requestMock,
+			requestWithAuthentication: requestMock,
 		} as any,
 		getNode: jest.fn().mockReturnValue({
 			name: 'Chutes Test Node',
@@ -89,4 +92,3 @@ export function mockNodeParameters(params: Record<string, any>): jest.Mock {
 	});
 	return mock;
 }
-

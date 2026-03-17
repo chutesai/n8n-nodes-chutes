@@ -34,6 +34,8 @@
 ```bash
 # Development workflow
 npm run test:unit              # Quick check (30s)
+npm run test:critical-auth     # Focused auth/runtime regression surface
+npm run test:critical-auth:coverage  # Coverage gate for critical auth/runtime files
 npm run test:integration       # API integration (2-7min)
 npm run test:slow             # Full validation (10-30min)
 
@@ -43,6 +45,10 @@ npm run test:tdd              # Watch mode with coverage
 # CI simulation
 npm run test:ci               # All tests with CI flags
 ```
+
+## CI Secrets
+
+- `CHUTES_API_KEY`: used by the integration and slow-test GitHub Actions jobs
 
 ## GitHub Actions Workflow
 
@@ -248,4 +254,3 @@ npm run release  # → Auto-rebases from DEV, creates 0.0.11-beta.1
 | Beta release | `git checkout beta-* && npm run release` |
 
 For full documentation, see `.cursor/RELEASE-PROCESS.md`.
-

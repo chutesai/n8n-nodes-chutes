@@ -35,12 +35,14 @@ export interface ChuteCapabilities {
 	keyframeInterpPath?: string;
 }
 
+type SchemaLoader = string | (() => Promise<IDataObject>);
+
 /**
  * Discover capabilities of a chute by fetching and parsing its OpenAPI schema
  */
 export async function discoverChuteCapabilities(
 	chuteBaseUrl: string,
-	apiKey: string,
+	schemaLoader: SchemaLoader,
 ): Promise<ChuteCapabilities> {
 	let schema: IDataObject | undefined;
 
@@ -52,19 +54,25 @@ export async function discoverChuteCapabilities(
 		// Fetch schema from chute
 		console.log(`[OpenAPI] Fetching schema from: ${chuteBaseUrl}/openapi.json`);
 		try {
-			const response = await fetch(`${chuteBaseUrl}/openapi.json`, {
-				headers: {
-					Authorization: `Bearer ${apiKey}`,
-				},
-			});
-
-			console.log(`[OpenAPI] Fetch response status: ${response.status}`);
-			if (response.ok) {
-				schema = (await response.json()) as IDataObject;
+			if (typeof schemaLoader === 'function') {
+				schema = (await schemaLoader()) as IDataObject;
 				schemaCache.set(chuteBaseUrl, { schema, timestamp: Date.now() });
 				console.log(`[OpenAPI] Successfully parsed schema with paths:`, schema.paths ? Object.keys(schema.paths as IDataObject) : 'NO PATHS');
 			} else {
-				console.warn(`Failed to fetch OpenAPI schema from ${chuteBaseUrl}: ${response.status}`);
+				const response = await fetch(`${chuteBaseUrl}/openapi.json`, {
+					headers: {
+						Authorization: `Bearer ${schemaLoader}`,
+					},
+				});
+
+				console.log(`[OpenAPI] Fetch response status: ${response.status}`);
+				if (response.ok) {
+					schema = (await response.json()) as IDataObject;
+					schemaCache.set(chuteBaseUrl, { schema, timestamp: Date.now() });
+					console.log(`[OpenAPI] Successfully parsed schema with paths:`, schema.paths ? Object.keys(schema.paths as IDataObject) : 'NO PATHS');
+				} else {
+					console.warn(`Failed to fetch OpenAPI schema from ${chuteBaseUrl}: ${response.status}`);
+				}
 			}
 		} catch (error) {
 			console.warn(`Error fetching OpenAPI schema from ${chuteBaseUrl}: ${(error as Error).message}`);

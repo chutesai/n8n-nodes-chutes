@@ -63,6 +63,7 @@ export class ChutesChatModel implements INodeType {
 				required: false,
 				typeOptions: {
 					loadOptionsMethod: 'getModelsForSelectedChute',
+					loadOptionsDependsOn: ['chuteUrl'],
 				},
 				default: '',
 				description: 'Model to use (leave empty to use chute\'s default model)',
@@ -152,50 +153,36 @@ export class ChutesChatModel implements INodeType {
 	 * This is the critical method that makes the node compatible with AI Agent
 	 */
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		console.log('[ChutesChatModel] supplyData called, itemIndex:', itemIndex);
-		
-		try {
-			const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex) as string;
-			console.log('[ChutesChatModel] chuteUrl:', chuteUrl);
-			
-			const model = this.getNodeParameter('model', itemIndex, '') as string;
-			console.log('[ChutesChatModel] model:', model);
-			
-			const temperature = this.getNodeParameter('temperature', itemIndex, 0.7) as number;
-			const options = this.getNodeParameter('options', itemIndex, {}) as {
-				maxTokens?: number;
-				topP?: number;
-				frequencyPenalty?: number;
-				presencePenalty?: number;
-			};
+		const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex) as string;
+		const model = this.getNodeParameter('model', itemIndex, '') as string;
+		const temperature = this.getNodeParameter('temperature', itemIndex, 0.7) as number;
+		const options = this.getNodeParameter('options', itemIndex, {}) as {
+			maxTokens?: number;
+			topP?: number;
+			frequencyPenalty?: number;
+			presencePenalty?: number;
+		};
 
-			// Get credentials
-			console.log('[ChutesChatModel] Getting credentials...');
-			const credentials = await this.getCredentials('chutesApi');
-			console.log('[ChutesChatModel] Credentials obtained');
+		// Get credentials
+		const credentials = await this.getCredentials('chutesApi');
 
-			// Create and configure the chat model
-			console.log('[ChutesChatModel] Creating GenericChutesChatModel...');
-			const chatModel = new GenericChutesChatModel({
-				chuteUrl,
-				model,
-				temperature,
-				maxTokens: options.maxTokens,
-				topP: options.topP,
-				frequencyPenalty: options.frequencyPenalty,
-				presencePenalty: options.presencePenalty,
-				credentials,
-				requestHelper: this.helpers, // Pass n8n request helper to the model
-			});
-			console.log('[ChutesChatModel] Chat model created successfully');
+		// Create and configure the chat model
+		const chatModel = new GenericChutesChatModel({
+			chuteUrl,
+			model,
+			temperature,
+			maxTokens: options.maxTokens,
+			topP: options.topP,
+			frequencyPenalty: options.frequencyPenalty,
+			presencePenalty: options.presencePenalty,
+			credentials,
+			requestHelper: this.helpers, // Pass n8n request helper to the model
+			authenticatedRequest: async (requestOptions) =>
+				await this.helpers.requestWithAuthentication.call(this, 'chutesApi', requestOptions),
+		});
 
-			return {
-				response: chatModel,
-			};
-		} catch (error) {
-			console.error('[ChutesChatModel] Error in supplyData:', error);
-			throw error;
-		}
+		return {
+			response: chatModel,
+		};
 	}
 }
-

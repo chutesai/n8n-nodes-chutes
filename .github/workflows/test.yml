@@ -58,13 +58,42 @@ jobs:
             coverage/
             test-results/
 
+  critical-auth-surface:
+    name: Critical Auth Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: unit-tests
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run critical auth test surface with coverage gate
+        run: npm run test:critical-auth:coverage
+
+      - name: Upload critical auth coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: critical-auth-coverage
+          path: coverage/coverage-summary.json
+
   # Integration tests - runs on PRs and pushes to beta-* (NOT on DEV pushes)
   # Tests use dynamic chute discovery with warmup validation - they skip gracefully when chutes unavailable
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: unit-tests
+    needs: [unit-tests, critical-auth-surface]
     # Run on PRs (if not from a fork) and on pushes to beta-* branches (but NOT DEV)
     if: |
       (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) ||
@@ -107,7 +136,7 @@ jobs:
     name: Slow Tests (Video, Embeddings, etc.)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: unit-tests
+    needs: [unit-tests, critical-auth-surface]
     # Run on PRs (if not from a fork) and on pushes to beta-* branches (but NOT DEV)
     if: |
       (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) ||
@@ -148,7 +177,7 @@ jobs:
     name: Build Verification
     runs-on: ubuntu-latest
     timeout-minutes: 7
-    needs: unit-tests
+    needs: [unit-tests, critical-auth-surface]
     
     steps:
       - name: Checkout repository
@@ -178,4 +207,3 @@ jobs:
         run: |
           npm pack --dry-run
           echo "✅ Package ready for publishing"
-

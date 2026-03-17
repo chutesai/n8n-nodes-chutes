@@ -1,9 +1,9 @@
 /**
- * Test: ChuteUrl Field Types
- * 
- * REGRESSION TEST: Verifies that all chuteUrl fields use type: 'options'
+ * Test: Chute field type
+ *
+ * REGRESSION TEST: Verifies that the shared chute field uses type: 'options'
  * with noDataExpression: false to enable BOTH dropdown AND expressions.
- * 
+ *
  * Using type: 'options' with noDataExpression: false gives users the best of both worlds:
  * - Dropdown autocomplete for browsing available chutes
  * - Expression support for dynamic chute selection from previous nodes ({{ $json.chuteUrl }})
@@ -18,35 +18,14 @@ describe('ChuteUrl Field Types - Expression Support', () => {
 		nodeInstance = new Chutes();
 	});
 
-	const resourcesWithChuteUrl = [
-		'textGeneration',
-		'imageGeneration',
-		'videoGeneration',
-		'textToSpeech',
-		'speechToText',
-		'musicGeneration',
-		'embeddings',
-		'contentModeration',
-		'inference',
-	];
+	test('shared chuteUrl field should be type "options" with expression support', () => {
+		const properties = nodeInstance.description.properties;
+		const chuteUrlField = properties.find((prop: any) => prop.name === 'chuteUrl');
 
-	test.each(resourcesWithChuteUrl)(
-		'%s chuteUrl field should be type "options" with expression support',
-		(resourceName) => {
-			const properties = nodeInstance.description.properties;
-			
-			// Find the chuteUrl field for this resource
-			const chuteUrlField = properties.find(
-				(prop: any) =>
-					prop.name === 'chuteUrl' &&
-					prop.displayOptions?.show?.resource?.includes(resourceName)
-			);
-
-			expect(chuteUrlField).toBeDefined();
-			expect(chuteUrlField?.type).toBe('options'); // Must be 'options' for dropdown
-			expect(chuteUrlField?.noDataExpression).toBe(false); // Must be false for expressions like {{ $json.chuteUrl }}
-		}
-	);
+		expect(chuteUrlField).toBeDefined();
+		expect(chuteUrlField?.type).toBe('options');
+		expect(chuteUrlField?.noDataExpression).toBe(false);
+	});
 
 	test('all chuteUrl fields should have loadOptionsMethod', () => {
 		const properties = nodeInstance.description.properties;
@@ -57,5 +36,12 @@ describe('ChuteUrl Field Types - Expression Support', () => {
 			expect(typeof field.typeOptions?.loadOptionsMethod).toBe('string');
 		});
 	});
-});
 
+	test('shared chuteUrl field should only depend on resource changes', () => {
+		const properties = nodeInstance.description.properties;
+		const chuteUrlField = properties.find((prop: any) => prop.name === 'chuteUrl');
+
+		expect(chuteUrlField).toBeDefined();
+		expect(chuteUrlField?.typeOptions?.loadOptionsDependsOn).toEqual(['resource']);
+	});
+});

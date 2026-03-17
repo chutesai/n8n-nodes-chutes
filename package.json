@@ -36,6 +36,8 @@
     "test": "jest --forceExit",
     "test:ci": "jest --forceExit --ci",
     "test:unit": "jest --forceExit --ci --testPathIgnorePatterns=\"tests/api-discovery|tests/integration\"",
+    "test:critical-auth": "jest --forceExit --ci --runInBand --globalSetup= --globalTeardown= --runTestsByPath tests/credentials/ChutesApi.credentials.test.ts tests/nodes/Chutes/transport/apiRequest.test.ts tests/nodes/Chutes/transport/requestWithChutesCredential.test.ts",
+    "test:critical-auth:coverage": "jest --forceExit --ci --runInBand --globalSetup= --globalTeardown= --runTestsByPath tests/credentials/ChutesApi.credentials.test.ts tests/nodes/Chutes/transport/apiRequest.test.ts tests/nodes/Chutes/transport/requestWithChutesCredential.test.ts --coverage --collectCoverageFrom='credentials/ChutesApi.credentials.ts' --collectCoverageFrom='nodes/Chutes/transport/apiRequest.ts' --collectCoverageFrom='nodes/Chutes/transport/requestWithChutesCredential.ts' --coverageReporters=json && node scripts/check-critical-auth-coverage.js",
     "test:integration": "jest --forceExit --ci --testPathPatterns=\"tests/integration\" --testPathIgnorePatterns=\"video-generation|embeddings-execution|test-llm-response-truncation\" --testTimeout=120000",
     "test:slow": "jest --forceExit --ci --testPathPatterns=\"tests/integration/(video-generation|embeddings-execution)|tests/api-discovery/test-llm-response-truncation\" --testTimeout=180000",
     "test:watch": "jest --watch",

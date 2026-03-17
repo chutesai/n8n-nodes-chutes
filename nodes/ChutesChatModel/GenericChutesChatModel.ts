@@ -13,6 +13,7 @@ interface ChutesChatModelConfig {
 	presencePenalty?: number;
 	credentials: IDataObject;
 	requestHelper: any; // n8n request helper passed from node
+	authenticatedRequest?: (requestOptions: IDataObject) => Promise<any>;
 }
 
 /**
@@ -29,6 +30,7 @@ export class GenericChutesChatModel extends SimpleChatModel {
 	presencePenalty?: number;
 	credentials: IDataObject;
 	requestHelper: any;
+	authenticatedRequest?: (requestOptions: IDataObject) => Promise<any>;
 
 	constructor(config: ChutesChatModelConfig) {
 		super({});
@@ -41,6 +43,7 @@ export class GenericChutesChatModel extends SimpleChatModel {
 		this.presencePenalty = config.presencePenalty;
 		this.credentials = config.credentials;
 		this.requestHelper = config.requestHelper;
+		this.authenticatedRequest = config.authenticatedRequest;
 	}
 
 	/**
@@ -67,18 +70,17 @@ export class GenericChutesChatModel extends SimpleChatModel {
 		options: this['ParsedCallOptions'],
 		runManager?: CallbackManagerForLLMRun,
 	): Promise<string> {
-		console.log('[GenericChutesChatModel] _call invoked with', messages.length, 'messages');
-		console.log('[GenericChutesChatModel] Message types:', messages.map(m => m.constructor.name));
-		
 		// Convert LangChain messages to Chutes.ai chat completion format
-		const formattedMessages = messages.map((message, index) => {
+		const formattedMessages = messages.map((message) => {
 			let role: 'system' | 'user' | 'assistant';
-			
+
 			try {
 				// Map LangChain message types to OpenAI-compatible roles
-				const messageType = typeof message._getType === 'function' ? message._getType() : message.constructor.name.toLowerCase();
-				console.log(`[GenericChutesChatModel] Message ${index} type:`, messageType);
-				
+				const messageType =
+					typeof message._getType === 'function'
+						? message._getType()
+						: message.constructor.name.toLowerCase();
+
 				if (messageType === 'system' || messageType.includes('system')) {
 					role = 'system';
 				} else if (messageType === 'human' || messageType.includes('human')) {
@@ -87,11 +89,9 @@ export class GenericChutesChatModel extends SimpleChatModel {
 					role = 'assistant';
 				} else {
 					// Default to user for other message types
-					console.log(`[GenericChutesChatModel] Unknown message type: ${messageType}, defaulting to user`);
 					role = 'user';
 				}
-			} catch (error: any) {
-				console.error('[GenericChutesChatModel] Error detecting message type:', error.message);
+			} catch {
 				role = 'user';
 			}
 
@@ -134,45 +134,32 @@ export class GenericChutesChatModel extends SimpleChatModel {
 			body.stop = options.stop;
 		}
 
-	try {
-		console.log('[GenericChutesChatModel] Calling Chutes API:', `${this.chuteUrl}/v1/chat/completions`);
-		
-		// Log body with image data redacted (for vision models)
-		const bodyForLogging = { ...body };
-		if (bodyForLogging.messages && Array.isArray(bodyForLogging.messages)) {
-			bodyForLogging.messages = bodyForLogging.messages.map((msg: any) => {
-				if (msg.content && Array.isArray(msg.content)) {
-					return {
-						...msg,
-						content: msg.content.map((item: any) => {
-							if (item.type === 'image_url' && item.image_url) {
-								return { type: 'image_url', image_url: '[redacted]' };
-							}
-							return item;
-						}),
-					};
-				}
-				return msg;
-			});
-		}
-		console.log('[GenericChutesChatModel] Request body:', JSON.stringify(bodyForLogging, null, 2));
-		
-		// Use n8n's request helper to call Chutes.ai API
-		const response = await this.requestHelper.request({
-			method: 'POST',
-			url: `${this.chuteUrl}/v1/chat/completions`,
-			headers: {
-				'Content-Type': 'application/json',
-				'Accept': 'application/json',
-				'Authorization': `Bearer ${this.credentials.apiKey}`,
-				'User-Agent': 'n8n-ChutesAI-ChatModel/0.0.9',
-				'X-Chutes-Source': 'n8n-ai-agent',
-			},
-			body,
-			json: true,
-		});
-		
-		console.log('[GenericChutesChatModel] Got API response');
+		try {
+			// Use n8n's request helper to call Chutes.ai API
+			const requestOptions: IDataObject = {
+				method: 'POST',
+				url: `${this.chuteUrl}/v1/chat/completions`,
+				headers: {
+					'Content-Type': 'application/json',
+					'Accept': 'application/json',
+					'User-Agent': 'n8n-ChutesAI-ChatModel/0.0.9',
+					'X-Chutes-Source': 'n8n-ai-agent',
+				},
+				body,
+				json: true,
+			};
+
+			const response = this.authenticatedRequest
+				? await this.authenticatedRequest(requestOptions)
+				: await this.requestHelper.request({
+						...requestOptions,
+						headers: {
+							...(requestOptions.headers as IDataObject),
+							Authorization: `Bearer ${String(
+								this.credentials.apiKey || this.credentials.sessionToken || '',
+							)}`,
+						},
+					});
 
 			// Stream tokens to callback manager if provided (for future streaming support)
 			if (runManager) {
@@ -196,4 +183,3 @@ export class GenericChutesChatModel extends SimpleChatModel {
 		return this.model || 'chutes-default';
 	}
 }
-

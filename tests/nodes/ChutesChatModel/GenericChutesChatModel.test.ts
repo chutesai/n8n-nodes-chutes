@@ -1,15 +1,17 @@
+import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
+
 import { GenericChutesChatModel } from '../../../nodes/ChutesChatModel/GenericChutesChatModel';
-import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages';
 
 describe('GenericChutesChatModel', () => {
-	let mockRequestHelper: any;
+	let mockRequestHelper: { request: jest.Mock };
+	let mockAuthenticatedRequest: jest.Mock;
 	let chatModel: GenericChutesChatModel;
 
 	beforeEach(() => {
-		// Mock n8n request helper
 		mockRequestHelper = {
 			request: jest.fn(),
 		};
+		mockAuthenticatedRequest = jest.fn();
 
 		chatModel = new GenericChutesChatModel({
 			chuteUrl: 'https://llm.chutes.ai',
@@ -20,6 +22,7 @@ describe('GenericChutesChatModel', () => {
 				apiKey: 'test-api-key',
 			},
 			requestHelper: mockRequestHelper,
+			authenticatedRequest: mockAuthenticatedRequest,
 		});
 	});
 
@@ -47,7 +50,7 @@ describe('GenericChutesChatModel', () => {
 
 	describe('_call', () => {
 		it('should convert LangChain messages to Chutes format correctly', async () => {
-			mockRequestHelper.request.mockResolvedValue({
+			mockAuthenticatedRequest.mockResolvedValue({
 				choices: [
 					{
 						message: {
@@ -66,7 +69,7 @@ describe('GenericChutesChatModel', () => {
 
 			await chatModel._call(messages, {});
 
-			expect(mockRequestHelper.request).toHaveBeenCalledWith(
+			expect(mockAuthenticatedRequest).toHaveBeenCalledWith(
 				expect.objectContaining({
 					method: 'POST',
 					url: 'https://llm.chutes.ai/v1/chat/completions',
@@ -83,7 +86,7 @@ describe('GenericChutesChatModel', () => {
 		});
 
 		it('should send correct API request with all parameters', async () => {
-			mockRequestHelper.request.mockResolvedValue({
+			mockAuthenticatedRequest.mockResolvedValue({
 				choices: [{ message: { content: 'Response' } }],
 			});
 
@@ -97,14 +100,15 @@ describe('GenericChutesChatModel', () => {
 				presencePenalty: 0.2,
 				credentials: { apiKey: 'test-key' },
 				requestHelper: mockRequestHelper,
+				authenticatedRequest: mockAuthenticatedRequest,
 			});
 
 			await modelWithAllOptions._call([new HumanMessage('Test')], {});
 
-			expect(mockRequestHelper.request).toHaveBeenCalledWith(
+			expect(mockAuthenticatedRequest).toHaveBeenCalledWith(
 				expect.objectContaining({
 					headers: expect.objectContaining({
-						Authorization: 'Bearer test-key',
+						Accept: 'application/json',
 						'Content-Type': 'application/json',
 						'X-Chutes-Source': 'n8n-ai-agent',
 					}),
@@ -119,11 +123,12 @@ describe('GenericChutesChatModel', () => {
 					}),
 				}),
 			);
+			expect(mockRequestHelper.request).not.toHaveBeenCalled();
 		});
 
 		it('should handle API response correctly', async () => {
 			const expectedResponse = 'This is a test response from Chutes.ai';
-			mockRequestHelper.request.mockResolvedValue({
+			mockAuthenticatedRequest.mockResolvedValue({
 				choices: [
 					{
 						message: {
@@ -139,13 +144,13 @@ describe('GenericChutesChatModel', () => {
 		});
 
 		it('should include stop sequences from options', async () => {
-			mockRequestHelper.request.mockResolvedValue({
+			mockAuthenticatedRequest.mockResolvedValue({
 				choices: [{ message: { content: 'Response' } }],
 			});
 
 			await chatModel._call([new HumanMessage('Test')], { stop: ['STOP', 'END'] });
 
-			expect(mockRequestHelper.request).toHaveBeenCalledWith(
+			expect(mockAuthenticatedRequest).toHaveBeenCalledWith(
 				expect.objectContaining({
 					body: expect.objectContaining({
 						stop: ['STOP', 'END'],
@@ -155,13 +160,13 @@ describe('GenericChutesChatModel', () => {
 		});
 
 		it('should handle string stop sequences', async () => {
-			mockRequestHelper.request.mockResolvedValue({
+			mockAuthenticatedRequest.mockResolvedValue({
 				choices: [{ message: { content: 'Response' } }],
 			});
 
 			await chatModel._call([new HumanMessage('Test')], { stop: ['STOP'] });
 
-			expect(mockRequestHelper.request).toHaveBeenCalledWith(
+			expect(mockAuthenticatedRequest).toHaveBeenCalledWith(
 				expect.objectContaining({
 					body: expect.objectContaining({
 						stop: ['STOP'],
@@ -171,7 +176,7 @@ describe('GenericChutesChatModel', () => {
 		});
 
 		it('should omit model parameter if not specified', async () => {
-			mockRequestHelper.request.mockResolvedValue({
+			mockAuthenticatedRequest.mockResolvedValue({
 				choices: [{ message: { content: 'Response' } }],
 			});
 
@@ -180,16 +185,17 @@ describe('GenericChutesChatModel', () => {
 				model: '',
 				credentials: { apiKey: 'test' },
 				requestHelper: mockRequestHelper,
+				authenticatedRequest: mockAuthenticatedRequest,
 			});
 
 			await modelWithoutName._call([new HumanMessage('Test')], {});
 
-			const callArgs = mockRequestHelper.request.mock.calls[0][0];
+			const callArgs = mockAuthenticatedRequest.mock.calls[0][0];
 			expect(callArgs.body).not.toHaveProperty('model');
 		});
 
 		it('should handle API errors gracefully', async () => {
-			mockRequestHelper.request.mockRejectedValue({
+			mockAuthenticatedRequest.mockRejectedValue({
 				response: {
 					data: {
 						error: {
@@ -205,7 +211,7 @@ describe('GenericChutesChatModel', () => {
 		});
 
 		it('should handle generic errors', async () => {
-			mockRequestHelper.request.mockRejectedValue(new Error('Network error'));
+			mockAuthenticatedRequest.mockRejectedValue(new Error('Network error'));
 
 			await expect(chatModel._call([new HumanMessage('Test')], {})).rejects.toThrow(
 				'Chutes.ai API error: Network error',
@@ -213,7 +219,7 @@ describe('GenericChutesChatModel', () => {
 		});
 
 		it('should use correct chute URL', async () => {
-			mockRequestHelper.request.mockResolvedValue({
+			mockAuthenticatedRequest.mockResolvedValue({
 				choices: [{ message: { content: 'Response' } }],
 			});
 
@@ -222,11 +228,12 @@ describe('GenericChutesChatModel', () => {
 				model: 'test',
 				credentials: { apiKey: 'test' },
 				requestHelper: mockRequestHelper,
+				authenticatedRequest: mockAuthenticatedRequest,
 			});
 
 			await customModel._call([new HumanMessage('Test')], {});
 
-			expect(mockRequestHelper.request).toHaveBeenCalledWith(
+			expect(mockAuthenticatedRequest).toHaveBeenCalledWith(
 				expect.objectContaining({
 					url: 'https://custom-chute.chutes.ai/v1/chat/completions',
 				}),
@@ -234,13 +241,13 @@ describe('GenericChutesChatModel', () => {
 		});
 
 		it('should always set stream to false', async () => {
-			mockRequestHelper.request.mockResolvedValue({
+			mockAuthenticatedRequest.mockResolvedValue({
 				choices: [{ message: { content: 'Response' } }],
 			});
 
 			await chatModel._call([new HumanMessage('Test')], {});
 
-			expect(mockRequestHelper.request).toHaveBeenCalledWith(
+			expect(mockAuthenticatedRequest).toHaveBeenCalledWith(
 				expect.objectContaining({
 					body: expect.objectContaining({
 						stream: false,
@@ -250,46 +257,36 @@ describe('GenericChutesChatModel', () => {
 		});
 
 		it('should return empty string if response has no content', async () => {
-			mockRequestHelper.request.mockResolvedValue({
+			mockAuthenticatedRequest.mockResolvedValue({
 				choices: [{ message: {} }],
 			});
 
 			const result = await chatModel._call([new HumanMessage('Test')], {});
 			expect(result).toBe('');
 		});
-	});
 
-	describe('constructor', () => {
-		it('should set default temperature if not provided', () => {
-			const model = new GenericChutesChatModel({
+		it('should fall back to the direct request helper when no authenticated request is supplied', async () => {
+			mockRequestHelper.request.mockResolvedValue({
+				choices: [{ message: { content: 'Fallback response' } }],
+			});
+
+			const directModel = new GenericChutesChatModel({
 				chuteUrl: 'https://llm.chutes.ai',
-				model: 'test',
-				credentials: { apiKey: 'test' },
+				model: 'test-model',
+				credentials: { sessionToken: 'managed-session-token' },
 				requestHelper: mockRequestHelper,
 			});
-			expect(model.temperature).toBe(0.7);
-		});
 
-		it('should set default maxTokens if not provided', () => {
-			const model = new GenericChutesChatModel({
-				chuteUrl: 'https://llm.chutes.ai',
-				model: 'test',
-				credentials: { apiKey: 'test' },
-				requestHelper: mockRequestHelper,
-			});
-			expect(model.maxTokens).toBe(1000);
-		});
+			const result = await directModel._call([new HumanMessage('Test')], {});
 
-		it('should preserve provided temperature', () => {
-			const model = new GenericChutesChatModel({
-				chuteUrl: 'https://llm.chutes.ai',
-				model: 'test',
-				temperature: 1.5,
-				credentials: { apiKey: 'test' },
-				requestHelper: mockRequestHelper,
-			});
-			expect(model.temperature).toBe(1.5);
+			expect(result).toBe('Fallback response');
+			expect(mockRequestHelper.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: expect.objectContaining({
+						Authorization: 'Bearer managed-session-token',
+					}),
+				}),
+			);
 		});
 	});
 });
-

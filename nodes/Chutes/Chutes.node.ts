@@ -107,7 +107,9 @@ export class Chutes implements INodeType {
 				required: false,
 				typeOptions: {
 					loadOptionsMethod: 'getChutesForSelectedResource',
-					loadOptionsDependsOn: ['resource', 'operation'],
+					// The chute catalog itself is determined by resource. Depending on
+					// operation causes extra NDV reloads with stale cross-resource state.
+					loadOptionsDependsOn: ['resource'],
 				},
 				default: 'https://llm.chutes.ai',
 				description:
@@ -655,14 +657,16 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 			);
 		}
 
-		// Get API credentials for OpenAPI discovery
-		const credentials = await this.getCredentials('chutesApi');
-		const apiKey = credentials.apiKey as string;
-
 		// Dynamically discover chute capabilities via OpenAPI schema
 		const { discoverChuteCapabilities, buildRequestBody } = await import('./transport/openApiDiscovery');
 		console.log(`[ImageEdit] Discovering capabilities for: ${chuteUrl}`);
-		const capabilities = await discoverChuteCapabilities(chuteUrl, apiKey);
+		const capabilities = await discoverChuteCapabilities(chuteUrl, async () =>
+			(await this.helpers.requestWithAuthentication.call(this, 'chutesApi', {
+				method: 'GET',
+				url: `${chuteUrl}/openapi.json`,
+				json: true,
+			})) as IDataObject,
+		);
 		console.log(`[ImageEdit] Discovered endpoints:`, capabilities.endpoints.map(e => e.path));
 		console.log(`[ImageEdit] Supports Edit: ${capabilities.supportsImageEdit}, Path: ${capabilities.imageEditPath}`);
 
@@ -1001,18 +1005,16 @@ async function handleSpeechToText(this: IExecuteFunctions, itemIndex: number): P
 		}
 
 		// Make API request to speech-to-text endpoint
-		const credentials = await this.getCredentials('chutesApi');
 		const requestUrl = `${chuteUrl}/transcribe`;
 		const timeout = additionalOptions.timeout as number | undefined;
 		
 		try {
 			const response = await withTimeout(
-				this.helpers.request({
+				this.helpers.requestWithAuthentication.call(this, 'chutesApi', {
 					method: 'POST',
 					url: requestUrl,
 					body,
 					headers: {
-						'Authorization': `Bearer ${credentials.apiKey}`,
 						'Content-Type': 'application/json',
 						'Accept': 'application/json',
 					},
@@ -1487,14 +1489,16 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
 	const additionalOptions = this.getNodeParameter('additionalOptions', itemIndex, {}) as IDataObject;
 
-	// Get API credentials for OpenAPI discovery
-	const credentials = await this.getCredentials('chutesApi');
-	const apiKey = credentials.apiKey as string;
-
 	// Dynamically discover chute capabilities via OpenAPI schema
 	const { discoverChuteCapabilities, buildRequestBody } = await import('./transport/openApiDiscovery');
 	console.log(`[VideoGen] Discovering capabilities for: ${chuteUrl}`);
-	const capabilities = await discoverChuteCapabilities(chuteUrl, apiKey);
+	const capabilities = await discoverChuteCapabilities(chuteUrl, async () =>
+		(await this.helpers.requestWithAuthentication.call(this, 'chutesApi', {
+			method: 'GET',
+			url: `${chuteUrl}/openapi.json`,
+			json: true,
+		})) as IDataObject,
+	);
 	console.log(`[VideoGen] Discovered endpoints:`, capabilities.endpoints.map(e => e.path));
 	console.log(`[VideoGen] Supports T2V: ${capabilities.supportsTextToVideo}, I2V: ${capabilities.supportsImageToVideo}`);
 

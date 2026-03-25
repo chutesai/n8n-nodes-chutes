@@ -154,102 +154,106 @@ export class Chutes implements INodeType {
 				const resource = this.getNodeParameter('resource', i) as string;
 				let responseData: any;
 
-			if (resource === 'textGeneration') {
-				responseData = await handleTextGeneration.call(this, i);
-			} else if (resource === 'imageGeneration') {
-				responseData = await handleImageGeneration.call(this, i);
-		} else if (resource === 'videoGeneration') {
-			responseData = await handleVideoGeneration.call(this, i);
-		} else if (resource === 'textToSpeech') {
-			responseData = await handleTextToSpeech.call(this, i);
-		} else if (resource === 'speechToText') {
-			responseData = await handleSpeechToText.call(this, i);
-		} else if (resource === 'inference') {
-			responseData = await handleInference.call(this, i);
-		} else if (resource === 'musicGeneration') {
-			responseData = await handleMusicGeneration.call(this, i);
-		} else if (resource === 'embeddings') {
-			responseData = await handleEmbeddings.call(this, i);
-		} else if (resource === 'contentModeration') {
-			responseData = await handleContentModeration.call(this, i);
-		} else {
-			throw new NodeOperationError(
-				this.getNode(),
-				`Resource "${resource}" not implemented in Chutes.ai`,
-				{ itemIndex: i },
-			);
-		}
+				if (resource === 'textGeneration') {
+					responseData = await handleTextGeneration.call(this, i);
+				} else if (resource === 'imageGeneration') {
+					responseData = await handleImageGeneration.call(this, i);
+				} else if (resource === 'videoGeneration') {
+					responseData = await handleVideoGeneration.call(this, i);
+				} else if (resource === 'textToSpeech') {
+					responseData = await handleTextToSpeech.call(this, i);
+				} else if (resource === 'speechToText') {
+					responseData = await handleSpeechToText.call(this, i);
+				} else if (resource === 'inference') {
+					responseData = await handleInference.call(this, i);
+				} else if (resource === 'musicGeneration') {
+					responseData = await handleMusicGeneration.call(this, i);
+				} else if (resource === 'embeddings') {
+					responseData = await handleEmbeddings.call(this, i);
+				} else if (resource === 'contentModeration') {
+					responseData = await handleContentModeration.call(this, i);
+				} else {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Resource "${resource}" not implemented in Chutes.ai`,
+						{ itemIndex: i },
+					);
+				}
 
-		// Handle different response types from Chutes.ai
-		if (Array.isArray(responseData)) {
-			// Multiple items - could be binary images or JSON objects
-			for (const item of responseData) {
-				if (item && typeof item === 'object' && 'binaryData' in item) {
-					// Binary image data from multi-image generation
-					const binaryBuffer = item.binaryData as Buffer;
-					const imageNumber = (item as any).imageNumber;
+				// Handle different response types from Chutes.ai
+				if (Array.isArray(responseData)) {
+					// Multiple items - could be binary images or JSON objects
+					for (const item of responseData) {
+						if (item && typeof item === 'object' && 'binaryData' in item) {
+							// Binary image data from multi-image generation
+							const binaryBuffer = item.binaryData as Buffer;
+							const imageNumber = (item as any).imageNumber;
+							returnData.push({
+								json: {
+									source: 'chutes.ai',
+									...(imageNumber && { imageNumber }),
+								},
+								binary: {
+									data: await this.helpers.prepareBinaryData(
+										binaryBuffer,
+										item.fileName as string,
+										item.mimeType as string,
+									),
+								},
+								pairedItem: { item: i },
+							});
+						} else {
+							// Regular JSON item
+							returnData.push({
+								json: { ...item, source: 'chutes.ai' },
+								pairedItem: { item: i },
+							});
+						}
+					}
+				} else if (
+					responseData &&
+					typeof responseData === 'object' &&
+					'binaryData' in responseData
+				) {
+					// Binary image data from image generation
+					const binaryBuffer = responseData.binaryData as Buffer;
 					returnData.push({
-						json: { 
-							source: 'chutes.ai',
-							...(imageNumber && { imageNumber })
-						},
+						json: { source: 'chutes.ai' },
 						binary: {
 							data: await this.helpers.prepareBinaryData(
 								binaryBuffer,
-								item.fileName as string,
-								item.mimeType as string
+								responseData.fileName as string,
+								responseData.mimeType as string,
 							),
 						},
 						pairedItem: { item: i },
 					});
-				} else {
-					// Regular JSON item
+				} else if (typeof responseData === 'string') {
+					// String response (e.g., image URL, raw text)
+					// Wrap in object to prevent character-by-character splitting
 					returnData.push({
-						json: { ...item, source: 'chutes.ai' },
+						json: {
+							data: responseData,
+							source: 'chutes.ai',
+						},
+						pairedItem: { item: i },
+					});
+				} else if (typeof responseData === 'object' && responseData !== null) {
+					// Object response
+					returnData.push({
+						json: { ...responseData, source: 'chutes.ai' },
+						pairedItem: { item: i },
+					});
+				} else {
+					// Primitive types (number, boolean, etc.)
+					returnData.push({
+						json: {
+							value: responseData,
+							source: 'chutes.ai',
+						},
 						pairedItem: { item: i },
 					});
 				}
-			}
-		} else if (responseData && typeof responseData === 'object' && 'binaryData' in responseData) {
-				// Binary image data from image generation
-				const binaryBuffer = responseData.binaryData as Buffer;
-				returnData.push({
-					json: { source: 'chutes.ai' },
-					binary: {
-						data: await this.helpers.prepareBinaryData(
-							binaryBuffer,
-							responseData.fileName as string,
-							responseData.mimeType as string
-						),
-					},
-					pairedItem: { item: i },
-				});
-			} else if (typeof responseData === 'string') {
-				// String response (e.g., image URL, raw text)
-				// Wrap in object to prevent character-by-character splitting
-				returnData.push({
-					json: { 
-						data: responseData,
-						source: 'chutes.ai' 
-					},
-					pairedItem: { item: i },
-				});
-			} else if (typeof responseData === 'object' && responseData !== null) {
-				// Object response
-				returnData.push({
-					json: { ...responseData, source: 'chutes.ai' },
-					pairedItem: { item: i },
-				});
-			} else {
-				// Primitive types (number, boolean, etc.)
-				returnData.push({
-					json: { 
-						value: responseData,
-						source: 'chutes.ai' 
-					},
-					pairedItem: { item: i },
-				});
-			}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({
@@ -293,7 +297,7 @@ async function withTimeout<T>(
 	// Create timeout promise with proper cleanup
 	const timeoutMs = timeoutSeconds * 1000;
 	let timeoutHandle: ReturnType<typeof setTimeout>;
-	
+
 	const timeoutPromise = new Promise<T>((_, reject) => {
 		timeoutHandle = setTimeout(() => {
 			reject(
@@ -307,7 +311,7 @@ async function withTimeout<T>(
 				),
 			);
 		}, timeoutMs);
-		
+
 		// Call .unref() so the timer doesn't keep the process alive
 		// This allows Node.js/Jest to exit cleanly if the promise resolves first
 		timeoutHandle.unref();
@@ -316,22 +320,31 @@ async function withTimeout<T>(
 	// Race between the actual request and the timeout
 	// Clear the timeout if the promise completes first (extra cleanup)
 	return Promise.race([
-		promise.then((result) => {
-			clearTimeout(timeoutHandle);
-			return result;
-		}).catch((error) => {
-			clearTimeout(timeoutHandle);
-			throw error;
-		}),
+		promise
+			.then((result) => {
+				clearTimeout(timeoutHandle);
+				return result;
+			})
+			.catch((error) => {
+				clearTimeout(timeoutHandle);
+				throw error;
+			}),
 		timeoutPromise,
 	]);
 }
 
-	async function handleTextGeneration(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
-		const operation = this.getNodeParameter('operation', itemIndex) as string;
-		// Model parameter removed - chute URL already specifies the model
-		const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex, 'https://llm.chutes.ai') as string;
-		const additionalOptions = this.getNodeParameter('additionalOptions', itemIndex, {}) as IDataObject;
+async function handleTextGeneration(
+	this: IExecuteFunctions,
+	itemIndex: number,
+): Promise<IDataObject> {
+	const operation = this.getNodeParameter('operation', itemIndex) as string;
+	// Model parameter removed - chute URL already specifies the model
+	const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex, 'https://llm.chutes.ai') as string;
+	const additionalOptions = this.getNodeParameter(
+		'additionalOptions',
+		itemIndex,
+		{},
+	) as IDataObject;
 
 	let body: IDataObject = {
 		...additionalOptions,
@@ -350,44 +363,42 @@ async function withTimeout<T>(
 	body.stream = false;
 
 	// Handle stop sequences
-		if (additionalOptions.stopSequences) {
-			const stopStr = additionalOptions.stopSequences as string;
-			body.stop = stopStr.split(',').map((s) => s.trim());
-			delete body.stopSequences;
-		}
+	if (additionalOptions.stopSequences) {
+		const stopStr = additionalOptions.stopSequences as string;
+		body.stop = stopStr.split(',').map((s) => s.trim());
+		delete body.stopSequences;
+	}
 
-		// Handle response format
-		if (additionalOptions.responseFormat) {
-			body.response_format = { type: additionalOptions.responseFormat };
-			delete body.responseFormat;
-		}
+	// Handle response format
+	if (additionalOptions.responseFormat) {
+		body.response_format = { type: additionalOptions.responseFormat };
+		delete body.responseFormat;
+	}
 
-		// Rename parameters to match API
-		if (additionalOptions.maxTokens) {
-			body.max_tokens = additionalOptions.maxTokens;
-			delete body.maxTokens;
-		}
-		if (additionalOptions.topP) {
-			body.top_p = additionalOptions.topP;
-			delete body.topP;
-		}
-		if (additionalOptions.frequencyPenalty) {
-			body.frequency_penalty = additionalOptions.frequencyPenalty;
-			delete body.frequencyPenalty;
-		}
-		if (additionalOptions.presencePenalty) {
-			body.presence_penalty = additionalOptions.presencePenalty;
-			delete body.presencePenalty;
-		}
+	// Rename parameters to match API
+	if (additionalOptions.maxTokens) {
+		body.max_tokens = additionalOptions.maxTokens;
+		delete body.maxTokens;
+	}
+	if (additionalOptions.topP) {
+		body.top_p = additionalOptions.topP;
+		delete body.topP;
+	}
+	if (additionalOptions.frequencyPenalty) {
+		body.frequency_penalty = additionalOptions.frequencyPenalty;
+		delete body.frequencyPenalty;
+	}
+	if (additionalOptions.presencePenalty) {
+		body.presence_penalty = additionalOptions.presencePenalty;
+		delete body.presencePenalty;
+	}
 
 	// Both 'complete' and 'chat' operations now use /v1/chat/completions
 	// This is modern best practice and avoids truncation issues with /v1/completions
 	if (operation === 'complete') {
 		// For simple completions, wrap the prompt as a user message
 		const prompt = this.getNodeParameter('prompt', itemIndex) as string;
-		body.messages = [
-			{ role: 'user', content: prompt },
-		];
+		body.messages = [{ role: 'user', content: prompt }];
 	} else if (operation === 'chat') {
 		// For chat, use the full messages array
 		const messagesData = this.getNodeParameter('messages', itemIndex, {}) as IDataObject;
@@ -420,103 +431,52 @@ async function withTimeout<T>(
 		itemIndex,
 		'Text generation',
 	);
-	
+
 	return response;
 }
 
-async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject | { binaryData: Buffer; mimeType: string; fileName: string } | Array<{ binaryData: Buffer; mimeType: string; fileName: string; imageNumber: number }>> {
-		const operation = this.getNodeParameter('operation', itemIndex) as string;
-		// Model parameter removed - chute URL already specifies the model
-		const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex, 'https://image.chutes.ai') as string;
-		const prompt = this.getNodeParameter('prompt', itemIndex) as string;
-		const size = this.getNodeParameter('size', itemIndex) as string;
-		const n = this.getNodeParameter('n', itemIndex, 1) as number;
-		const additionalOptions = this.getNodeParameter('additionalOptions', itemIndex, {}) as IDataObject;
+async function handleImageGeneration(
+	this: IExecuteFunctions,
+	itemIndex: number,
+): Promise<
+	| IDataObject
+	| { binaryData: Buffer; mimeType: string; fileName: string }
+	| Array<{ binaryData: Buffer; mimeType: string; fileName: string; imageNumber: number }>
+> {
+	const operation = this.getNodeParameter('operation', itemIndex) as string;
+	// Model parameter removed - chute URL already specifies the model
+	const chuteUrl = this.getNodeParameter(
+		'chuteUrl',
+		itemIndex,
+		'https://image.chutes.ai',
+	) as string;
+	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
+	const size = this.getNodeParameter('size', itemIndex) as string;
+	const n = this.getNodeParameter('n', itemIndex, 1) as number;
+	const additionalOptions = this.getNodeParameter(
+		'additionalOptions',
+		itemIndex,
+		{},
+	) as IDataObject;
 
-		// Parse size into width and height
-		const [width, height] = size.split('x').map(s => parseInt(s.trim()));
+	// Parse size into width and height
+	const [width, height] = size.split('x').map((s) => parseInt(s.trim()));
 
-		// Get seed from additional options (will be undefined if not set, defaulting to random)
-		const baseSeed = additionalOptions.seed as number | undefined;
+	// Get seed from additional options (will be undefined if not set, defaulting to random)
+	const baseSeed = additionalOptions.seed as number | undefined;
 
-		if (operation === 'generate') {
-			// If n > 1, make sequential requests (API doesn't support batch generation)
-			if (n && n > 1) {
-				const images: Array<{ binaryData: Buffer; mimeType: string; fileName: string; imageNumber: number }> = [];
-				
-				for (let i = 0; i < n; i++) {
-					// Build request body for each image
-					const body: IDataObject = {
-						prompt,
-					};
+	if (operation === 'generate') {
+		// If n > 1, make sequential requests (API doesn't support batch generation)
+		if (n && n > 1) {
+			const images: Array<{
+				binaryData: Buffer;
+				mimeType: string;
+				fileName: string;
+				imageNumber: number;
+			}> = [];
 
-					// Add optional parameters
-					if (width && height) {
-						body.width = width;
-						body.height = height;
-					}
-
-					// Add additional options with proper snake_case conversion
-					if (additionalOptions.negativePrompt) {
-						body.negative_prompt = additionalOptions.negativePrompt;
-					}
-					if (additionalOptions.guidanceScale) {
-						body.guidance_scale = additionalOptions.guidanceScale;
-					}
-					if (additionalOptions.responseFormat) {
-						body.response_format = additionalOptions.responseFormat;
-					}
-					if (additionalOptions.quality) {
-						body.quality = additionalOptions.quality;
-					}
-					if (additionalOptions.style) {
-						body.style = additionalOptions.style;
-					}
-
-					// Handle seed: if specified, increment by 1 for each image; otherwise let API use random
-					if (baseSeed !== undefined) {
-						body.seed = baseSeed + i;
-					}
-
-					// Make API request for single image
-					const timeout = additionalOptions.timeout as number | undefined;
-					const response = await withTimeout(
-						chutesApiRequestWithRetry.call(
-							this,
-							'POST',
-							'/generate',
-							body,
-							{},
-							{},
-							{
-								// Request binary response for image data
-								encoding: null,
-								json: false,
-							},
-							'imageGeneration',
-							chuteUrl,
-						),
-						timeout,
-						this,
-						itemIndex,
-						`Image generation (${i + 1}/${n})`,
-					);
-
-					// Check if response is binary (Buffer)
-					if (Buffer.isBuffer(response)) {
-						images.push({
-							binaryData: response,
-							mimeType: 'image/png',
-							fileName: `generated-image-${i + 1}-${Date.now()}.png`,
-							imageNumber: i + 1,
-						});
-					}
-				}
-
-				// Return all images as an array
-				return images;
-			} else {
-				// Single image generation (n = 1)
+			for (let i = 0; i < n; i++) {
+				// Build request body for each image
 				const body: IDataObject = {
 					prompt,
 				};
@@ -537,9 +497,6 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 				if (additionalOptions.responseFormat) {
 					body.response_format = additionalOptions.responseFormat;
 				}
-				if (baseSeed !== undefined) {
-					body.seed = baseSeed;
-				}
 				if (additionalOptions.quality) {
 					body.quality = additionalOptions.quality;
 				}
@@ -547,7 +504,12 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 					body.style = additionalOptions.style;
 				}
 
-				// Request binary data for single image
+				// Handle seed: if specified, increment by 1 for each image; otherwise let API use random
+				if (baseSeed !== undefined) {
+					body.seed = baseSeed + i;
+				}
+
+				// Make API request for single image
 				const timeout = additionalOptions.timeout as number | undefined;
 				const response = await withTimeout(
 					chutesApiRequestWithRetry.call(
@@ -568,30 +530,97 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 					timeout,
 					this,
 					itemIndex,
-					'Image generation',
+					`Image generation (${i + 1}/${n})`,
 				);
-				
-				// Check if response is binary (Buffer) or JSON
+
+				// Check if response is binary (Buffer)
 				if (Buffer.isBuffer(response)) {
-					// Binary image data - return with metadata
-					return {
+					images.push({
 						binaryData: response,
 						mimeType: 'image/png',
-						fileName: `generated-image-${Date.now()}.png`,
-					};
+						fileName: `generated-image-${i + 1}-${Date.now()}.png`,
+						imageNumber: i + 1,
+					});
 				}
-				
-				// Otherwise return as JSON (e.g., if responseFormat was 'url')
-				return response;
+			}
+
+			// Return all images as an array
+			return images;
+		} else {
+			// Single image generation (n = 1)
+			const body: IDataObject = {
+				prompt,
+			};
+
+			// Add optional parameters
+			if (width && height) {
+				body.width = width;
+				body.height = height;
+			}
+
+			// Add additional options with proper snake_case conversion
+			if (additionalOptions.negativePrompt) {
+				body.negative_prompt = additionalOptions.negativePrompt;
+			}
+			if (additionalOptions.guidanceScale) {
+				body.guidance_scale = additionalOptions.guidanceScale;
+			}
+			if (additionalOptions.responseFormat) {
+				body.response_format = additionalOptions.responseFormat;
+			}
+			if (baseSeed !== undefined) {
+				body.seed = baseSeed;
+			}
+			if (additionalOptions.quality) {
+				body.quality = additionalOptions.quality;
+			}
+			if (additionalOptions.style) {
+				body.style = additionalOptions.style;
+			}
+
+			// Request binary data for single image
+			const timeout = additionalOptions.timeout as number | undefined;
+			const response = await withTimeout(
+				chutesApiRequestWithRetry.call(
+					this,
+					'POST',
+					'/generate',
+					body,
+					{},
+					{},
+					{
+						// Request binary response for image data
+						encoding: null,
+						json: false,
+					},
+					'imageGeneration',
+					chuteUrl,
+				),
+				timeout,
+				this,
+				itemIndex,
+				'Image generation',
+			);
+
+			// Check if response is binary (Buffer) or JSON
+			if (Buffer.isBuffer(response)) {
+				// Binary image data - return with metadata
+				return {
+					binaryData: response,
+					mimeType: 'image/png',
+					fileName: `generated-image-${Date.now()}.png`,
+				};
+			}
+
+			// Otherwise return as JSON (e.g., if responseFormat was 'url')
+			return response;
 		}
-	} 
-	
-	else if (operation === 'edit') {
+	} else if (operation === 'edit') {
 		// Image editing operation
 		const imageParam = this.getNodeParameter('image', itemIndex, '') as string;
-		
+
 		let imageBase64: string = '';
-		
+
 		// PRIORITY 1: Try to get image from binary data first (from previous node)
 		const binaryData = this.getInputData()[itemIndex].binary;
 		if (binaryData && binaryData.data) {
@@ -604,7 +633,7 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 				// Continue to try other methods
 			}
 		}
-		
+
 		// PRIORITY 2: If no binary data, check the image parameter
 		if (!imageBase64 && imageParam) {
 			if (imageParam.startsWith('http://') || imageParam.startsWith('https://')) {
@@ -652,20 +681,29 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 		}
 
 		// Dynamically discover chute capabilities via OpenAPI schema
-		const { discoverChuteCapabilities, buildRequestBody } = await import('./transport/openApiDiscovery');
-		console.log(`[ImageEdit] Discovering capabilities for: ${chuteUrl}`);
-		const capabilities = await discoverChuteCapabilities(chuteUrl, async (openApiUrl: string) =>
-			await this.helpers.requestWithAuthentication.call(this, 'chutesApi', {
-				method: 'GET',
-				url: openApiUrl,
-				headers: {
-					Accept: 'application/json',
-				},
-				json: true,
-			}),
+		const { discoverChuteCapabilities, buildRequestBody } = await import(
+			'./transport/openApiDiscovery'
 		);
-		console.log(`[ImageEdit] Discovered endpoints:`, capabilities.endpoints.map(e => e.path));
-		console.log(`[ImageEdit] Supports Edit: ${capabilities.supportsImageEdit}, Path: ${capabilities.imageEditPath}`);
+		console.log(`[ImageEdit] Discovering capabilities for: ${chuteUrl}`);
+		const capabilities = await discoverChuteCapabilities(
+			chuteUrl,
+			async (openApiUrl: string) =>
+				await this.helpers.requestWithAuthentication.call(this, 'chutesApi', {
+					method: 'GET',
+					url: openApiUrl,
+					headers: {
+						Accept: 'application/json',
+					},
+					json: true,
+				}),
+		);
+		console.log(
+			`[ImageEdit] Discovered endpoints:`,
+			capabilities.endpoints.map((e) => e.path),
+		);
+		console.log(
+			`[ImageEdit] Supports Edit: ${capabilities.supportsImageEdit}, Path: ${capabilities.imageEditPath}`,
+		);
 
 		// Prepare base user inputs for dynamic endpoint discovery
 		const baseUserInputs: IDataObject = {
@@ -718,7 +756,10 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 			bodyForLogging.image_b64 = `[base64 data, ${String(bodyForLogging.image_b64).length} chars]`;
 		}
 		if (bodyForLogging.image_b64s && Array.isArray(bodyForLogging.image_b64s)) {
-			const totalChars = bodyForLogging.image_b64s.reduce((sum, img) => sum + (img?.length || 0), 0);
+			const totalChars = bodyForLogging.image_b64s.reduce(
+				(sum, img) => sum + (img?.length || 0),
+				0,
+			);
 			bodyForLogging.image_b64s = `[array of ${bodyForLogging.image_b64s.length} base64 images, total ${totalChars} chars]`;
 		}
 		if (bodyForLogging.image_url) {
@@ -728,8 +769,13 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 
 		// If n > 1, make sequential requests
 		if (n && n > 1) {
-			const images: Array<{ binaryData: Buffer; mimeType: string; fileName: string; imageNumber: number }> = [];
-			
+			const images: Array<{
+				binaryData: Buffer;
+				mimeType: string;
+				fileName: string;
+				imageNumber: number;
+			}> = [];
+
 			for (let i = 0; i < n; i++) {
 				// Copy base user inputs for this iteration
 				const iterationInputs: IDataObject = { ...baseUserInputs };
@@ -756,7 +802,7 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 						this,
 						'POST',
 						iterationConfig.endpoint, // ← Dynamic endpoint discovery!
-						iterationConfig.body,      // ← Dynamic parameter mapping!
+						iterationConfig.body, // ← Dynamic parameter mapping!
 						{},
 						{},
 						{
@@ -803,7 +849,7 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 					this,
 					'POST',
 					requestConfig.endpoint, // ← Dynamic endpoint discovery!
-					requestConfig.body,      // ← Dynamic parameter mapping!
+					requestConfig.body, // ← Dynamic parameter mapping!
 					{},
 					{},
 					{
@@ -819,7 +865,7 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 				itemIndex,
 				'Image edit',
 			);
-			
+
 			// Check if response is binary (Buffer) or JSON
 			if (Buffer.isBuffer(response)) {
 				// Binary image data - return with metadata
@@ -829,12 +875,12 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 					fileName: `edited-image-${Date.now()}.png`,
 				};
 			}
-			
+
 			// Otherwise return as JSON (e.g., if responseFormat was 'url')
 			return response;
 		}
 	}
-	
+
 	throw new NodeOperationError(
 		this.getNode(),
 		`Operation "${operation}" not supported for image generation`,
@@ -842,13 +888,24 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 	);
 }
 
-async function handleTextToSpeech(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject | { binaryData: Buffer; mimeType: string; fileName: string }> {
+async function handleTextToSpeech(
+	this: IExecuteFunctions,
+	itemIndex: number,
+): Promise<IDataObject | { binaryData: Buffer; mimeType: string; fileName: string }> {
 	const operation = this.getNodeParameter('operation', itemIndex) as string;
-	const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex, 'https://audio.chutes.ai') as string;
+	const chuteUrl = this.getNodeParameter(
+		'chuteUrl',
+		itemIndex,
+		'https://audio.chutes.ai',
+	) as string;
 	const text = this.getNodeParameter('text', itemIndex) as string;
 	const voice = this.getNodeParameter('voice', itemIndex, '') as string;
 	const customVoice = this.getNodeParameter('customVoice', itemIndex, '') as string;
-	const additionalOptions = this.getNodeParameter('additionalOptions', itemIndex, {}) as IDataObject;
+	const additionalOptions = this.getNodeParameter(
+		'additionalOptions',
+		itemIndex,
+		{},
+	) as IDataObject;
 
 	if (operation === 'generate') {
 		// Build request body for text-to-speech
@@ -915,19 +972,26 @@ async function handleTextToSpeech(this: IExecuteFunctions, itemIndex: number): P
 	);
 }
 
-async function handleSpeechToText(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
+async function handleSpeechToText(
+	this: IExecuteFunctions,
+	itemIndex: number,
+): Promise<IDataObject> {
 	const operation = this.getNodeParameter('operation', itemIndex) as string;
 	const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex, '') as string;
 	const audioParam = this.getNodeParameter('audio', itemIndex, '') as string;
-	const additionalOptions = this.getNodeParameter('additionalOptions', itemIndex, {}) as IDataObject;
+	const additionalOptions = this.getNodeParameter(
+		'additionalOptions',
+		itemIndex,
+		{},
+	) as IDataObject;
 
 	if (operation === 'transcribe') {
 		// Speech-to-text chutes use /transcribe endpoint (discovered via source code inspection)
 		// API expects JSON with 'audio_b64' field containing base64-encoded audio
-		
+
 		let audioBase64: string = '';
 		let audioSource: string = '';
-		
+
 		// PRIORITY 1: Try to get audio from binary data first (from previous node)
 		const binaryData = this.getInputData()[itemIndex].binary;
 		if (binaryData && binaryData.data) {
@@ -935,13 +999,15 @@ async function handleSpeechToText(this: IExecuteFunctions, itemIndex: number): P
 			try {
 				const audioBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, 'data');
 				audioBase64 = audioBuffer.toString('base64');
-				audioSource = `binary data (${binaryData.data.mimeType || 'audio'}, ${audioBuffer.length} bytes)`;
+				audioSource = `binary data (${binaryData.data.mimeType || 'audio'}, ${
+					audioBuffer.length
+				} bytes)`;
 			} catch (error) {
 				console.warn('Failed to get binary audio data:', error);
 				// Continue to try other methods
 			}
 		}
-		
+
 		// PRIORITY 2: If no binary data, check the audio parameter
 		if (!audioBase64 && audioParam) {
 			if (audioParam.startsWith('http://') || audioParam.startsWith('https://')) {
@@ -1004,7 +1070,7 @@ async function handleSpeechToText(this: IExecuteFunctions, itemIndex: number): P
 		// Make API request to speech-to-text endpoint
 		const requestUrl = `${chuteUrl}/transcribe`;
 		const timeout = additionalOptions.timeout as number | undefined;
-		
+
 		try {
 			const response = await withTimeout(
 				this.helpers.requestWithAuthentication.call(this, 'chutesApi', {
@@ -1013,7 +1079,7 @@ async function handleSpeechToText(this: IExecuteFunctions, itemIndex: number): P
 					body,
 					headers: {
 						'Content-Type': 'application/json',
-						'Accept': 'application/json',
+						Accept: 'application/json',
 					},
 					json: true,
 				}),
@@ -1025,35 +1091,33 @@ async function handleSpeechToText(this: IExecuteFunctions, itemIndex: number): P
 
 			// Response is an array of chunks with timestamps
 			// Format: [{ start: 0, end: 1.5, text: "..." }, ...]
-			
+
 			// Combine all chunks into a single continuous text
 			const chunks = Array.isArray(response) ? response : [];
 			const fullText = chunks
 				.map((chunk: any) => chunk.text || '')
 				.join('')
 				.trim();
-			
+
 			// Build response based on includeChunks option
-			const includeChunks = additionalOptions.includeChunks as boolean || false;
+			const includeChunks = (additionalOptions.includeChunks as boolean) || false;
 			const result: IDataObject = {
 				text: fullText,
 				duration: chunks.length > 0 ? chunks[chunks.length - 1].end : 0,
 				chunkCount: chunks.length,
 				audioSource: audioSource, // Show where the audio came from (for transparency/debugging)
 			};
-			
+
 			// Only include chunks array if user explicitly requests it
 			if (includeChunks) {
 				result.chunks = chunks;
 			}
-			
+
 			return result;
 		} catch (error: any) {
-			throw new NodeOperationError(
-				this.getNode(),
-				`Failed to transcribe audio: ${error.message}`,
-				{ itemIndex },
-			);
+			throw new NodeOperationError(this.getNode(), `Failed to transcribe audio: ${error.message}`, {
+				itemIndex,
+			});
 		}
 	}
 
@@ -1065,98 +1129,102 @@ async function handleSpeechToText(this: IExecuteFunctions, itemIndex: number): P
 }
 
 async function handleInference(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
-		const operation = this.getNodeParameter('operation', itemIndex) as string;
-		const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex, '') as string;
-		const additionalOptions = this.getNodeParameter('additionalOptions', itemIndex, {}) as IDataObject;
+	const operation = this.getNodeParameter('operation', itemIndex) as string;
+	const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex, '') as string;
+	const additionalOptions = this.getNodeParameter(
+		'additionalOptions',
+		itemIndex,
+		{},
+	) as IDataObject;
 
-		if (operation === 'predict') {
-			const modelId = this.getNodeParameter('modelId', itemIndex) as string;
-			const input = this.getNodeParameter('input', itemIndex) as string;
+	if (operation === 'predict') {
+		const modelId = this.getNodeParameter('modelId', itemIndex) as string;
+		const input = this.getNodeParameter('input', itemIndex) as string;
 
-			const body: IDataObject = {
-				input: JSON.parse(input),
-				...additionalOptions,
-			};
+		const body: IDataObject = {
+			input: JSON.parse(input),
+			...additionalOptions,
+		};
 
-			// Rename parameters
-			if (additionalOptions.outputFormat) {
-				body.output_format = additionalOptions.outputFormat;
-				delete body.outputFormat;
-			}
-			if (additionalOptions.webhookUrl) {
-				body.webhook_url = additionalOptions.webhookUrl;
-				delete body.webhookUrl;
-			}
-
-			const timeout = additionalOptions.timeout as number | undefined;
-			const response = await withTimeout(
-				chutesApiRequestWithRetry.call(
-					this,
-					'POST',
-					`/v1/inference/${modelId}/predict`,
-					body,
-					{},
-					{},
-					{},
-					'inference', // Routes to llm.chutes.ai
-					chuteUrl, // Custom chute URL
-				),
-				timeout,
-				this,
-				itemIndex,
-				'Inference predict',
-			);
-			return response;
-		} else if (operation === 'batch') {
-			const modelId = this.getNodeParameter('modelId', itemIndex) as string;
-			const batchInputs = this.getNodeParameter('batchInputs', itemIndex) as string;
-
-			const body: IDataObject = {
-				inputs: JSON.parse(batchInputs),
-				...additionalOptions,
-			};
-
-			const timeout = additionalOptions.timeout as number | undefined;
-			const response = await withTimeout(
-				chutesApiRequestWithRetry.call(
-					this,
-					'POST',
-					`/v1/inference/${modelId}/batch`,
-					body,
-					{},
-					{},
-					{},
-					'inference', // Routes to llm.chutes.ai
-					chuteUrl, // Custom chute URL
-				),
-				timeout,
-				this,
-				itemIndex,
-				'Inference batch',
-			);
-			return response;
-		} else if (operation === 'status') {
-			const jobId = this.getNodeParameter('jobId', itemIndex) as string;
-			const timeout = additionalOptions.timeout as number | undefined;
-			const response = await withTimeout(
-				chutesApiRequestWithRetry.call(
-					this,
-					'GET',
-					`/v1/inference/jobs/${jobId}`,
-					{},
-					{},
-					{},
-					{},
-					'inference', // Routes to llm.chutes.ai
-					chuteUrl, // Custom chute URL
-				),
-				timeout,
-				this,
-				itemIndex,
-				'Inference status',
-			);
-			return response;
+		// Rename parameters
+		if (additionalOptions.outputFormat) {
+			body.output_format = additionalOptions.outputFormat;
+			delete body.outputFormat;
 		}
+		if (additionalOptions.webhookUrl) {
+			body.webhook_url = additionalOptions.webhookUrl;
+			delete body.webhookUrl;
+		}
+
+		const timeout = additionalOptions.timeout as number | undefined;
+		const response = await withTimeout(
+			chutesApiRequestWithRetry.call(
+				this,
+				'POST',
+				`/v1/inference/${modelId}/predict`,
+				body,
+				{},
+				{},
+				{},
+				'inference', // Routes to llm.chutes.ai
+				chuteUrl, // Custom chute URL
+			),
+			timeout,
+			this,
+			itemIndex,
+			'Inference predict',
+		);
+		return response;
+	} else if (operation === 'batch') {
+		const modelId = this.getNodeParameter('modelId', itemIndex) as string;
+		const batchInputs = this.getNodeParameter('batchInputs', itemIndex) as string;
+
+		const body: IDataObject = {
+			inputs: JSON.parse(batchInputs),
+			...additionalOptions,
+		};
+
+		const timeout = additionalOptions.timeout as number | undefined;
+		const response = await withTimeout(
+			chutesApiRequestWithRetry.call(
+				this,
+				'POST',
+				`/v1/inference/${modelId}/batch`,
+				body,
+				{},
+				{},
+				{},
+				'inference', // Routes to llm.chutes.ai
+				chuteUrl, // Custom chute URL
+			),
+			timeout,
+			this,
+			itemIndex,
+			'Inference batch',
+		);
+		return response;
+	} else if (operation === 'status') {
+		const jobId = this.getNodeParameter('jobId', itemIndex) as string;
+		const timeout = additionalOptions.timeout as number | undefined;
+		const response = await withTimeout(
+			chutesApiRequestWithRetry.call(
+				this,
+				'GET',
+				`/v1/inference/jobs/${jobId}`,
+				{},
+				{},
+				{},
+				{},
+				'inference', // Routes to llm.chutes.ai
+				chuteUrl, // Custom chute URL
+			),
+			timeout,
+			this,
+			itemIndex,
+			'Inference status',
+		);
+		return response;
+	}
 
 	throw new NodeOperationError(
 		this.getNode(),
@@ -1169,12 +1237,23 @@ async function handleInference(this: IExecuteFunctions, itemIndex: number): Prom
  * Handle Music Generation
  * Generates music from text prompts using music generation chutes
  */
-async function handleMusicGeneration(this: IExecuteFunctions, itemIndex: number): Promise<{ binaryData: Buffer; mimeType: string; fileName: string }> {
+async function handleMusicGeneration(
+	this: IExecuteFunctions,
+	itemIndex: number,
+): Promise<{ binaryData: Buffer; mimeType: string; fileName: string }> {
 	const operation = this.getNodeParameter('operation', itemIndex) as string;
-	const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex, 'https://music.chutes.ai') as string;
+	const chuteUrl = this.getNodeParameter(
+		'chuteUrl',
+		itemIndex,
+		'https://music.chutes.ai',
+	) as string;
 	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
 	const lyrics = this.getNodeParameter('lyrics', itemIndex, '') as string;
-	const additionalOptions = this.getNodeParameter('additionalOptions', itemIndex, {}) as IDataObject;
+	const additionalOptions = this.getNodeParameter(
+		'additionalOptions',
+		itemIndex,
+		{},
+	) as IDataObject;
 
 	if (operation === 'generate') {
 		// Build request body for music generation
@@ -1187,7 +1266,7 @@ async function handleMusicGeneration(this: IExecuteFunctions, itemIndex: number)
 		if (lyrics) {
 			body.lyrics = lyrics;
 		}
-		
+
 		// Add reference audio if specified (optional)
 		if (additionalOptions.audio_b64) {
 			body.audio_b64 = additionalOptions.audio_b64;
@@ -1206,13 +1285,13 @@ async function handleMusicGeneration(this: IExecuteFunctions, itemIndex: number)
 		if (additionalOptions.seed !== undefined) {
 			body.seed = additionalOptions.seed;
 		}
-		
+
 		// ALWAYS disable chunked processing to avoid audio artifacts (buzzing)
 		// Chunked VAE decoding introduces discontinuities at chunk boundaries
 		body.chunked = false;
-		
+
 		// Use WAV format to avoid MP3 compression artifacts
-		body.file_type = "wav";
+		body.file_type = 'wav';
 
 		// Request binary audio data
 		const timeout = additionalOptions.timeout as number | undefined;
@@ -1265,9 +1344,17 @@ async function handleMusicGeneration(this: IExecuteFunctions, itemIndex: number)
  */
 async function handleEmbeddings(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
 	const operation = this.getNodeParameter('operation', itemIndex) as string;
-	const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex, 'https://embeddings.chutes.ai') as string;
+	const chuteUrl = this.getNodeParameter(
+		'chuteUrl',
+		itemIndex,
+		'https://embeddings.chutes.ai',
+	) as string;
 	const text = this.getNodeParameter('text', itemIndex) as string;
-	const additionalOptions = this.getNodeParameter('additionalOptions', itemIndex, {}) as IDataObject;
+	const additionalOptions = this.getNodeParameter(
+		'additionalOptions',
+		itemIndex,
+		{},
+	) as IDataObject;
 
 	if (operation === 'generate') {
 		// Build request body for embeddings
@@ -1319,17 +1406,28 @@ async function handleEmbeddings(this: IExecuteFunctions, itemIndex: number): Pro
  * Analyzes content for moderation (text or images)
  * Supports both nsfw-classifier and hate-speech-detector chutes
  */
-async function handleContentModeration(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
+async function handleContentModeration(
+	this: IExecuteFunctions,
+	itemIndex: number,
+): Promise<IDataObject> {
 	const operation = this.getNodeParameter('operation', itemIndex) as string;
-	const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex, 'https://chutes-nsfw-classifier.chutes.ai') as string;
+	const chuteUrl = this.getNodeParameter(
+		'chuteUrl',
+		itemIndex,
+		'https://chutes-nsfw-classifier.chutes.ai',
+	) as string;
 	const content = this.getNodeParameter('content', itemIndex, '') as string;
 	const imageParam = this.getNodeParameter('image', itemIndex, '') as string;
-	const additionalOptions = this.getNodeParameter('additionalOptions', itemIndex, {}) as IDataObject;
+	const additionalOptions = this.getNodeParameter(
+		'additionalOptions',
+		itemIndex,
+		{},
+	) as IDataObject;
 
 	if (operation === 'analyze') {
 		// Detect chute type by URL
 		const isHateSpeechDetector = chuteUrl.includes('hate-speech-detector');
-		
+
 		// SPECIAL CASE: hate-speech-detector uses different API
 		if (isHateSpeechDetector) {
 			// hate-speech-detector only supports text, not images
@@ -1340,17 +1438,19 @@ async function handleContentModeration(this: IExecuteFunctions, itemIndex: numbe
 					{ itemIndex },
 				);
 			}
-			
-			console.log(`[ContentModeration] Using hate-speech-detector format: /predict with {texts: [...]}`);
-			
+
+			console.log(
+				`[ContentModeration] Using hate-speech-detector format: /predict with {texts: [...]}`,
+			);
+
 			// hate-speech-detector expects batch format: {texts: ["..."]}
 			const timeout = additionalOptions.timeout as number | undefined;
 			const response = await withTimeout(
 				chutesApiRequestWithRetry.call(
 					this,
 					'POST',
-					'/predict',  // Different endpoint!
-					{ texts: [content] },  // Batch format (array)!
+					'/predict', // Different endpoint!
+					{ texts: [content] }, // Batch format (array)!
 					{},
 					{},
 					{},
@@ -1362,16 +1462,16 @@ async function handleContentModeration(this: IExecuteFunctions, itemIndex: numbe
 				itemIndex,
 				'Content moderation (hate speech)',
 			);
-			
+
 			// Response is array: [{label: "...", score: ...}]
 			// Return first item for single-text input
 			if (Array.isArray(response) && response.length > 0) {
 				return response[0];
 			}
-			
+
 			return response;
 		}
-		
+
 		// DEFAULT: nsfw-classifier or compatible chutes
 		// Uses /text or /image endpoints with flat parameters
 		let endpoint = '';
@@ -1420,11 +1520,7 @@ async function handleContentModeration(this: IExecuteFunctions, itemIndex: numbe
 					endpoint = '/image';
 					body.image_b64 = matches[1];
 				} else {
-					throw new NodeOperationError(
-						this.getNode(),
-						'Invalid data URL format',
-						{ itemIndex },
-					);
+					throw new NodeOperationError(this.getNode(), 'Invalid data URL format', { itemIndex });
 				}
 			} else {
 				// Assume it's already base64
@@ -1448,7 +1544,11 @@ async function handleContentModeration(this: IExecuteFunctions, itemIndex: numbe
 			}
 		}
 
-		console.log(`[ContentModeration] Using nsfw-classifier format: ${endpoint}, body keys: ${Object.keys(body).join(', ')}`);
+		console.log(
+			`[ContentModeration] Using nsfw-classifier format: ${endpoint}, body keys: ${Object.keys(
+				body,
+			).join(', ')}`,
+		);
 
 		// Make API request with correct endpoint
 		const timeout = additionalOptions.timeout as number | undefined;
@@ -1480,27 +1580,47 @@ async function handleContentModeration(this: IExecuteFunctions, itemIndex: numbe
 	);
 }
 
-async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject | { binaryData: Buffer; mimeType: string; fileName: string }> {
+async function handleVideoGeneration(
+	this: IExecuteFunctions,
+	itemIndex: number,
+): Promise<IDataObject | { binaryData: Buffer; mimeType: string; fileName: string }> {
 	const operation = this.getNodeParameter('operation', itemIndex) as string;
-	const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex, 'https://video.chutes.ai') as string;
+	const chuteUrl = this.getNodeParameter(
+		'chuteUrl',
+		itemIndex,
+		'https://video.chutes.ai',
+	) as string;
 	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
-	const additionalOptions = this.getNodeParameter('additionalOptions', itemIndex, {}) as IDataObject;
+	const additionalOptions = this.getNodeParameter(
+		'additionalOptions',
+		itemIndex,
+		{},
+	) as IDataObject;
 
 	// Dynamically discover chute capabilities via OpenAPI schema
-	const { discoverChuteCapabilities, buildRequestBody } = await import('./transport/openApiDiscovery');
-	console.log(`[VideoGen] Discovering capabilities for: ${chuteUrl}`);
-	const capabilities = await discoverChuteCapabilities(chuteUrl, async (openApiUrl: string) =>
-		await this.helpers.requestWithAuthentication.call(this, 'chutesApi', {
-			method: 'GET',
-			url: openApiUrl,
-			headers: {
-				Accept: 'application/json',
-			},
-			json: true,
-		}),
+	const { discoverChuteCapabilities, buildRequestBody } = await import(
+		'./transport/openApiDiscovery'
 	);
-	console.log(`[VideoGen] Discovered endpoints:`, capabilities.endpoints.map(e => e.path));
-	console.log(`[VideoGen] Supports T2V: ${capabilities.supportsTextToVideo}, I2V: ${capabilities.supportsImageToVideo}`);
+	console.log(`[VideoGen] Discovering capabilities for: ${chuteUrl}`);
+	const capabilities = await discoverChuteCapabilities(
+		chuteUrl,
+		async (openApiUrl: string) =>
+			await this.helpers.requestWithAuthentication.call(this, 'chutesApi', {
+				method: 'GET',
+				url: openApiUrl,
+				headers: {
+					Accept: 'application/json',
+				},
+				json: true,
+			}),
+	);
+	console.log(
+		`[VideoGen] Discovered endpoints:`,
+		capabilities.endpoints.map((e) => e.path),
+	);
+	console.log(
+		`[VideoGen] Supports T2V: ${capabilities.supportsTextToVideo}, I2V: ${capabilities.supportsImageToVideo}`,
+	);
 
 	// Prepare user inputs
 	const userInputs: IDataObject = {
@@ -1519,27 +1639,26 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 	}
 
 	// ✅ Calculate frames from duration and fps
-	const duration = additionalOptions.duration !== undefined 
-		? Number(additionalOptions.duration) 
-		: 5; // Default 5 seconds
-	
-	const fps = additionalOptions.fps !== undefined 
-		? Number(additionalOptions.fps) 
-		: 24; // Default 24 fps
-	
+	const duration =
+		additionalOptions.duration !== undefined ? Number(additionalOptions.duration) : 5; // Default 5 seconds
+
+	const fps = additionalOptions.fps !== undefined ? Number(additionalOptions.fps) : 24; // Default 24 fps
+
 	let frames = Math.round(duration * fps); // Calculate frames
-	
+
 	// LTX-2 requires frames to follow formula: num_frames = 8n + 1
 	// Valid values: 9, 17, 25, 33, 41, 49, 57, 65, 73, 81, 89, 97, 105, 113, 121, etc.
 	if (chuteUrl.toLowerCase().includes('ltx')) {
 		const n = Math.round((frames - 1) / 8);
 		const roundedFrames = Math.max(9, 8 * n + 1); // Ensure minimum of 9 frames
 		if (roundedFrames !== frames) {
-			console.log(`[VideoGen] LTX-2 detected: Rounding frames ${frames} -> ${roundedFrames} (8×${n}+1)`);
+			console.log(
+				`[VideoGen] LTX-2 detected: Rounding frames ${frames} -> ${roundedFrames} (8×${n}+1)`,
+			);
 			frames = roundedFrames;
 		}
 	}
-	
+
 	userInputs.frames = frames;
 	userInputs.fps = fps;
 
@@ -1549,15 +1668,18 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 	const lorasConfig = additionalOptions.loras as IDataObject | undefined;
 	if (lorasConfig && lorasConfig.loraItems && Array.isArray(lorasConfig.loraItems)) {
 		const loras = (lorasConfig.loraItems as Array<IDataObject>)
-			.map(item => ({
+			.map((item) => ({
 				name: item.name as string,
 				strength: (item.strength as number) || 1.0,
 			}))
-			.filter(lora => lora.name); // Remove any entries without a name
-		
+			.filter((lora) => lora.name); // Remove any entries without a name
+
 		if (loras.length > 0) {
 			userInputs.loras = loras;
-			console.log(`[VideoGen] Added ${loras.length} LoRA adapter(s):`, loras.map(l => `${l.name}@${l.strength}`).join(', '));
+			console.log(
+				`[VideoGen] Added ${loras.length} LoRA adapter(s):`,
+				loras.map((l) => `${l.name}@${l.strength}`).join(', '),
+			);
 		}
 	}
 
@@ -1630,13 +1752,12 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 
 		// Otherwise return as JSON (e.g., if API returns URL)
 		return response;
-
 	} else if (operation === 'image2video') {
 		// Image-to-video generation
 		const imageParam = this.getNodeParameter('image', itemIndex, '') as string;
-		
+
 		let imageBase64: string = '';
-		
+
 		// PRIORITY 1: Try to get image from binary data first (from previous node)
 		const binaryData = this.getInputData()[itemIndex].binary;
 		if (binaryData && binaryData.data) {
@@ -1649,7 +1770,7 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 				// Continue to try other methods
 			}
 		}
-		
+
 		// PRIORITY 2: If no binary data, check the image parameter
 		if (!imageBase64 && imageParam) {
 			if (imageParam.startsWith('http://') || imageParam.startsWith('https://')) {
@@ -1700,16 +1821,18 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 		// LTX-2: uses images array format (new)
 		// Wan-2.2 and others: use singular image format (backward compatibility)
 		const isLTX2 = chuteUrl && chuteUrl.toLowerCase().includes('ltx');
-		
+
 		if (isLTX2) {
 			// LTX-2: images array format with frame_index and strength
-			const imageStrength = additionalOptions.image_strength !== undefined 
-				? (additionalOptions.image_strength as number) 
-				: 1.0; // API default
-			const imageFrameIndex = additionalOptions.image_frame_index !== undefined 
-				? (additionalOptions.image_frame_index as number) 
-				: 0; // First frame by default
-			
+			const imageStrength =
+				additionalOptions.image_strength !== undefined
+					? (additionalOptions.image_strength as number)
+					: 1.0; // API default
+			const imageFrameIndex =
+				additionalOptions.image_frame_index !== undefined
+					? (additionalOptions.image_frame_index as number)
+					: 0; // First frame by default
+
 			userInputs.images = [
 				{
 					image_b64: imageBase64,
@@ -1773,13 +1896,12 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 
 		// Otherwise return as JSON (e.g., if API returns URL)
 		return response;
-	
 	} else if (operation === 'video2video') {
 		// Video-to-video transformation (style transfer, effects via LoRA)
 		const videoParam = this.getNodeParameter('video', itemIndex, '') as string;
-		
+
 		let videoBase64: string = '';
-		
+
 		// PRIORITY 1: Try to get video from binary data first (from previous node)
 		const binaryData = this.getInputData()[itemIndex].binary;
 		if (binaryData && binaryData.data) {
@@ -1792,7 +1914,7 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 				// Continue to try other methods
 			}
 		}
-		
+
 		// PRIORITY 2: If no binary data, check the video parameter
 		if (!videoBase64 && videoParam) {
 			if (videoParam.startsWith('http://') || videoParam.startsWith('https://')) {
@@ -1841,7 +1963,7 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 
 		// Add video to user inputs (will be mapped to correct parameter name)
 		userInputs.video_b64 = videoBase64;
-		
+
 		// V2V requires ic_lora pipeline
 		if (!userInputs.pipeline) {
 			userInputs.pipeline = 'ic_lora';
@@ -1896,22 +2018,25 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 
 		// Otherwise return as JSON (e.g., if API returns URL)
 		return response;
-	
 	} else if (operation === 'keyframe') {
 		// Keyframe interpolation - generate video from multiple keyframe images
-		const keyframeImagesCollection = this.getNodeParameter('keyframeImages', itemIndex, {}) as IDataObject;
-		
+		const keyframeImagesCollection = this.getNodeParameter(
+			'keyframeImages',
+			itemIndex,
+			{},
+		) as IDataObject;
+
 		// Process keyframe images
-		const images: Array<{image_b64: string; frame_index: number; strength: number}> = [];
-		
+		const images: Array<{ image_b64: string; frame_index: number; strength: number }> = [];
+
 		// Get ALL input items - needed to search for binary data across merged items
 		const allInputItems = this.getInputData();
-		
+
 		if (keyframeImagesCollection.images && Array.isArray(keyframeImagesCollection.images)) {
 			for (const keyframe of keyframeImagesCollection.images as Array<IDataObject>) {
 				const imageParam = keyframe.image as string;
 				let imageBase64 = '';
-				
+
 				// PRIORITY 1: Search ALL input items for the binary property name
 				// This is CRITICAL for Merge nodes that combine multiple binary items
 				// e.g., Item 0 has "start_frame_image", Item 1 has "data"
@@ -1923,21 +2048,28 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 							try {
 								const imageBuffer = await this.helpers.getBinaryDataBuffer(idx, imageParam);
 								imageBase64 = imageBuffer.toString('base64');
-								console.log(`[Keyframe] Found binary "${imageParam}" in item ${idx}, converted to base64`);
+								console.log(
+									`[Keyframe] Found binary "${imageParam}" in item ${idx}, converted to base64`,
+								);
 								break; // Found it, stop searching
 							} catch (error) {
-								console.warn(`Failed to get binary data for "${imageParam}" from item ${idx}:`, error);
+								console.warn(
+									`Failed to get binary data for "${imageParam}" from item ${idx}:`,
+									error,
+								);
 							}
 						}
 					}
 				}
-				
+
 				// PRIORITY 2: Empty field - search ALL items for "data" property (STANDARD n8n pattern)
 				// Also handles case where keyframes map to sequential items
 				if (!imageBase64 && !imageParam) {
 					// For empty fields, try to use items in sequence based on keyframe order
-					const keyframeIdx = (keyframeImagesCollection.images as Array<IDataObject>).indexOf(keyframe);
-					
+					const keyframeIdx = (keyframeImagesCollection.images as Array<IDataObject>).indexOf(
+						keyframe,
+					);
+
 					// First try: Use the item at the same index as this keyframe
 					if (keyframeIdx < allInputItems.length) {
 						const itemBinary = allInputItems[keyframeIdx].binary;
@@ -1945,13 +2077,15 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 							try {
 								const imageBuffer = await this.helpers.getBinaryDataBuffer(keyframeIdx, 'data');
 								imageBase64 = imageBuffer.toString('base64');
-								console.log(`[Keyframe] Using binary.data from item ${keyframeIdx} for keyframe ${keyframeIdx}`);
+								console.log(
+									`[Keyframe] Using binary.data from item ${keyframeIdx} for keyframe ${keyframeIdx}`,
+								);
 							} catch (error) {
 								console.warn(`Failed to get binary.data from item ${keyframeIdx}:`, error);
 							}
 						}
 					}
-					
+
 					// Fallback: Search all items for any "data" property we haven't used yet
 					if (!imageBase64) {
 						for (let idx = 0; idx < allInputItems.length; idx++) {
@@ -1969,7 +2103,7 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 						}
 					}
 				}
-				
+
 				// PRIORITY 3: Handle different image input formats (URL, data URL, base64)
 				if (!imageBase64 && imageParam) {
 					if (imageParam.startsWith('http://') || imageParam.startsWith('https://')) {
@@ -2005,24 +2139,26 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 					// NOTE: If imageParam is not a URL, data URL, or found as binary property,
 					// we do NOT assume it's base64 - that was causing the bug!
 				}
-				
+
 				// Validate we got image data for this keyframe
 				if (!imageBase64) {
 					throw new NodeOperationError(
 						this.getNode(),
-						`Could not find image data for keyframe. The value "${imageParam || '(empty)'}" was not found as a binary property in any input item, and is not a valid URL or base64 string.`,
+						`Could not find image data for keyframe. The value "${
+							imageParam || '(empty)'
+						}" was not found as a binary property in any input item, and is not a valid URL or base64 string.`,
 						{ itemIndex },
 					);
 				}
-				
+
 				images.push({
 					image_b64: imageBase64,
-					frame_index: keyframe.frameIndex as number || 0,
-					strength: keyframe.strength as number || 1.0,
+					frame_index: (keyframe.frameIndex as number) || 0,
+					strength: (keyframe.strength as number) || 1.0,
 				});
 			}
 		}
-		
+
 		// Validate we have at least 2 keyframe images
 		if (images.length < 2) {
 			throw new NodeOperationError(
@@ -2031,10 +2167,10 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 				{ itemIndex },
 			);
 		}
-		
+
 		// Add keyframe images to user inputs
 		userInputs.images = images;
-		
+
 		// Keyframe requires keyframe_interp pipeline
 		if (!userInputs.pipeline) {
 			userInputs.pipeline = 'keyframe_interp';

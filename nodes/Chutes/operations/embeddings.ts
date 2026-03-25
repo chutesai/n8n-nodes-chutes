@@ -67,11 +67,11 @@ export const embeddingsOperations: INodeProperties[] = [
 				name: 'timeout',
 				type: 'number',
 				default: undefined,
-				description: 'Maximum time to wait for embedding generation (in seconds). Leave empty for no timeout. If exceeded, the node will error and can trigger n8n\'s retry flow.',
+				description:
+					"Maximum time to wait for embedding generation (in seconds). Leave empty for no timeout. If exceeded, the node will error and can trigger n8n's retry flow.",
 				placeholder: '30',
 				hint: 'Recommended: 30 seconds for embeddings. Leave empty if generation needs more time.',
 			},
 		],
 	},
 ];
-

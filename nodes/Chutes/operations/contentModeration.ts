@@ -38,7 +38,8 @@ export const contentModerationOperations: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Text content to analyze for moderation. Provide either Content (text) OR Image, not both.',
+		description:
+			'Text content to analyze for moderation. Provide either Content (text) OR Image, not both.',
 		placeholder: 'Text content to moderate',
 	},
 
@@ -54,7 +55,8 @@ export const contentModerationOperations: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Image to analyze for moderation. Can be a URL, base64 data URI, or binary data from previous node. Provide either Content (text) OR Image, not both.',
+		description:
+			'Image to analyze for moderation. Can be a URL, base64 data URI, or binary data from previous node. Provide either Content (text) OR Image, not both.',
 		placeholder: 'https://example.com/image.jpg or leave empty to use binary data',
 		hint: 'Supports: URL, base64 data URI (data:image/png;base64,...), or binary data from previous node',
 	},
@@ -84,11 +86,11 @@ export const contentModerationOperations: INodeProperties[] = [
 				name: 'timeout',
 				type: 'number',
 				default: undefined,
-				description: 'Maximum time to wait for content analysis (in seconds). Leave empty for no timeout. If exceeded, the node will error and can trigger n8n\'s retry flow.',
+				description:
+					"Maximum time to wait for content analysis (in seconds). Leave empty for no timeout. If exceeded, the node will error and can trigger n8n's retry flow.",
 				placeholder: '30',
 				hint: 'Recommended: 30 seconds for moderation. Leave empty if analysis needs more time.',
 			},
 		],
 	},
 ];
-

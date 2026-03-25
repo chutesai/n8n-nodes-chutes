@@ -20,9 +20,7 @@ function toTrimmedString(value: unknown): string {
 
 export function parseGrantedScopes(grantedScopes: unknown): string[] {
 	if (Array.isArray(grantedScopes)) {
-		return grantedScopes
-			.map((value) => String(value).trim())
-			.filter(Boolean);
+		return grantedScopes.map((value) => String(value).trim()).filter(Boolean);
 	}
 
 	if (typeof grantedScopes === 'string') {
@@ -114,11 +112,21 @@ async function ensureChutesInvokeScope(credentials: IDataObject): Promise<void> 
 /**
  * Resource types map to chute subdomains
  */
-export type ChuteResourceType = 'textGeneration' | 'imageGeneration' | 'videoGeneration' | 'audioGeneration' | 'textToSpeech' | 'speechToText' | 'inference' | 'embeddings' | 'musicGeneration' | 'contentModeration';
+export type ChuteResourceType =
+	| 'textGeneration'
+	| 'imageGeneration'
+	| 'videoGeneration'
+	| 'audioGeneration'
+	| 'textToSpeech'
+	| 'speechToText'
+	| 'inference'
+	| 'embeddings'
+	| 'musicGeneration'
+	| 'contentModeration';
 
 /**
  * Get the appropriate Chutes.ai base URL for a given resource type
- * 
+ *
  * @param credentials - Chutes.ai credentials
  * @param resourceType - Type of resource (textGeneration, imageGeneration, etc.)
  * @param customChuteUrl - Custom chute URL selected by user in node parameter
@@ -183,7 +191,7 @@ export async function chutesApiRequest(
 		method,
 		headers: {
 			'Content-Type': 'application/json',
-			'Accept': 'application/json',
+			Accept: 'application/json',
 			'User-Agent': 'n8n-ChutesAI/0.0.9',
 			'X-Chutes-Source': 'n8n-integration',
 			...headers,
@@ -202,17 +210,15 @@ export async function chutesApiRequest(
 	}
 
 	try {
-		const response = await this.helpers.requestWithAuthentication.call(
-			this,
-			'chutesApi',
-			options,
-		);
+		const response = await this.helpers.requestWithAuthentication.call(this, 'chutesApi', options);
 
 		return response;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as any, {
 			message: `Chutes.ai API error: ${(error as any).message}`,
-			description: `Error from Chutes.ai: ${(error as any).description || 'Check your API key and parameters'}`,
+			description: `Error from Chutes.ai: ${
+				(error as any).description || 'Check your API key and parameters'
+			}`,
 		});
 	}
 }
@@ -230,9 +236,7 @@ export async function chutesApiRequestWithRetry(
 ): Promise<any> {
 	const maxRetries = 3;
 	const baseDelay = 1000;
-	const getStatusCode = (error: {
-		httpCode?: number | string;
-	}): number | undefined => {
+	const getStatusCode = (error: { httpCode?: number | string }): number | undefined => {
 		if (typeof error.httpCode === 'number') {
 			return Number.isNaN(error.httpCode) ? undefined : error.httpCode;
 		}
@@ -276,4 +280,3 @@ export async function chutesApiRequestWithRetry(
 		}
 	}
 }
-

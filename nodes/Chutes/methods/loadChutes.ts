@@ -132,7 +132,7 @@ export interface ChutesListResponse {
 
 /**
  * Construct the full API URL for a chute from its slug
- * 
+ *
  * @param slug - Chute slug (e.g., "chutes-deepseek-ai-deepseek-r1")
  * @returns Full chute URL (e.g., "https://chutes-deepseek-ai-deepseek-r1.chutes.ai")
  */
@@ -192,7 +192,7 @@ function formatChuteOption(chute: ChuteOption): INodePropertyOptions {
 
 /**
  * Load all available chutes (user's + public)
- * 
+ *
  * @param this - n8n load options context
  * @param includePublic - Whether to include public chutes (default: true)
  * @param limit - Maximum number of chutes to return (default: 100)
@@ -205,7 +205,7 @@ export async function getChutes(
 ): Promise<INodePropertyOptions[]> {
 	try {
 		const chutes = await getRawChutes(this, includePublic, limit);
-		
+
 		if (chutes.length === 0) {
 			console.warn('No chutes returned from Chutes.ai API');
 		}
@@ -256,7 +256,7 @@ export async function getChutesForSelectedResource(
 
 /**
  * Load chutes filtered by type/template
- * 
+ *
  * @param this - n8n load options context
  * @param template - Filter by standard_template (e.g., 'vllm', 'diffusion')
  * @returns Array of filtered chute options
@@ -282,20 +282,18 @@ export async function getChutesByType(
  * Uses standard_template field to identify vLLM models (language models)
  * Dynamically filters based on API template classification
  */
-export async function getLLMChutes(
-	this: ILoadOptionsFunctions,
-): Promise<INodePropertyOptions[]> {
+export async function getLLMChutes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	try {
 		const chutes = await getRawChutes(this, true, 500);
-		
+
 		// Filter for public vLLM template chutes (language models)
 		const llmChutes = chutes.filter((chute) => {
 			const template = chute.standard_template?.toLowerCase() || '';
-			
+
 			// Must be public and have vLLM template
 			return chute.public && template === 'vllm';
 		});
-		
+
 		return llmChutes.map(formatChuteOption);
 	} catch (error) {
 		console.error('Failed to load LLM chutes:', error);
@@ -308,12 +306,10 @@ export async function getLLMChutes(
  * Uses standard_template field to identify diffusion models (image generation)
  * Dynamically filters based on API template classification
  */
-export async function getImageChutes(
-	this: ILoadOptionsFunctions,
-): Promise<INodePropertyOptions[]> {
+export async function getImageChutes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	try {
 		const chutes = await getRawChutes(this, true, 500);
-		
+
 		// Get current operation if available (for smart sorting)
 		let operation: string | undefined;
 		try {
@@ -321,37 +317,36 @@ export async function getImageChutes(
 		} catch {
 			// Operation not set yet, that's okay - use default order
 		}
-		
+
 		// Filter for image generation chutes using permissive logic
 		const imageChutes = chutes.filter((chute) => {
 			const template = chute.standard_template?.toLowerCase() || '';
 			const name = chute.name?.toLowerCase() || '';
 			const tagline = chute.tagline?.toLowerCase() || '';
-			
+
 			// Must be public
 			if (!chute.public) return false;
-			
+
 			// Exclude LLM chutes by template
 			if (template === 'vllm') return false;
-			
+
 			// Exclude embedding chutes
 			if (template === 'tei' || template === 'embedding') return false;
-			
+
 			// Exclude video chutes
-			const isVideo = template === 'video' ||
+			const isVideo =
+				template === 'video' ||
 				name.includes('video') ||
 				name.includes('i2v') || // image-to-video
 				name.includes('img2vid') ||
 				tagline.includes('video');
 			if (isVideo) return false;
-			
+
 			// Include if template is diffusion OR has image-related keywords
 			return (
 				template === 'diffusion' ||
-				
 				// Generic image keywords
 				name.includes('image') || // Includes qwen-image-edit, z-image-turbo, etc.
-				
 				// Top 20 image model families (research-backed, future-proof)
 				name.includes('flux') || // FLUX (Black Forest Labs) - dev/schnell/kontext
 				name.includes('stable-diffusion') || // Stable Diffusion 3/3.5
@@ -375,11 +370,9 @@ export async function getImageChutes(
 				name.includes('lumina') || // Lumina
 				name.includes('dall-e') || // DALL-E variants
 				name.includes('dall-') ||
-				
 				// XL variants and mixes (from previous work)
 				name.endsWith('xl') || // SDXL variants: NovaFurryXL, HassakuXL, etc.
 				name.endsWith('mix') || // Model mixes: iLustMix, etc.
-				
 				// Tagline/description checks
 				tagline.includes('image generation') ||
 				tagline.includes('image editing') ||
@@ -390,29 +383,35 @@ export async function getImageChutes(
 				tagline.includes('character generation') // Character generation
 			);
 		});
-		
+
 		// Convert to options
 		const options = imageChutes.map(formatChuteOption);
-		
+
 		// Smart sorting: when operation is "edit", prioritize edit-capable chutes
 		if (operation === 'edit') {
 			return options.sort((a, b) => {
 				const aName = a.name.toLowerCase();
 				const bName = b.name.toLowerCase();
-				
-			// Check for edit-related keywords
-			const aHasEdit = aName.includes('edit') || aName.includes('inpaint') ||
-				aName.includes('outpaint') || aName.includes('img2img');
-			const bHasEdit = bName.includes('edit') || bName.includes('inpaint') ||
-				bName.includes('outpaint') || bName.includes('img2img');
-				
+
+				// Check for edit-related keywords
+				const aHasEdit =
+					aName.includes('edit') ||
+					aName.includes('inpaint') ||
+					aName.includes('outpaint') ||
+					aName.includes('img2img');
+				const bHasEdit =
+					bName.includes('edit') ||
+					bName.includes('inpaint') ||
+					bName.includes('outpaint') ||
+					bName.includes('img2img');
+
 				// Sort edit-capable chutes to the top
 				if (aHasEdit && !bHasEdit) return -1;
 				if (!aHasEdit && bHasEdit) return 1;
 				return 0; // Keep original order for same priority
 			});
 		}
-		
+
 		return options; // Default order for "generate" or undefined operation
 	} catch (error) {
 		console.error('Failed to load image chutes:', error);
@@ -424,39 +423,39 @@ export async function getImageChutes(
  * Load Video Generation chutes
  * Filters for video generation models
  */
-export async function getVideoChutes(
-	this: ILoadOptionsFunctions,
-): Promise<INodePropertyOptions[]> {
+export async function getVideoChutes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	try {
 		const chutes = await getRawChutes(this, true, 500);
-		
+
 		// Filter for public video generation chutes (keyword-based, no template yet)
 		const videoChutes = chutes.filter((chute) => {
 			if (!chute.public) return false;
-			
+
 			const template = chute.standard_template?.toLowerCase() || '';
 			const name = chute.name?.toLowerCase() || '';
 			const desc = chute.description?.toLowerCase() || '';
 			const tagline = chute.tagline?.toLowerCase() || '';
-			
-		// Exclude models with "image" in the name (unless they also have video keywords)
-		if (name.includes('image') &&
-			!name.includes('video') &&
-			!name.includes('i2v') &&
-			!name.includes('img2vid') &&
-			!name.includes('image-to-video') &&
-			!name.includes('image2video')) {
-			return false;
-		}
-			
+
+			// Exclude models with "image" in the name (unless they also have video keywords)
+			if (
+				name.includes('image') &&
+				!name.includes('video') &&
+				!name.includes('i2v') &&
+				!name.includes('img2vid') &&
+				!name.includes('image-to-video') &&
+				!name.includes('image2video')
+			) {
+				return false;
+			}
+
 			// Exclude image-only models (diffusion template without video keywords)
 			if (template === 'diffusion' && !name.includes('video') && !desc.includes('video')) {
 				return false;
 			}
-			
+
 			// Exclude LLMs
 			if (template === 'vllm') return false;
-			
+
 			// Include video generation models
 			return (
 				// Generic video keywords
@@ -465,7 +464,6 @@ export async function getVideoChutes(
 				name.includes('img2vid') ||
 				name.includes('t2v') || // text-to-video
 				name.includes('text2video') ||
-				
 				// Top 20 video model families (research-backed, future-proof)
 				name.includes('wan') || // Wan (Alibaba) - Wan 2.1, Wan-2.2
 				name.includes('hunyuan') || // HunyuanVideo (Tencent)
@@ -484,7 +482,6 @@ export async function getVideoChutes(
 				name.includes('zeroscope') || // Zeroscope
 				name.includes('show-1') || // Show-1 (NUS ShowLab)
 				name.includes('lavie') || // LaVie
-				
 				// Description/tagline checks
 				desc.includes('video') ||
 				desc.includes('generate video') ||
@@ -499,7 +496,7 @@ export async function getVideoChutes(
 				tagline.includes('cinematic')
 			);
 		});
-		
+
 		return videoChutes.map(formatChuteOption);
 	} catch (error) {
 		console.error('Failed to load video chutes:', error);
@@ -511,37 +508,40 @@ export async function getVideoChutes(
  * Load Text-to-Speech chutes
  * Filters for TTS models (like Kokoro)
  */
-export async function getTTSChutes(
-	this: ILoadOptionsFunctions,
-): Promise<INodePropertyOptions[]> {
+export async function getTTSChutes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	try {
 		const chutes = await getRawChutes(this, true, 500);
-		
+
 		// Filter for public TTS chutes (keyword-based, no template yet)
 		const ttsChutes = chutes.filter((chute) => {
 			if (!chute.public) return false;
-			
+
 			const name = chute.name?.toLowerCase() || '';
 			const desc = chute.description?.toLowerCase() || '';
 			const tagline = chute.tagline?.toLowerCase() || '';
-			
-		// Exclude STT (opposite direction)
-		const isSTT = name.includes('whisper') || name.includes('stt') ||
-			desc.includes('speech to text') || desc.includes('transcription') ||
-			desc.includes('speech recognition');
-		if (isSTT) return false;
-			
+
+			// Exclude STT (opposite direction)
+			const isSTT =
+				name.includes('whisper') ||
+				name.includes('stt') ||
+				desc.includes('speech to text') ||
+				desc.includes('transcription') ||
+				desc.includes('speech recognition');
+			if (isSTT) return false;
+
 			// Exclude music generation (different audio category)
-			const isMusic = name.includes('music') || name.includes('song') ||
-							desc.includes('music generation') || desc.includes('song generation');
+			const isMusic =
+				name.includes('music') ||
+				name.includes('song') ||
+				desc.includes('music generation') ||
+				desc.includes('song generation');
 			if (isMusic) return false;
-			
+
 			// Include TTS models
 			return (
 				// Generic TTS keywords
 				name.includes('tts') ||
 				name.includes('text-to-speech') ||
-				
 				// Top 20 TTS model families (research-backed, future-proof)
 				name.includes('fish') || // Fish Speech (Fish Audio) - V1.5 DualAR
 				name.includes('chatterbox') || // Chatterbox (Resemble AI)
@@ -564,7 +564,6 @@ export async function getTTSChutes(
 				name.includes('openvoice') || // OpenVoice (MyShell)
 				name.includes('parler') || // Parler-TTS - controllable
 				name.includes('indextts') || // IndexTTS-2 - duration control
-				
 				// Description/tagline checks
 				desc.includes('text to speech') ||
 				desc.includes('text-to-speech') ||
@@ -577,7 +576,7 @@ export async function getTTSChutes(
 				tagline.includes('voice cloning')
 			);
 		});
-		
+
 		return ttsChutes.map(formatChuteOption);
 	} catch (error) {
 		console.error('Failed to load TTS chutes:', error);
@@ -589,39 +588,43 @@ export async function getTTSChutes(
  * Load Speech-to-Text chutes
  * Filters for STT models (like Whisper)
  */
-export async function getSTTChutes(
-	this: ILoadOptionsFunctions,
-): Promise<INodePropertyOptions[]> {
+export async function getSTTChutes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	try {
 		const chutes = await getRawChutes(this, true, 500);
-		
+
 		// Filter for public STT chutes (keyword-based, no template yet)
 		const sttChutes = chutes.filter((chute) => {
 			if (!chute.public) return false;
-			
+
 			const name = chute.name?.toLowerCase() || '';
 			const desc = chute.description?.toLowerCase() || '';
 			const tagline = chute.tagline?.toLowerCase() || '';
-			
-		// Exclude TTS (opposite direction)
-		const isTTS = (name.includes('tts') || name.includes('text-to-speech') ||
-			desc.includes('text to speech') || desc.includes('speech synthesis')) &&
-			!desc.includes('speech to text'); // but allow if it mentions STT
-		if (isTTS) return false;
-			
+
+			// Exclude TTS (opposite direction)
+			const isTTS =
+				(name.includes('tts') ||
+					name.includes('text-to-speech') ||
+					desc.includes('text to speech') ||
+					desc.includes('speech synthesis')) &&
+				!desc.includes('speech to text'); // but allow if it mentions STT
+			if (isTTS) return false;
+
 			// Exclude music generation models
-			const isMusic = name.includes('music') || name.includes('song') ||
-							name.includes('diffrhythm') || name.includes('musicgen') ||
-							desc.includes('music generation') || desc.includes('generate music');
+			const isMusic =
+				name.includes('music') ||
+				name.includes('song') ||
+				name.includes('diffrhythm') ||
+				name.includes('musicgen') ||
+				desc.includes('music generation') ||
+				desc.includes('generate music');
 			if (isMusic) return false;
-			
+
 			// Include STT models
 			return (
 				// Generic STT keywords
 				name.includes('stt') ||
 				name.includes('speech-to-text') ||
 				name.includes('asr') || // Automatic Speech Recognition
-				
 				// Top 20 STT/ASR model families (research-backed, future-proof)
 				name.includes('whisper') || // Whisper (OpenAI) - gold standard, variants: turbo, faster, cpp, distil
 				name.includes('voxtral') || // Voxtral (Mistral) - SOTA, beats Whisper
@@ -639,7 +642,6 @@ export async function getSTTChutes(
 				name.includes('mms') || // MMS (Meta) - 1000+ languages
 				name.includes('moonshine') || // Moonshine - efficient on-device
 				name.includes('julius') || // Julius - lightweight multilingual
-				
 				// Description/tagline checks
 				desc.includes('speech to text') ||
 				desc.includes('speech-to-text') ||
@@ -651,7 +653,7 @@ export async function getSTTChutes(
 				tagline.includes('transcription')
 			);
 		});
-		
+
 		return sttChutes.map(formatChuteOption);
 	} catch (error) {
 		console.error('Failed to load STT chutes:', error);
@@ -663,35 +665,36 @@ export async function getSTTChutes(
  * Load Music Generation chutes
  * Filters for music/audio generation models
  */
-export async function getMusicChutes(
-	this: ILoadOptionsFunctions,
-): Promise<INodePropertyOptions[]> {
+export async function getMusicChutes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	try {
 		const chutes = await getRawChutes(this, true, 500);
-		
+
 		// Filter for public music generation chutes (keyword-based, no template yet)
 		const musicChutes = chutes.filter((chute) => {
 			if (!chute.public) return false;
-			
+
 			const name = chute.name?.toLowerCase() || '';
 			const desc = chute.description?.toLowerCase() || '';
 			const tagline = chute.tagline?.toLowerCase() || '';
-			
-		// Exclude TTS/STT (different audio category)
-		const isSpeech = name.includes('whisper') || name.includes('kokoro') ||
-			name.includes('tts') || name.includes('stt') ||
-			name.includes('speech') ||
-			desc.includes('text to speech') || desc.includes('speech to text') ||
-			desc.includes('transcription');
-		if (isSpeech) return false;
-			
+
+			// Exclude TTS/STT (different audio category)
+			const isSpeech =
+				name.includes('whisper') ||
+				name.includes('kokoro') ||
+				name.includes('tts') ||
+				name.includes('stt') ||
+				name.includes('speech') ||
+				desc.includes('text to speech') ||
+				desc.includes('speech to text') ||
+				desc.includes('transcription');
+			if (isSpeech) return false;
+
 			// Include music generation models
 			return (
 				// Generic music keywords
 				name.includes('music') ||
 				name.includes('song') ||
 				name.includes('audio generation') ||
-				
 				// Top 20 music model families (research-backed, future-proof)
 				name.includes('musicgen') || // MusicGen (Meta AudioCraft) - widely adopted
 				name.includes('yue') || // YuE (HKUST/M-A-P) - full-song with vocals
@@ -713,7 +716,6 @@ export async function getMusicChutes(
 				name.includes('dance-diffusion') || // Dance Diffusion
 				name.includes('mousai') || // Moûsai - efficient diffusion
 				name.includes('musicagent') || // MusicAgent (Microsoft) - multi-tool
-				
 				// Description/tagline checks
 				desc.includes('music') ||
 				desc.includes('song') ||
@@ -725,7 +727,7 @@ export async function getMusicChutes(
 				tagline.includes('audio generation')
 			);
 		});
-		
+
 		return musicChutes.map(formatChuteOption);
 	} catch (error) {
 		console.error('Failed to load music chutes:', error);
@@ -742,61 +744,61 @@ export async function getEmbeddingChutes(
 ): Promise<INodePropertyOptions[]> {
 	try {
 		const chutes = await getRawChutes(this, true, 500);
-		
+
 		// Filter for public embedding chutes
 		const embeddingChutes = chutes.filter((chute) => {
 			if (!chute.public) return false;
-			
+
 			const template = chute.standard_template?.toLowerCase() || '';
 			const name = chute.name?.toLowerCase() || '';
 			const desc = chute.description?.toLowerCase() || '';
-			
+
 			// Template-based filtering (preferred)
 			if (template === 'embedding' || template === 'tei') return true;
-			
-		// Exclude LLM chutes (vllm template or obvious LLM keywords)
-		const isLLM = template === 'vllm' ||
-			name.includes('llm') ||
-			desc.includes('language model') ||
-			desc.includes('text generation');
-		if (isLLM) return false;
-			
+
+			// Exclude LLM chutes (vllm template or obvious LLM keywords)
+			const isLLM =
+				template === 'vllm' ||
+				name.includes('llm') ||
+				desc.includes('language model') ||
+				desc.includes('text generation');
+			if (isLLM) return false;
+
 			// Exclude image generation chutes
-			const isImage = template === 'diffusion' ||
-							name.includes('stable-diffusion') ||
-							name.includes('flux') ||
-							desc.includes('image generation');
+			const isImage =
+				template === 'diffusion' ||
+				name.includes('stable-diffusion') ||
+				name.includes('flux') ||
+				desc.includes('image generation');
 			if (isImage) return false;
-			
+
 			// Keyword fallback for chutes without template
 			return (
 				// Generic embedding keywords
 				name.includes('embedding') ||
 				name.includes('embed') ||
-				
 				// Top 20 embedding model families (research-backed, future-proof)
-				name.includes('qwen') && name.includes('embed') || // Qwen3-Embedding (Alibaba) - 0.6B-8B, multilingual
+				(name.includes('qwen') && name.includes('embed')) || // Qwen3-Embedding (Alibaba) - 0.6B-8B, multilingual
 				name.includes('bge') || // BGE/BGE-M3 (BAAI) - Beijing Academy of AI, multilingual/Chinese
 				name.includes('e5') || // E5 (Microsoft) - base/large/mistral variants
-				name.includes('nomic') && name.includes('embed') || // Nomic Embed (Nomic AI) - MoE, 8K context
+				(name.includes('nomic') && name.includes('embed')) || // Nomic Embed (Nomic AI) - MoE, 8K context
 				name.includes('gte') || // GTE (Alibaba) - General Text Embeddings
-				name.includes('jina') && name.includes('embed') || // Jina Embeddings (Jina AI) - 8K context, adapters
+				(name.includes('jina') && name.includes('embed')) || // Jina Embeddings (Jina AI) - 8K context, adapters
 				name.includes('mxbai') || // mxbai-embed (Mixedbread AI) - beats OpenAI
 				name.includes('minilm') || // all-MiniLM (Sentence Transformers) - 200M+ downloads
 				name.includes('mpnet') || // all-mpnet (Sentence Transformers) - higher quality
 				name.includes('instructor') || // Instructor (HKUNLP) - instruction-tuned
 				name.includes('uae') || // UAE (WhereIsAI) - Universal AnglE Embedding
-				name.includes('sfr') && name.includes('embed') || // SFR-Embedding (Salesforce) - strong retrieval
+				(name.includes('sfr') && name.includes('embed')) || // SFR-Embedding (Salesforce) - strong retrieval
 				name.includes('stella') || // Stella - compact high-performer
 				name.includes('embeddinggemma') || // EmbeddingGemma (Google) - Matryoshka, 100+ languages
-				name.includes('arctic') && name.includes('embed') || // Snowflake Arctic Embed
+				(name.includes('arctic') && name.includes('embed')) || // Snowflake Arctic Embed
 				name.includes('nv-embed') || // NV-Embed (NVIDIA) - enterprise
 				name.includes('gist') || // GIST - Guided In-context Self-Training
 				name.includes('contriever') || // Contriever (Meta) - unsupervised dense retrieval
 				name.includes('colbert') || // ColBERT v2 - late interaction
 				name.includes('dragon') || // DRAGON (Meta) - dense retriever
 				name.includes('sentence-transformer') || // Sentence Transformers family
-				
 				// Description/tagline checks
 				desc.includes('embedding') ||
 				desc.includes('embeddings') ||
@@ -805,7 +807,7 @@ export async function getEmbeddingChutes(
 				desc.includes('text embedding')
 			);
 		});
-		
+
 		return embeddingChutes.map(formatChuteOption);
 	} catch (error) {
 		console.error('Failed to load embedding chutes:', error);
@@ -822,67 +824,75 @@ export async function getModerationChutes(
 ): Promise<INodePropertyOptions[]> {
 	try {
 		const chutes = await getRawChutes(this, true, 500);
-		
+
 		// Filter for public moderation chutes
 		const moderationChutes = chutes.filter((chute) => {
 			if (!chute.public) return false;
-			
+
 			const template = chute.standard_template?.toLowerCase() || '';
 			const name = chute.name?.toLowerCase() || '';
 			const desc = chute.description?.toLowerCase() || '';
-			
+
 			// Template-based filtering (preferred)
 			if (template === 'moderation') return true;
-			
-		// Exclude LLM text generation chutes (vllm template)
-		const isLLM = template === 'vllm' &&
-			!name.includes('guard') &&
-			!name.includes('safety') &&
-			!name.includes('shield');
-		if (isLLM) return false;
-			
+
+			// Exclude LLM text generation chutes (vllm template)
+			const isLLM =
+				template === 'vllm' &&
+				!name.includes('guard') &&
+				!name.includes('safety') &&
+				!name.includes('shield');
+			if (isLLM) return false;
+
 			// Exclude embedding chutes
 			const isEmbedding = template === 'tei' || template === 'embedding';
 			if (isEmbedding) return false;
-			
+
 			// Keyword fallback for chutes without template
 			return (
 				// Generic moderation keywords
 				name.includes('moderation') ||
 				name.includes('safety') ||
-				
 				// Top 20 content moderation model families (research-backed, future-proof)
 				// LLM-Based Safety Guards
-				name.includes('llama-guard') || name.includes('llamaguard') || // Llama Guard (Meta) - 1B-12B, multimodal
-				name.includes('shieldgemma') || name.includes('shield-gemma') || // ShieldGemma (Google) - outperforms Llama Guard
-				name.includes('granite-guardian') || name.includes('granite') && name.includes('guard') || // Granite Guardian (IBM) - enterprise
+				name.includes('llama-guard') ||
+				name.includes('llamaguard') || // Llama Guard (Meta) - 1B-12B, multimodal
+				name.includes('shieldgemma') ||
+				name.includes('shield-gemma') || // ShieldGemma (Google) - outperforms Llama Guard
+				name.includes('granite-guardian') ||
+				(name.includes('granite') && name.includes('guard')) || // Granite Guardian (IBM) - enterprise
 				name.includes('wildguard') || // WildGuard - open guardrail
-				name.includes('nemo-guardrails') || name.includes('guardrails') || // NeMo Guardrails (NVIDIA)
-				name.includes('gpt-oss-safeguard') || name.includes('safeguard') || // GPT-OSS-Safeguard - 20B/120B
-				
+				name.includes('nemo-guardrails') ||
+				name.includes('guardrails') || // NeMo Guardrails (NVIDIA)
+				name.includes('gpt-oss-safeguard') ||
+				name.includes('safeguard') || // GPT-OSS-Safeguard - 20B/120B
 				// Text Toxicity/Hate Speech
 				name.includes('detoxify') || // Detoxify - RoBERTa-based, Jigsaw
-				name.includes('toxicbert') || name.includes('toxic-bert') || // ToxicBERT
-				name.includes('hatebert') || name.includes('hate-bert') || // HateBERT - hate speech
+				name.includes('toxicbert') ||
+				name.includes('toxic-bert') || // ToxicBERT
+				name.includes('hatebert') ||
+				name.includes('hate-bert') || // HateBERT - hate speech
 				name.includes('perspective') || // Perspective API (Google/Jigsaw)
-				name.includes('unitary') && name.includes('toxic') || // Unitary Detoxify
+				(name.includes('unitary') && name.includes('toxic')) || // Unitary Detoxify
 				name.includes('toxicity') || // Generic toxicity detection
-				name.includes('hate-speech') || name.includes('hatespeech') ||
-				
+				name.includes('hate-speech') ||
+				name.includes('hatespeech') ||
 				// Image/NSFW Detection
 				name.includes('nsfw') || // NSFW Detection (Falcons AI, ViT-based)
-				name.includes('nudenet') || name.includes('nude-net') || // NudeNet
-				name.includes('clip') && name.includes('nsfw') || // CLIP-based NSFW
-				name.includes('safety-checker') || name.includes('safetychecker') || // Stable Diffusion Safety Checker
-				
+				name.includes('nudenet') ||
+				name.includes('nude-net') || // NudeNet
+				(name.includes('clip') && name.includes('nsfw')) || // CLIP-based NSFW
+				name.includes('safety-checker') ||
+				name.includes('safetychecker') || // Stable Diffusion Safety Checker
 				// Prompt Security
-				name.includes('prompt-guard') || name.includes('promptguard') || // Prompt Guard (Meta) - injection/jailbreak
+				name.includes('prompt-guard') ||
+				name.includes('promptguard') || // Prompt Guard (Meta) - injection/jailbreak
 				name.includes('rebuff') || // Rebuff - prompt injection
-				name.includes('llama-firewall') || name.includes('llamafirewall') || // LlamaFirewall (Meta)
-				
+				name.includes('llama-firewall') ||
+				name.includes('llamafirewall') || // LlamaFirewall (Meta)
 				// Specialized
-				name.includes('codeshield') || name.includes('code-shield') || // CodeShield (Meta) - insecure code detection
-				
+				name.includes('codeshield') ||
+				name.includes('code-shield') || // CodeShield (Meta) - insecure code detection
 				// Description/tagline checks
 				desc.includes('moderation') ||
 				desc.includes('content moderation') ||
@@ -894,11 +904,10 @@ export async function getModerationChutes(
 				desc.includes('prompt injection')
 			);
 		});
-		
+
 		return moderationChutes.map(formatChuteOption);
 	} catch (error) {
 		console.error('Failed to load moderation chutes:', error);
 		return [];
 	}
 }
-

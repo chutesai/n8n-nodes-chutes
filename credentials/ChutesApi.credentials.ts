@@ -252,4 +252,3 @@ export class ChutesApi implements ICredentialType {
 		};
 	}
 }
-

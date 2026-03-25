@@ -66,7 +66,7 @@ export class ChutesChatModel implements INodeType {
 					loadOptionsDependsOn: ['chuteUrl'],
 				},
 				default: '',
-				description: 'Model to use (leave empty to use chute\'s default model)',
+				description: "Model to use (leave empty to use chute's default model)",
 				hint: 'Available models for the selected chute. Leave as "Default" to let the chute choose.',
 			},
 			{
@@ -79,7 +79,8 @@ export class ChutesChatModel implements INodeType {
 					numberPrecision: 2,
 				},
 				default: 0.7,
-				description: 'Controls randomness in responses. Lower = more focused, higher = more creative.',
+				description:
+					'Controls randomness in responses. Lower = more focused, higher = more creative.',
 				hint: 'Range: 0.0 to 2.0. Default: 0.7',
 			},
 			{
@@ -154,14 +155,14 @@ export class ChutesChatModel implements INodeType {
 	 */
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		console.log('[ChutesChatModel] supplyData called, itemIndex:', itemIndex);
-		
+
 		try {
 			const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex) as string;
 			console.log('[ChutesChatModel] chuteUrl:', chuteUrl);
-			
+
 			const model = this.getNodeParameter('model', itemIndex, '') as string;
 			console.log('[ChutesChatModel] model:', model);
-			
+
 			const temperature = this.getNodeParameter('temperature', itemIndex, 0.7) as number;
 			const options = this.getNodeParameter('options', itemIndex, {}) as {
 				maxTokens?: number;
@@ -188,11 +189,7 @@ export class ChutesChatModel implements INodeType {
 				credentials,
 				requestHelper: this.helpers, // Pass n8n request helper to the model
 				authenticatedRequest: async (requestOptions) =>
-					await this.helpers.requestWithAuthentication.call(
-						this,
-						'chutesApi',
-						requestOptions,
-					),
+					await this.helpers.requestWithAuthentication.call(this, 'chutesApi', requestOptions),
 			});
 			console.log('[ChutesChatModel] Chat model created successfully');
 
@@ -205,4 +202,3 @@ export class ChutesChatModel implements INodeType {
 		}
 	}
 }
-

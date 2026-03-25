@@ -96,15 +96,19 @@ export async function getChutesTextModels(
 		}
 
 		const models = parseModelsResponse(response);
-		
+
 		// Filter for text/chat models if type field exists
-		const textModels = Array.isArray(models) ? models.filter((model: any) => {
-			const type = model.type?.toLowerCase() || '';
-			return !type || type.includes('text') || type.includes('chat') || type.includes('llm');
-		}) : [];
+		const textModels = Array.isArray(models)
+			? models.filter((model: any) => {
+					const type = model.type?.toLowerCase() || '';
+					return !type || type.includes('text') || type.includes('chat') || type.includes('llm');
+			  })
+			: [];
 
 		return textModels.map((model: any) => ({
-			name: `${model.name || model.id} ${model.context_length ? `(${model.context_length} tokens)` : ''}`,
+			name: `${model.name || model.id} ${
+				model.context_length ? `(${model.context_length} tokens)` : ''
+			}`,
 			value: model.id,
 			description: model.description || `Cost: ${model.pricing?.input || 'N/A'}`,
 		}));
@@ -140,12 +144,16 @@ export async function getChutesImageModels(
 		});
 
 		const models = parseModelsResponse(response);
-		
+
 		// Filter for image generation models if type field exists
-		const imageModels = Array.isArray(models) ? models.filter((model: any) => {
-			const type = model.type?.toLowerCase() || '';
-			return !type || type.includes('image') || type.includes('vision') || type.includes('dalle');
-		}) : [];
+		const imageModels = Array.isArray(models)
+			? models.filter((model: any) => {
+					const type = model.type?.toLowerCase() || '';
+					return (
+						!type || type.includes('image') || type.includes('vision') || type.includes('dalle')
+					);
+			  })
+			: [];
 
 		return imageModels.map((model: any) => ({
 			name: model.name || model.id,
@@ -225,9 +233,12 @@ export async function getModelsForSelectedChute(
 
 		// Return the models for this specific chute
 		return models.map((model: any) => ({
-			name: `${model.name || model.id}${model.context_length ? ` (${model.context_length} tokens)` : ''}`,
+			name: `${model.name || model.id}${
+				model.context_length ? ` (${model.context_length} tokens)` : ''
+			}`,
 			value: model.id,
-			description: model.description || `Cost: ${model.pricing?.input || model.pricing?.generation || 'N/A'}`,
+			description:
+				model.description || `Cost: ${model.pricing?.input || model.pricing?.generation || 'N/A'}`,
 		}));
 	} catch (error) {
 		console.log(`Chute ${chuteUrl} does not have /v1/models endpoint - using default model`);
@@ -241,4 +252,3 @@ export async function getModelsForSelectedChute(
 		];
 	}
 }
-

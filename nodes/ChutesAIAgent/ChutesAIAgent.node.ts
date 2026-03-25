@@ -40,9 +40,10 @@ function parseToolCalls(response: any): Array<{ name: string; args: any }> {
 		try {
 			toolCalls.push({
 				name: response.function_call.name,
-				args: typeof response.function_call.arguments === 'string'
-					? JSON.parse(response.function_call.arguments)
-					: response.function_call.arguments,
+				args:
+					typeof response.function_call.arguments === 'string'
+						? JSON.parse(response.function_call.arguments)
+						: response.function_call.arguments,
 			});
 		} catch (error) {
 			// Failed to parse - ignore this tool call
@@ -55,9 +56,10 @@ function parseToolCalls(response: any): Array<{ name: string; args: any }> {
 			try {
 				toolCalls.push({
 					name: call.function?.name || call.name,
-					args: typeof call.function?.arguments === 'string'
-						? JSON.parse(call.function.arguments)
-						: call.function?.arguments || call.args || {},
+					args:
+						typeof call.function?.arguments === 'string'
+							? JSON.parse(call.function.arguments)
+							: call.function?.arguments || call.args || {},
 				});
 			} catch (error) {
 				// Failed to parse - ignore this tool call
@@ -119,13 +121,22 @@ export class ChutesAIAgent implements INodeType {
 		icon: 'file:chutes.png',
 		group: ['transform'],
 		version: 1,
-		description: 'AI Agent that works exclusively with Chutes Chat Model. Generates an action plan and executes it. Can use external tools.',
+		description:
+			'AI Agent that works exclusively with Chutes Chat Model. Generates an action plan and executes it. Can use external tools.',
 		defaults: {
 			name: 'Chutes AI Agent',
 			color: '#404040',
 		},
 		codex: {
-			alias: ['LangChain', 'Chat', 'Conversational', 'Plan and Execute', 'ReAct', 'Tools', 'Chutes'],
+			alias: [
+				'LangChain',
+				'Chat',
+				'Conversational',
+				'Plan and Execute',
+				'ReAct',
+				'Tools',
+				'Chutes',
+			],
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Agents', 'Root Nodes'],
@@ -243,7 +254,7 @@ export class ChutesAIAgent implements INodeType {
 						name: 'returnIntermediateSteps',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to return the agent\'s intermediate steps',
+						description: "Whether to return the agent's intermediate steps",
 					},
 				],
 			},
@@ -275,8 +286,13 @@ export class ChutesAIAgent implements INodeType {
 		console.log('[ChutesAIAgent] Getting tools...');
 		let tools: any[] = [];
 		try {
-			const connectedTools = (await this.getInputConnectionData(NodeConnectionTypes.AiTool, 0)) as any;
-			tools = connectedTools ? (Array.isArray(connectedTools) ? connectedTools : [connectedTools]).flat() : [];
+			const connectedTools = (await this.getInputConnectionData(
+				NodeConnectionTypes.AiTool,
+				0,
+			)) as any;
+			tools = connectedTools
+				? (Array.isArray(connectedTools) ? connectedTools : [connectedTools]).flat()
+				: [];
 			console.log('[ChutesAIAgent] Found', tools.length, 'tools');
 		} catch (error) {
 			console.log('[ChutesAIAgent] No tools connected (this is OK)');
@@ -296,7 +312,10 @@ export class ChutesAIAgent implements INodeType {
 		console.log('[ChutesAIAgent] Getting output parser...');
 		let outputParser: any = undefined;
 		try {
-			outputParser = (await this.getInputConnectionData(NodeConnectionTypes.AiOutputParser, 0)) as any;
+			outputParser = (await this.getInputConnectionData(
+				NodeConnectionTypes.AiOutputParser,
+				0,
+			)) as any;
 			console.log('[ChutesAIAgent] Output parser:', outputParser ? 'connected' : 'not connected');
 		} catch (error) {
 			console.log('[ChutesAIAgent] No output parser connected (this is OK)');
@@ -343,203 +362,230 @@ export class ChutesAIAgent implements INodeType {
 				const maxIterations = options.maxIterations || 10;
 				const returnIntermediateSteps = options.returnIntermediateSteps || false;
 
-			// Build conversation with system message and user prompt using LangChain message types
-			const messages: any[] = [
-				new SystemMessage(systemMessage),
-				new HumanMessage(prompt),
-			];
+				// Build conversation with system message and user prompt using LangChain message types
+				const messages: any[] = [new SystemMessage(systemMessage), new HumanMessage(prompt)];
 
-			// If memory is connected, prepend conversation history
-			if (memory && typeof memory.loadMemoryVariables === 'function') {
-				try {
-					const memoryVars = await memory.loadMemoryVariables({ input: prompt });
-					if (memoryVars.chat_history && Array.isArray(memoryVars.chat_history)) {
-						// Insert history after system message but before current prompt
-						messages.splice(1, 0, ...memoryVars.chat_history);
-					}
-				} catch (error) {
-					// Memory load failed - continue without history
-					this.logger.warn(`Failed to load memory: ${(error as Error).message}`);
-				}
-			}
-
-			// Execute agent loop with tool calling
-			let agentOutput = '';
-			const intermediateSteps: any[] = [];
-
-		// If no tools are connected, just do a simple chat completion
-		if (tools.length === 0) {
-			try {
-				this.logger.info(`[ChutesAIAgent] Calling chat model with ${messages.length} messages`);
-				this.logger.debug(`[ChutesAIAgent] Messages: ${JSON.stringify(messages.map((m: any) => ({ type: m.constructor.name, content: typeof m.content === 'string' ? m.content.substring(0, 100) : 'non-string' })))}`);
-				
-				// For simple chat, call the model directly
-				if (typeof chatModelData._call === 'function') {
-					this.logger.info('[ChutesAIAgent] Using _call method');
-					agentOutput = await Promise.race([
-						chatModelData._call(messages, {}),
-						new Promise((_, reject) => setTimeout(() => reject(new Error('Chat model call timeout after 60 seconds')), 60000))
-					]) as string;
-					this.logger.info(`[ChutesAIAgent] Got response: ${agentOutput.substring(0, 100)}...`);
-				} else if (typeof chatModelData.invoke === 'function') {
-					this.logger.info('[ChutesAIAgent] Using invoke method');
-					const result = await Promise.race([
-						chatModelData.invoke(messages, {}),
-						new Promise((_, reject) => setTimeout(() => reject(new Error('Chat model invoke timeout after 60 seconds')), 60000))
-					]);
-					agentOutput = (result as any).content || (result as any).text || JSON.stringify(result);
-					this.logger.info(`[ChutesAIAgent] Got response: ${agentOutput.substring(0, 100)}...`);
-				} else {
-					throw new Error('Connected chat model does not have a valid call method');
-				}
-			} catch (error: any) {
-				this.logger.error(`[ChutesAIAgent] Error: ${error.message}`);
-				this.logger.error(`[ChutesAIAgent] Stack: ${error.stack}`);
-				throw new NodeOperationError(
-					this.getNode(),
-					`Chat model execution failed: ${error.message}${error.stack ? '\n' + error.stack : ''}`,
-					{ itemIndex },
-				);
-			}
-		} else {
-				// Tool calling mode - run agent loop
-				let currentMessages = [...messages];
-
-				// Format tools for function calling if available
-				const toolDefinitions = formatToolsForModel(tools);
-
-				for (let iteration = 0; iteration < maxIterations; iteration++) {
-					// Call the chat model
-					let response: any;
+				// If memory is connected, prepend conversation history
+				if (memory && typeof memory.loadMemoryVariables === 'function') {
 					try {
-						const callOptions: any = {
-							functions: toolDefinitions,
-						};
+						const memoryVars = await memory.loadMemoryVariables({ input: prompt });
+						if (memoryVars.chat_history && Array.isArray(memoryVars.chat_history)) {
+							// Insert history after system message but before current prompt
+							messages.splice(1, 0, ...memoryVars.chat_history);
+						}
+					} catch (error) {
+						// Memory load failed - continue without history
+						this.logger.warn(`Failed to load memory: ${(error as Error).message}`);
+					}
+				}
 
+				// Execute agent loop with tool calling
+				let agentOutput = '';
+				const intermediateSteps: any[] = [];
+
+				// If no tools are connected, just do a simple chat completion
+				if (tools.length === 0) {
+					try {
+						this.logger.info(`[ChutesAIAgent] Calling chat model with ${messages.length} messages`);
+						this.logger.debug(
+							`[ChutesAIAgent] Messages: ${JSON.stringify(
+								messages.map((m: any) => ({
+									type: m.constructor.name,
+									content:
+										typeof m.content === 'string' ? m.content.substring(0, 100) : 'non-string',
+								})),
+							)}`,
+						);
+
+						// For simple chat, call the model directly
 						if (typeof chatModelData._call === 'function') {
-							// LangChain SimpleChatModel
-							response = await chatModelData._call(currentMessages, callOptions);
+							this.logger.info('[ChutesAIAgent] Using _call method');
+							agentOutput = (await Promise.race([
+								chatModelData._call(messages, {}),
+								new Promise((_, reject) =>
+									setTimeout(
+										() => reject(new Error('Chat model call timeout after 60 seconds')),
+										60000,
+									),
+								),
+							])) as string;
+							this.logger.info(`[ChutesAIAgent] Got response: ${agentOutput.substring(0, 100)}...`);
 						} else if (typeof chatModelData.invoke === 'function') {
-							// LangChain runnable
-							const result = await chatModelData.invoke(currentMessages, callOptions);
-							response = result.content || result.text || JSON.stringify(result);
+							this.logger.info('[ChutesAIAgent] Using invoke method');
+							const result = await Promise.race([
+								chatModelData.invoke(messages, {}),
+								new Promise((_, reject) =>
+									setTimeout(
+										() => reject(new Error('Chat model invoke timeout after 60 seconds')),
+										60000,
+									),
+								),
+							]);
+							agentOutput =
+								(result as any).content || (result as any).text || JSON.stringify(result);
+							this.logger.info(`[ChutesAIAgent] Got response: ${agentOutput.substring(0, 100)}...`);
 						} else {
 							throw new Error('Connected chat model does not have a valid call method');
 						}
 					} catch (error: any) {
+						this.logger.error(`[ChutesAIAgent] Error: ${error.message}`);
+						this.logger.error(`[ChutesAIAgent] Stack: ${error.stack}`);
 						throw new NodeOperationError(
 							this.getNode(),
-							`Chat model execution failed: ${error.message}`,
+							`Chat model execution failed: ${error.message}${
+								error.stack ? '\n' + error.stack : ''
+							}`,
 							{ itemIndex },
 						);
 					}
+				} else {
+					// Tool calling mode - run agent loop
+					let currentMessages = [...messages];
 
-					// Handle response - check if it's a tool call or final answer
-					const toolCalls = parseToolCalls(response);
+					// Format tools for function calling if available
+					const toolDefinitions = formatToolsForModel(tools);
 
-					if (toolCalls.length === 0) {
-						// No tool calls - this is the final answer
-						agentOutput = typeof response === 'string' ? response : response.content || JSON.stringify(response);
-						break;
-					}
+					for (let iteration = 0; iteration < maxIterations; iteration++) {
+						// Call the chat model
+						let response: any;
+						try {
+							const callOptions: any = {
+								functions: toolDefinitions,
+							};
 
-					// Execute each tool call
-					for (const toolCall of toolCalls) {
-						const tool = tools.find((t: any) => t.name === toolCall.name);
+							if (typeof chatModelData._call === 'function') {
+								// LangChain SimpleChatModel
+								response = await chatModelData._call(currentMessages, callOptions);
+							} else if (typeof chatModelData.invoke === 'function') {
+								// LangChain runnable
+								const result = await chatModelData.invoke(currentMessages, callOptions);
+								response = result.content || result.text || JSON.stringify(result);
+							} else {
+								throw new Error('Connected chat model does not have a valid call method');
+							}
+						} catch (error: any) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Chat model execution failed: ${error.message}`,
+								{ itemIndex },
+							);
+						}
 
-						if (!tool) {
-							const errorMsg = `Tool "${toolCall.name}" not found. Available tools: ${tools.map((t: any) => t.name).join(', ')}`;
+						// Handle response - check if it's a tool call or final answer
+						const toolCalls = parseToolCalls(response);
+
+						if (toolCalls.length === 0) {
+							// No tool calls - this is the final answer
+							agentOutput =
+								typeof response === 'string'
+									? response
+									: response.content || JSON.stringify(response);
+							break;
+						}
+
+						// Execute each tool call
+						for (const toolCall of toolCalls) {
+							const tool = tools.find((t: any) => t.name === toolCall.name);
+
+							if (!tool) {
+								const errorMsg = `Tool "${toolCall.name}" not found. Available tools: ${tools
+									.map((t: any) => t.name)
+									.join(', ')}`;
+								currentMessages.push({
+									role: 'function',
+									name: toolCall.name,
+									content: JSON.stringify({ error: errorMsg }),
+								});
+								intermediateSteps.push({
+									action: toolCall,
+									observation: errorMsg,
+								});
+								continue;
+							}
+
+							// Execute the tool
+							let toolResult: any;
+							try {
+								if (typeof tool.invoke === 'function') {
+									toolResult = await tool.invoke(toolCall.args);
+								} else if (typeof tool.call === 'function') {
+									toolResult = await tool.call(toolCall.args);
+								} else {
+									throw new Error(
+										`Tool "${toolCall.name}" does not have invoke() or call() method`,
+									);
+								}
+							} catch (error: any) {
+								toolResult = { error: error.message };
+							}
+
+							// Add tool result to conversation
 							currentMessages.push({
 								role: 'function',
 								name: toolCall.name,
-								content: JSON.stringify({ error: errorMsg }),
+								content: typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult),
 							});
+
+							// Track intermediate step
 							intermediateSteps.push({
-								action: toolCall,
-								observation: errorMsg,
+								action: {
+									tool: toolCall.name,
+									toolInput: toolCall.args,
+									log: `Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
+								},
+								observation:
+									typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult),
 							});
-							continue;
 						}
 
-						// Execute the tool
-						let toolResult: any;
-						try {
-							if (typeof tool.invoke === 'function') {
-								toolResult = await tool.invoke(toolCall.args);
-							} else if (typeof tool.call === 'function') {
-								toolResult = await tool.call(toolCall.args);
-							} else {
-								throw new Error(`Tool "${toolCall.name}" does not have invoke() or call() method`);
-							}
-						} catch (error: any) {
-							toolResult = { error: error.message };
-						}
-
-						// Add tool result to conversation
+						// Add assistant message indicating tool calls were made
 						currentMessages.push({
-							role: 'function',
-							name: toolCall.name,
-							content: typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult),
-						});
-
-						// Track intermediate step
-						intermediateSteps.push({
-							action: {
-								tool: toolCall.name,
-								toolInput: toolCall.args,
-								log: `Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
-							},
-							observation: typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult),
+							role: 'assistant',
+							content: `Used tools: ${toolCalls.map((t: any) => t.name).join(', ')}`,
 						});
 					}
 
-					// Add assistant message indicating tool calls were made
-					currentMessages.push({
-						role: 'assistant',
-						content: `Used tools: ${toolCalls.map((t: any) => t.name).join(', ')}`,
-					});
+					if (!agentOutput) {
+						agentOutput =
+							'Max iterations reached without final answer. Please try rephrasing your question or reducing complexity.';
+					}
 				}
 
-				if (!agentOutput) {
-					agentOutput = 'Max iterations reached without final answer. Please try rephrasing your question or reducing complexity.';
+				// Apply output parser if connected
+				let finalOutput: any = agentOutput;
+				if (outputParser && typeof outputParser.parse === 'function') {
+					try {
+						finalOutput = await outputParser.parse(agentOutput);
+					} catch (error: any) {
+						this.logger.warn(`Output parser failed: ${error.message}. Using raw output.`);
+					}
 				}
-			}
 
-			// Apply output parser if connected
-			let finalOutput: any = agentOutput;
-			if (outputParser && typeof outputParser.parse === 'function') {
-				try {
-					finalOutput = await outputParser.parse(agentOutput);
-				} catch (error: any) {
-					this.logger.warn(`Output parser failed: ${error.message}. Using raw output.`);
+				// Save to memory if connected
+				if (memory && typeof memory.saveContext === 'function') {
+					try {
+						await memory.saveContext({ input: prompt }, { output: agentOutput });
+					} catch (error: any) {
+						this.logger.warn(`Failed to save to memory: ${error.message}`);
+					}
 				}
-			}
 
-			// Save to memory if connected
-			if (memory && typeof memory.saveContext === 'function') {
-				try {
-					await memory.saveContext({ input: prompt }, { output: agentOutput });
-				} catch (error: any) {
-					this.logger.warn(`Failed to save to memory: ${error.message}`);
+				// Build output
+				const output: any = {
+					output: finalOutput,
+					prompt,
+				};
+
+				if (returnIntermediateSteps && intermediateSteps.length > 0) {
+					output.intermediateSteps = intermediateSteps;
 				}
-			}
 
-			// Build output
-			const output: any = {
-				output: finalOutput,
-				prompt,
-			};
-
-			if (returnIntermediateSteps && intermediateSteps.length > 0) {
-				output.intermediateSteps = intermediateSteps;
-			}
-
-			returnData.push({
-				json: output,
-				pairedItem: {
-					item: itemIndex,
-				},
-			});
+				returnData.push({
+					json: output,
+					pairedItem: {
+						item: itemIndex,
+					},
+				});
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const err = error as Error;

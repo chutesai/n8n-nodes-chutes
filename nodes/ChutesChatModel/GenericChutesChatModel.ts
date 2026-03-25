@@ -71,17 +71,23 @@ export class GenericChutesChatModel extends SimpleChatModel {
 		runManager?: CallbackManagerForLLMRun,
 	): Promise<string> {
 		console.log('[GenericChutesChatModel] _call invoked with', messages.length, 'messages');
-		console.log('[GenericChutesChatModel] Message types:', messages.map(m => m.constructor.name));
-		
+		console.log(
+			'[GenericChutesChatModel] Message types:',
+			messages.map((m) => m.constructor.name),
+		);
+
 		// Convert LangChain messages to Chutes.ai chat completion format
 		const formattedMessages = messages.map((message, index) => {
 			let role: 'system' | 'user' | 'assistant';
-			
+
 			try {
 				// Map LangChain message types to OpenAI-compatible roles
-				const messageType = typeof message._getType === 'function' ? message._getType() : message.constructor.name.toLowerCase();
+				const messageType =
+					typeof message._getType === 'function'
+						? message._getType()
+						: message.constructor.name.toLowerCase();
 				console.log(`[GenericChutesChatModel] Message ${index} type:`, messageType);
-				
+
 				if (messageType === 'system' || messageType.includes('system')) {
 					role = 'system';
 				} else if (messageType === 'human' || messageType.includes('human')) {
@@ -90,7 +96,9 @@ export class GenericChutesChatModel extends SimpleChatModel {
 					role = 'assistant';
 				} else {
 					// Default to user for other message types
-					console.log(`[GenericChutesChatModel] Unknown message type: ${messageType}, defaulting to user`);
+					console.log(
+						`[GenericChutesChatModel] Unknown message type: ${messageType}, defaulting to user`,
+					);
 					role = 'user';
 				}
 			} catch (error: any) {
@@ -100,7 +108,8 @@ export class GenericChutesChatModel extends SimpleChatModel {
 
 			return {
 				role,
-				content: typeof message.content === 'string' ? message.content : JSON.stringify(message.content),
+				content:
+					typeof message.content === 'string' ? message.content : JSON.stringify(message.content),
 			};
 		});
 
@@ -137,48 +146,54 @@ export class GenericChutesChatModel extends SimpleChatModel {
 			body.stop = options.stop;
 		}
 
-	try {
-		console.log('[GenericChutesChatModel] Calling Chutes API:', `${this.chuteUrl}/v1/chat/completions`);
-		
-		// Log body with image data redacted (for vision models)
-		const bodyForLogging = { ...body };
-		if (bodyForLogging.messages && Array.isArray(bodyForLogging.messages)) {
-			bodyForLogging.messages = bodyForLogging.messages.map((msg: any) => {
-				if (msg.content && Array.isArray(msg.content)) {
-					return {
-						...msg,
-						content: msg.content.map((item: any) => {
-							if (item.type === 'image_url' && item.image_url) {
-								return { type: 'image_url', image_url: '[redacted]' };
-							}
-							return item;
-						}),
-					};
-				}
-				return msg;
-			});
-		}
-		console.log('[GenericChutesChatModel] Request body:', JSON.stringify(bodyForLogging, null, 2));
-		
-		const requestOptions: IDataObject = {
-			method: 'POST',
-			url: `${this.chuteUrl}/v1/chat/completions`,
-			headers: {
-				'Content-Type': 'application/json',
-				'Accept': 'application/json',
-				'Authorization': `Bearer ${this.credentials.apiKey || this.credentials.sessionToken}`,
-				'User-Agent': 'n8n-ChutesAI-ChatModel/0.0.9',
-				'X-Chutes-Source': 'n8n-ai-agent',
-			},
-			body,
-			json: true,
-		};
+		try {
+			console.log(
+				'[GenericChutesChatModel] Calling Chutes API:',
+				`${this.chuteUrl}/v1/chat/completions`,
+			);
 
-		const response = this.authenticatedRequest
-			? await this.authenticatedRequest(requestOptions)
-			: await this.requestHelper.request(requestOptions);
-		
-		console.log('[GenericChutesChatModel] Got API response');
+			// Log body with image data redacted (for vision models)
+			const bodyForLogging = { ...body };
+			if (bodyForLogging.messages && Array.isArray(bodyForLogging.messages)) {
+				bodyForLogging.messages = bodyForLogging.messages.map((msg: any) => {
+					if (msg.content && Array.isArray(msg.content)) {
+						return {
+							...msg,
+							content: msg.content.map((item: any) => {
+								if (item.type === 'image_url' && item.image_url) {
+									return { type: 'image_url', image_url: '[redacted]' };
+								}
+								return item;
+							}),
+						};
+					}
+					return msg;
+				});
+			}
+			console.log(
+				'[GenericChutesChatModel] Request body:',
+				JSON.stringify(bodyForLogging, null, 2),
+			);
+
+			const requestOptions: IDataObject = {
+				method: 'POST',
+				url: `${this.chuteUrl}/v1/chat/completions`,
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'application/json',
+					Authorization: `Bearer ${this.credentials.apiKey || this.credentials.sessionToken}`,
+					'User-Agent': 'n8n-ChutesAI-ChatModel/0.0.9',
+					'X-Chutes-Source': 'n8n-ai-agent',
+				},
+				body,
+				json: true,
+			};
+
+			const response = this.authenticatedRequest
+				? await this.authenticatedRequest(requestOptions)
+				: await this.requestHelper.request(requestOptions);
+
+			console.log('[GenericChutesChatModel] Got API response');
 
 			// Stream tokens to callback manager if provided (for future streaming support)
 			if (runManager) {
@@ -202,4 +217,3 @@ export class GenericChutesChatModel extends SimpleChatModel {
 		return this.model || 'chutes-default';
 	}
 }
-

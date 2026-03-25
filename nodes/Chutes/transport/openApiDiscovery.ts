@@ -1,6 +1,6 @@
 /**
  * OpenAPI Discovery Module
- * 
+ *
  * Dynamically discovers chute capabilities by fetching and parsing OpenAPI schemas.
  * This allows the video generation node to work with ANY chute without hardcoding.
  */
@@ -79,7 +79,9 @@ export async function discoverChuteCapabilities(
 				}
 			}
 		} catch (error) {
-			console.warn(`Error fetching OpenAPI schema from ${chuteBaseUrl}: ${(error as Error).message}`);
+			console.warn(
+				`Error fetching OpenAPI schema from ${chuteBaseUrl}: ${(error as Error).message}`,
+			);
 		}
 	}
 
@@ -100,118 +102,141 @@ export async function discoverChuteCapabilities(
 		console.log(`[OpenAPI] Found ${pathKeys.length} paths in schema:`, pathKeys);
 
 		// Check for broken/placeholder schemas
-		const hasBrokenSchema = pathKeys.some(p => p.includes('{path}') || p === '{path}' || p.startsWith('{'));
+		const hasBrokenSchema = pathKeys.some(
+			(p) => p.includes('{path}') || p === '{path}' || p.startsWith('{'),
+		);
 		if (hasBrokenSchema) {
-			console.warn(`[OpenAPI] Detected broken/placeholder schema with path: ${pathKeys.join(', ')} - will use fallback`);
+			console.warn(
+				`[OpenAPI] Detected broken/placeholder schema with path: ${pathKeys.join(
+					', ',
+				)} - will use fallback`,
+			);
 			// Don't process this broken schema, fall through to fallback logic
 		} else {
 			for (const path in paths) {
 				const pathItem = paths[path] as IDataObject;
 				console.log(`[OpenAPI] Processing path: ${path}`);
 
-			for (const method in pathItem) {
-				if (!['post', 'put'].includes(method.toLowerCase())) {
-					continue;
-				}
+				for (const method in pathItem) {
+					if (!['post', 'put'].includes(method.toLowerCase())) {
+						continue;
+					}
 
-				const operation = pathItem[method] as IDataObject;
-				const parameters: Array<{ name: string; required: boolean; type: string }> = [];
+					const operation = pathItem[method] as IDataObject;
+					const parameters: Array<{ name: string; required: boolean; type: string }> = [];
 
-				// Extract parameters from requestBody
-				if (operation.requestBody) {
-					const requestBody = operation.requestBody as IDataObject;
-					const content = requestBody.content as IDataObject;
+					// Extract parameters from requestBody
+					if (operation.requestBody) {
+						const requestBody = operation.requestBody as IDataObject;
+						const content = requestBody.content as IDataObject;
 
-					if (content && content['application/json']) {
-						const jsonContent = content['application/json'] as IDataObject;
-						const schemaObj = jsonContent.schema as IDataObject;
+						if (content && content['application/json']) {
+							const jsonContent = content['application/json'] as IDataObject;
+							const schemaObj = jsonContent.schema as IDataObject;
 
-						if (schemaObj && schemaObj.properties) {
-							const properties = schemaObj.properties as IDataObject;
-							const required = (schemaObj.required || []) as string[];
+							if (schemaObj && schemaObj.properties) {
+								const properties = schemaObj.properties as IDataObject;
+								const required = (schemaObj.required || []) as string[];
 
-							for (const paramName in properties) {
-								const paramSchema = properties[paramName] as IDataObject;
-								
-								// Special case: Unwrap "input_args" object to get nested parameters
-								// Chutes.ai format: { input_args: { prompt: ..., image_b64s: [...], ... } }
-								if (paramName === 'input_args' && paramSchema.type === 'object' && paramSchema.properties) {
-									const nestedProps = paramSchema.properties as IDataObject;
-									const nestedRequired = (paramSchema.required || []) as string[];
-									console.log(`[OpenAPI] Unwrapping input_args, found nested params:`, Object.keys(nestedProps));
-									
-									for (const nestedName in nestedProps) {
-										const nestedSchema = nestedProps[nestedName] as IDataObject;
+								for (const paramName in properties) {
+									const paramSchema = properties[paramName] as IDataObject;
+
+									// Special case: Unwrap "input_args" object to get nested parameters
+									// Chutes.ai format: { input_args: { prompt: ..., image_b64s: [...], ... } }
+									if (
+										paramName === 'input_args' &&
+										paramSchema.type === 'object' &&
+										paramSchema.properties
+									) {
+										const nestedProps = paramSchema.properties as IDataObject;
+										const nestedRequired = (paramSchema.required || []) as string[];
+										console.log(
+											`[OpenAPI] Unwrapping input_args, found nested params:`,
+											Object.keys(nestedProps),
+										);
+
+										for (const nestedName in nestedProps) {
+											const nestedSchema = nestedProps[nestedName] as IDataObject;
+											parameters.push({
+												name: nestedName,
+												required: nestedRequired.includes(nestedName),
+												type: (nestedSchema.type as string) || 'string',
+											});
+										}
+									} else {
+										// Regular top-level parameter
 										parameters.push({
-											name: nestedName,
-											required: nestedRequired.includes(nestedName),
-											type: (nestedSchema.type as string) || 'string',
+											name: paramName,
+											required: required.includes(paramName),
+											type: (paramSchema.type as string) || 'string',
 										});
 									}
-								} else {
-									// Regular top-level parameter
-									parameters.push({
-										name: paramName,
-										required: required.includes(paramName),
-										type: (paramSchema.type as string) || 'string',
-									});
 								}
 							}
 						}
 					}
+
+					capabilities.endpoints.push({
+						path,
+						method: method.toUpperCase(),
+						parameters,
+					});
+
+					// Detect capabilities based on path and parameters
+					const hasPrompt = parameters.some((p) => p.name === 'prompt' || p.name === 'text');
+					const hasImage = parameters.some(
+						(p) => p.name === 'image' || p.name === 'image_b64' || p.name === 'image_url',
+					);
+
+					console.log(
+						`[OpenAPI] Path ${path}: hasPrompt=${hasPrompt}, hasImage=${hasImage}, params=${parameters
+							.map((p) => p.name)
+							.join(', ')}`,
+					);
+
+					if (path === '/text2video' || (hasPrompt && !hasImage)) {
+						console.log(`[OpenAPI] Detected TEXT-TO-VIDEO support at ${path}`);
+						capabilities.supportsTextToVideo = true;
+						capabilities.textToVideoPath = path;
+					}
+
+					if (path === '/image2video' || (hasPrompt && hasImage)) {
+						console.log(`[OpenAPI] Detected IMAGE-TO-VIDEO support at ${path}`);
+						capabilities.supportsImageToVideo = true;
+						capabilities.imageToVideoPath = path;
+					}
+
+					// Detect image editing support
+					// Check for explicit edit endpoints or /generate with image_b64s array (Qwen pattern)
+					const hasImageArray = parameters.some(
+						(p) => p.name === 'image_b64s' && p.type === 'array',
+					);
+					if (
+						path === '/edit' ||
+						path === '/v1/images/edits' ||
+						(path.includes('edit') && hasPrompt && hasImage) ||
+						(path === '/generate' && hasPrompt && hasImageArray)
+					) {
+						console.log(`[OpenAPI] Detected IMAGE-EDIT support at ${path}`);
+						capabilities.supportsImageEdit = true;
+						capabilities.imageEditPath = path;
+					}
 				}
-
-				capabilities.endpoints.push({
-					path,
-					method: method.toUpperCase(),
-					parameters,
-				});
-
-				// Detect capabilities based on path and parameters
-				const hasPrompt = parameters.some((p) => p.name === 'prompt' || p.name === 'text');
-				const hasImage = parameters.some(
-					(p) => p.name === 'image' || p.name === 'image_b64' || p.name === 'image_url',
-				);
-
-				console.log(`[OpenAPI] Path ${path}: hasPrompt=${hasPrompt}, hasImage=${hasImage}, params=${parameters.map(p => p.name).join(', ')}`);
-
-				if (path === '/text2video' || (hasPrompt && !hasImage)) {
-					console.log(`[OpenAPI] Detected TEXT-TO-VIDEO support at ${path}`);
-					capabilities.supportsTextToVideo = true;
-					capabilities.textToVideoPath = path;
-				}
-
-				if (path === '/image2video' || (hasPrompt && hasImage)) {
-					console.log(`[OpenAPI] Detected IMAGE-TO-VIDEO support at ${path}`);
-					capabilities.supportsImageToVideo = true;
-					capabilities.imageToVideoPath = path;
-				}
-
-				// Detect image editing support
-			// Check for explicit edit endpoints or /generate with image_b64s array (Qwen pattern)
-			const hasImageArray = parameters.some((p) => p.name === 'image_b64s' && p.type === 'array');
-			if (path === '/edit' || path === '/v1/images/edits' ||
-				(path.includes('edit') && hasPrompt && hasImage) ||
-				(path === '/generate' && hasPrompt && hasImageArray)) {
-				console.log(`[OpenAPI] Detected IMAGE-EDIT support at ${path}`);
-				capabilities.supportsImageEdit = true;
-				capabilities.imageEditPath = path;
 			}
-			}
-		}
 		}
 	}
 
 	// Fallback: assume common endpoints if no schema or empty OR if schema doesn't have inference endpoints
 	// Check if we have any inference endpoints (video/image generation)
-	const hasInferenceEndpoints = capabilities.endpoints.some(e => 
-		e.path === '/generate' || 
-		e.path === '/text2video' || 
-		e.path === '/image2video' ||
-		e.path === '/edit' ||
-		e.path.startsWith('/v1/')
+	const hasInferenceEndpoints = capabilities.endpoints.some(
+		(e) =>
+			e.path === '/generate' ||
+			e.path === '/text2video' ||
+			e.path === '/image2video' ||
+			e.path === '/edit' ||
+			e.path.startsWith('/v1/'),
 	);
-	
+
 	if (capabilities.endpoints.length === 0 || !hasInferenceEndpoints) {
 		console.log(`[OpenAPI] No inference endpoints found, adding fallback endpoints`);
 		capabilities.endpoints.push(
@@ -254,19 +279,19 @@ export async function discoverChuteCapabilities(
 				],
 			},
 		);
-		
+
 		// Mark image edit support since we added /generate with image_b64s
 		capabilities.supportsImageEdit = true;
 		capabilities.imageEditPath = '/generate';
 	}
-	
+
 	// ALWAYS assume support if we couldn't determine for certain
 	// Better to let the API return 404 than block the user
 	if (!capabilities.supportsTextToVideo && !capabilities.supportsImageToVideo) {
 		capabilities.supportsTextToVideo = true;
 		capabilities.supportsImageToVideo = true;
 	}
-	
+
 	// Set default paths if not detected
 	// Modern chutes use /generate for both T2V and I2V
 	// Older chutes use specific /text2video and /image2video endpoints
@@ -342,7 +367,9 @@ export function buildRequestBody(
 	} else if (operation === 'keyframe') {
 		// Keyframe interpolation uses /generate with keyframe_interp pipeline
 		if (capabilities.keyframeInterpPath) {
-			targetEndpoint = capabilities.endpoints.find((e) => e.path === capabilities.keyframeInterpPath);
+			targetEndpoint = capabilities.endpoints.find(
+				(e) => e.path === capabilities.keyframeInterpPath,
+			);
 		}
 		// Fallback to /generate
 		if (!targetEndpoint) {
@@ -354,8 +381,8 @@ export function buildRequestBody(
 		}
 		// Fallback to common edit endpoints
 		if (!targetEndpoint) {
-			targetEndpoint = capabilities.endpoints.find((e) => 
-				e.path === '/edit' || e.path === '/v1/images/edits'
+			targetEndpoint = capabilities.endpoints.find(
+				(e) => e.path === '/edit' || e.path === '/v1/images/edits',
 			);
 		}
 		// Last resort: try /generate with image parameter
@@ -375,11 +402,13 @@ export function buildRequestBody(
 		} else if (operation === 'edit' || operation === 'image_edit') {
 			fallbackPath = '/edit';
 		}
-		console.log(`[OpenAPI] Using final fallback endpoint: ${fallbackPath} for operation: ${operation}`);
+		console.log(
+			`[OpenAPI] Using final fallback endpoint: ${fallbackPath} for operation: ${operation}`,
+		);
 		// All Chutes.ai public APIs use flat parameters (proven by working direct API tests)
 		return {
 			endpoint: fallbackPath,
-			body: { ...userInputs },  // Flat parameters, no wrapping
+			body: { ...userInputs }, // Flat parameters, no wrapping
 		};
 	}
 
@@ -388,40 +417,44 @@ export function buildRequestBody(
 	const endpointParams = new Map(targetEndpoint.parameters.map((p) => [p.name, p]));
 
 	const modifiedInputs: IDataObject = { ...userInputs };
-	
+
 	// LTX-2: Convert resolution string to separate width/height integers
 	// Format: "1280*720" -> { width: 1280, height: 720 }
 	if (modifiedInputs.resolution && typeof modifiedInputs.resolution === 'string') {
 		const hasWidthParam = endpointParams.has('width');
 		const hasHeightParam = endpointParams.has('height');
 		const hasResolutionParam = endpointParams.has('resolution');
-		
+
 		// Only convert if endpoint expects width/height but not resolution
 		if ((hasWidthParam || hasHeightParam) && !hasResolutionParam) {
 			const parts = String(modifiedInputs.resolution).split('*');
 			if (parts.length === 2) {
 				let width = parseInt(parts[0], 10);
 				let height = parseInt(parts[1], 10);
-				
+
 				// LTX-2 specifically requires dimensions divisible by 64 (chute configuration)
 				// Other video models (Wan2.2, etc.) don't have this restriction
 				const isLTX2 = chuteUrl && chuteUrl.toLowerCase().includes('ltx');
 				if (isLTX2) {
 					width = Math.round(width / 64) * 64;
 					height = Math.round(height / 64) * 64;
-					console.log(`[OpenAPI] LTX-2 detected: Rounded dimensions to multiples of 64: ${parts[0]}x${parts[1]} -> ${width}x${height}`);
+					console.log(
+						`[OpenAPI] LTX-2 detected: Rounded dimensions to multiples of 64: ${parts[0]}x${parts[1]} -> ${width}x${height}`,
+					);
 				} else {
 					console.log(`[OpenAPI] Using dimensions as-is: ${width}x${height}`);
 				}
-				
+
 				modifiedInputs.width = width;
 				modifiedInputs.height = height;
 				delete modifiedInputs.resolution;
-				console.log(`[OpenAPI] Converted resolution "${userInputs.resolution}" to width=${width}, height=${height}`);
+				console.log(
+					`[OpenAPI] Converted resolution "${userInputs.resolution}" to width=${width}, height=${height}`,
+				);
 			}
 		}
 	}
-	
+
 	// Convert width/height to size format if endpoint expects "size" parameter
 	// This is common for OpenAI-compatible endpoints like /v1/images/edits
 	if (modifiedInputs.width && modifiedInputs.height) {
@@ -429,8 +462,10 @@ export function buildRequestBody(
 		if (endpointParams.has('size')) {
 			// Convert to "WIDTHxHEIGHT" format (e.g., "1024x1024")
 			modifiedInputs.size = `${modifiedInputs.width}x${modifiedInputs.height}`;
-			console.log(`[OpenAPI] Converted width=${modifiedInputs.width}, height=${modifiedInputs.height} to size="${modifiedInputs.size}"`);
-			
+			console.log(
+				`[OpenAPI] Converted width=${modifiedInputs.width}, height=${modifiedInputs.height} to size="${modifiedInputs.size}"`,
+			);
+
 			// Remove width/height if endpoint doesn't expect them
 			if (!endpointParams.has('width')) {
 				delete modifiedInputs.width;
@@ -442,8 +477,13 @@ export function buildRequestBody(
 	}
 	// Special handling: Convert singular image to image_b64s array ONLY for image edit operations
 	// (e.g., Qwen Image Edit expects array of 1-3 images, but video wants singular 'image')
-	const isImageEditOp = (operation === 'edit' || operation === 'image_edit');
-	if (isImageEditOp && modifiedInputs.image && !modifiedInputs.image_b64s && endpointParams.has('image_b64s')) {
+	const isImageEditOp = operation === 'edit' || operation === 'image_edit';
+	if (
+		isImageEditOp &&
+		modifiedInputs.image &&
+		!modifiedInputs.image_b64s &&
+		endpointParams.has('image_b64s')
+	) {
 		modifiedInputs.image_b64s = [modifiedInputs.image];
 		delete modifiedInputs.image;
 		console.log(`[OpenAPI] Converted singular image to image_b64s array for image edit`);
@@ -491,13 +531,15 @@ export function buildRequestBody(
 			// For OpenAI-compatible endpoints (strict schema), skip unmapped parameters
 			// For custom Chutes endpoints (permissive), include them (best effort)
 			const isOpenAICompatible = targetEndpoint.path.startsWith('/v1/');
-			
+
 			if (!isOpenAICompatible) {
 				// Custom Chutes endpoint - include anyway (best effort)
 				requestBody[userKey] = modifiedInputs[userKey];
 			} else {
 				// OpenAI-compatible endpoint - only include explicitly mapped parameters
-				console.log(`[OpenAPI] Skipping unmapped parameter '${userKey}' for strict OpenAI endpoint ${targetEndpoint.path}`);
+				console.log(
+					`[OpenAPI] Skipping unmapped parameter '${userKey}' for strict OpenAI endpoint ${targetEndpoint.path}`,
+				);
 			}
 		}
 	}
@@ -505,11 +547,13 @@ export function buildRequestBody(
 	// ALL Chutes.ai public APIs use flat parameters
 	// The Python internal schemas may show input_args wrapping, but the PUBLIC HTTP API
 	// expects flat parameters directly (proven by working direct API tests)
-	console.log(`[OpenAPI] Endpoint: ${targetEndpoint.path}, Body keys: ${Object.keys(requestBody).join(', ')}`);
+	console.log(
+		`[OpenAPI] Endpoint: ${targetEndpoint.path}, Body keys: ${Object.keys(requestBody).join(', ')}`,
+	);
 
 	return {
 		endpoint: targetEndpoint.path,
-		body: requestBody,  // Flat parameters, no wrapping
+		body: requestBody, // Flat parameters, no wrapping
 	};
 }
 

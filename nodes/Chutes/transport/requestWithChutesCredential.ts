@@ -2,10 +2,7 @@ import { IDataObject, ILoadOptionsFunctions, IRequestOptions } from 'n8n-workflo
 
 type AuthCapableContext = Pick<ILoadOptionsFunctions, 'helpers' | 'getCredentials'>;
 
-function buildFallbackHeaders(
-	credentials: IDataObject,
-	headers: IDataObject,
-): IDataObject {
+function buildFallbackHeaders(credentials: IDataObject, headers: IDataObject): IDataObject {
 	const bearerToken = String(credentials.apiKey || credentials.sessionToken || '').trim();
 
 	if (!bearerToken) {

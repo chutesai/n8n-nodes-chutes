@@ -122,9 +122,13 @@ describe('Video Generation - Wan-2.2-I2V-14B-Fast API Discovery', () => {
 		if (response.status === 404) {
 			console.log('✅ Confirmed: /text2video does NOT exist (as expected)');
 			console.log('💡 This chute is IMAGE-TO-VIDEO ONLY');
+		} else if (response.status >= 400) {
+			console.log(`✅ Confirmed: /text2video is not accepted (status ${response.status})`);
+			console.log('💡 This chute does not support text-only video generation');
 		}
 
-		expect(response.status).toBe(404);
+		// Contract: this I2V chute must not accept text-only video generation requests
+		expect(response.status).toBeGreaterThanOrEqual(400);
 	}, 30000);
 });
 

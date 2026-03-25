@@ -20,7 +20,54 @@ interface ModelTestConfig {
 	endpoint: string;
 }
 
+function toSubdomainFromUrl(chuteUrl: string): string {
+	const { hostname } = new URL(chuteUrl);
+	return hostname.split('.')[0];
+}
+
+async function discoverFromWarmedLlmChute(apiKey: string): Promise<ModelTestConfig[]> {
+	const warmedChute = process.env.WARMED_LLM_CHUTE;
+	if (!warmedChute) {
+		return [];
+	}
+
+	const subdomain = toSubdomainFromUrl(warmedChute);
+	const modelsResponse = await fetch(`${warmedChute.replace(/\/$/, '')}/v1/models`, {
+		headers: {
+			Authorization: `Bearer ${apiKey}`,
+			'Content-Type': 'application/json',
+		},
+	});
+	if (!modelsResponse.ok) {
+		return [];
+	}
+
+	const modelsData = (await modelsResponse.json()) as
+		| { data?: Array<Record<string, any>> }
+		| Array<Record<string, any>>;
+	const models = Array.isArray((modelsData as { data?: unknown[] })?.data)
+		? (modelsData as { data: Array<Record<string, any>> }).data
+		: Array.isArray(modelsData)
+			? modelsData
+			: [];
+
+	return models
+		.filter((model) => typeof model?.id === 'string' && model.id.length > 0)
+		.slice(0, 3)
+		.map((model) => ({
+			name: String(model.name || model.id),
+			subdomain,
+			modelId: String(model.id),
+			endpoint: '/v1/completions',
+		}));
+}
+
 async function discoverModelsToTest(apiKey: string): Promise<ModelTestConfig[]> {
+	const warmedModels = await discoverFromWarmedLlmChute(apiKey);
+	if (warmedModels.length > 0) {
+		return warmedModels;
+	}
+
 	const listResponse = await fetch('https://api.chutes.ai/chutes/?include_public=true&limit=200', {
 		headers: {
 			Authorization: `Bearer ${apiKey}`,
@@ -35,7 +82,7 @@ async function discoverModelsToTest(apiKey: string): Promise<ModelTestConfig[]> 
 	const llmChutes = (Array.isArray(listData.items) ? listData.items : [])
 		.filter((item) => item?.public && String(item?.standard_template || '').toLowerCase() === 'vllm')
 		.filter((item) => typeof item?.slug === 'string' && item.slug.length > 0)
-		.slice(0, 20);
+		.slice(0, 60);
 
 	const discovered: ModelTestConfig[] = [];
 	for (const chute of llmChutes) {

@@ -30,6 +30,7 @@ describe('🔍 Text-to-Speech Endpoint Discovery', () => {
 	];
 
 	const testText = 'Hello, this is a test.';
+	const UNAVAILABLE_STATUSES = new Set([429, 502, 503, 504, 524]);
 
 	beforeAll(() => {
 		if (!API_KEY) {
@@ -112,6 +113,14 @@ describe('🔍 Text-to-Speech Endpoint Discovery', () => {
 		if (failed.length > 0) {
 			console.log('\n❌ Failed endpoints:');
 			failed.forEach(r => console.log(`   ${r.endpoint} (${r.status}${r.error ? `: ${r.error}` : ''})`));
+		}
+
+		const allUnavailable = failed.length > 0 && failed.every(
+			(r) => r.status === 0 || UNAVAILABLE_STATUSES.has(r.status),
+		);
+		if (successful.length === 0 && allUnavailable) {
+			console.log('\n⏭️  Skipping assertion: chute appears temporarily unavailable/capacity-limited');
+			return;
 		}
 
 		// The test passes if we found at least one working endpoint

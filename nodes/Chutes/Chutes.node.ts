@@ -96,203 +96,21 @@ export class Chutes implements INodeType {
 				],
 				default: 'textGeneration',
 			},
-
-	// Chute selector for Text Generation
-	{
-		displayName: 'Chute',
-		name: 'chuteUrl',
-		type: 'options',
-		noDataExpression: false,
-		required: false,
-		displayOptions: {
-			show: {
-				resource: ['textGeneration'],
+			{
+				displayName: 'Chute',
+				name: 'chuteUrl',
+				type: 'options',
+				noDataExpression: false,
+				required: false,
+				typeOptions: {
+					loadOptionsMethod: 'getChutesForSelectedResource',
+					loadOptionsDependsOn: ['resource'],
+				},
+				default: '',
+				description:
+					'Select a specific chute to use or enter a custom chute URL (for example from a previous node expression).',
+				hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
 			},
-		},
-			typeOptions: {
-				loadOptionsMethod: 'getLLMChutes',
-				loadOptionsDependsOn: ['resource'],
-			},
-			default: 'https://llm.chutes.ai',
-			description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
-			placeholder: 'https://chutes-deepseek-ai-deepseek-v3-2.chutes.ai',
-			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
-		},
-
-	// Chute selector for Image Generation
-	{
-		displayName: 'Chute',
-		name: 'chuteUrl',
-		type: 'options',
-		noDataExpression: false,
-		required: false,
-		displayOptions: {
-			show: {
-				resource: ['imageGeneration'],
-			},
-		},
-			typeOptions: {
-				loadOptionsMethod: 'getImageChutes',
-				loadOptionsDependsOn: ['resource', 'operation'], // Reload when operation changes for smart sorting
-			},
-			default: 'https://image.chutes.ai',
-			description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
-			placeholder: 'https://chutes-flux-1-dev.chutes.ai',
-			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
-		},
-
-	// Chute selector for Video Generation
-	{
-		displayName: 'Chute',
-		name: 'chuteUrl',
-		type: 'options',
-		noDataExpression: false,
-		required: false,
-		displayOptions: {
-			show: {
-				resource: ['videoGeneration'],
-			},
-		},
-			typeOptions: {
-				loadOptionsMethod: 'getVideoChutes',
-				loadOptionsDependsOn: ['resource'],
-			},
-			default: 'https://video.chutes.ai',
-			description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
-			placeholder: 'https://chutes-wan2-1-14b.chutes.ai',
-			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
-		},
-
-	// Chute selector for Text-to-Speech
-	{
-		displayName: 'Chute',
-		name: 'chuteUrl',
-		type: 'options',
-		noDataExpression: false,
-		required: false,
-		displayOptions: {
-			show: {
-				resource: ['textToSpeech'],
-			},
-		},
-			typeOptions: {
-				loadOptionsMethod: 'getTTSChutes',
-				loadOptionsDependsOn: ['resource'],
-			},
-			default: 'https://tts.chutes.ai',
-			description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
-			placeholder: 'https://chutes-kokoro.chutes.ai',
-			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
-		},
-
-	// Chute selector for Speech-to-Text
-	{
-		displayName: 'Chute',
-		name: 'chuteUrl',
-		type: 'options',
-		noDataExpression: false,
-		required: false,
-		displayOptions: {
-			show: {
-				resource: ['speechToText'],
-			},
-		},
-			typeOptions: {
-				loadOptionsMethod: 'getSTTChutes',
-				loadOptionsDependsOn: ['resource'],
-			},
-			default: 'https://stt.chutes.ai',
-			description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
-			placeholder: 'https://chutes-whisper-large-v3.chutes.ai',
-			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
-		},
-
-	// Chute selector for Music Generation
-	{
-		displayName: 'Chute',
-		name: 'chuteUrl',
-		type: 'options',
-		noDataExpression: false,
-		required: false,
-		displayOptions: {
-			show: {
-				resource: ['musicGeneration'],
-			},
-		},
-			typeOptions: {
-				loadOptionsMethod: 'getMusicChutes',
-				loadOptionsDependsOn: ['resource'],
-			},
-			default: 'https://music.chutes.ai',
-			description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
-			placeholder: 'https://chutes-diffrhythm.chutes.ai',
-			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
-		},
-
-	// Chute selector for Embeddings
-	{
-		displayName: 'Chute',
-		name: 'chuteUrl',
-		type: 'options',
-		noDataExpression: false,
-		required: false,
-		displayOptions: {
-			show: {
-				resource: ['embeddings'],
-			},
-		},
-			typeOptions: {
-				loadOptionsMethod: 'getEmbeddingChutes',
-				loadOptionsDependsOn: ['resource'],
-			},
-			default: 'https://embeddings.chutes.ai',
-			description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
-			placeholder: 'https://chutes-qwen-qwen3-embedding-0-6b.chutes.ai',
-			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
-		},
-
-	// Chute selector for Content Moderation
-	{
-		displayName: 'Chute',
-		name: 'chuteUrl',
-		type: 'options',
-		noDataExpression: false,
-		required: false,
-		displayOptions: {
-			show: {
-				resource: ['contentModeration'],
-			},
-		},
-			typeOptions: {
-				loadOptionsMethod: 'getModerationChutes',
-				loadOptionsDependsOn: ['resource'],
-			},
-		default: 'https://moderation.chutes.ai',
-		description: 'Select a specific chute to use or enter a custom chute URL (e.g., from a previous node using expressions)',
-		placeholder: 'https://chutes-nsfw-classifier.chutes.ai',
-		hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>. You can also use expressions like {{ $json.chuteUrl }}',
-	},
-
-	// Chute selector for Inference
-	{
-		displayName: 'Chute',
-		name: 'chuteUrl',
-		type: 'options',
-		noDataExpression: false,
-		required: false,
-		displayOptions: {
-			show: {
-				resource: ['inference'],
-			},
-		},
-			typeOptions: {
-				loadOptionsMethod: 'getChutes',
-				loadOptionsDependsOn: ['resource'],
-			},
-			default: 'https://llm.chutes.ai',
-			description: 'Select a specific chute to use for custom inference.',
-			hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>',
-		},
 
 			// Operations
 			...textGenerationOperations,
@@ -323,6 +141,7 @@ export class Chutes implements INodeType {
 			getMusicChutes: loadChutes.getMusicChutes,
 			getEmbeddingChutes: loadChutes.getEmbeddingChutes,
 			getModerationChutes: loadChutes.getModerationChutes,
+			getChutesForSelectedResource: loadChutes.getChutesForSelectedResource,
 		},
 	};
 
@@ -832,14 +651,19 @@ async function handleImageGeneration(this: IExecuteFunctions, itemIndex: number)
 			);
 		}
 
-		// Get API credentials for OpenAPI discovery
-		const credentials = await this.getCredentials('chutesApi');
-		const apiKey = credentials.apiKey as string;
-
 		// Dynamically discover chute capabilities via OpenAPI schema
 		const { discoverChuteCapabilities, buildRequestBody } = await import('./transport/openApiDiscovery');
 		console.log(`[ImageEdit] Discovering capabilities for: ${chuteUrl}`);
-		const capabilities = await discoverChuteCapabilities(chuteUrl, apiKey);
+		const capabilities = await discoverChuteCapabilities(chuteUrl, async (openApiUrl: string) =>
+			await this.helpers.requestWithAuthentication.call(this, 'chutesApi', {
+				method: 'GET',
+				url: openApiUrl,
+				headers: {
+					Accept: 'application/json',
+				},
+				json: true,
+			}),
+		);
 		console.log(`[ImageEdit] Discovered endpoints:`, capabilities.endpoints.map(e => e.path));
 		console.log(`[ImageEdit] Supports Edit: ${capabilities.supportsImageEdit}, Path: ${capabilities.imageEditPath}`);
 
@@ -1178,18 +1002,16 @@ async function handleSpeechToText(this: IExecuteFunctions, itemIndex: number): P
 		}
 
 		// Make API request to speech-to-text endpoint
-		const credentials = await this.getCredentials('chutesApi');
 		const requestUrl = `${chuteUrl}/transcribe`;
 		const timeout = additionalOptions.timeout as number | undefined;
 		
 		try {
 			const response = await withTimeout(
-				this.helpers.request({
+				this.helpers.requestWithAuthentication.call(this, 'chutesApi', {
 					method: 'POST',
 					url: requestUrl,
 					body,
 					headers: {
-						'Authorization': `Bearer ${credentials.apiKey}`,
 						'Content-Type': 'application/json',
 						'Accept': 'application/json',
 					},
@@ -1244,7 +1066,7 @@ async function handleSpeechToText(this: IExecuteFunctions, itemIndex: number): P
 
 async function handleInference(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
 		const operation = this.getNodeParameter('operation', itemIndex) as string;
-		const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex, 'https://llm.chutes.ai') as string;
+		const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex, '') as string;
 		const additionalOptions = this.getNodeParameter('additionalOptions', itemIndex, {}) as IDataObject;
 
 		if (operation === 'predict') {
@@ -1664,14 +1486,19 @@ async function handleVideoGeneration(this: IExecuteFunctions, itemIndex: number)
 	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
 	const additionalOptions = this.getNodeParameter('additionalOptions', itemIndex, {}) as IDataObject;
 
-	// Get API credentials for OpenAPI discovery
-	const credentials = await this.getCredentials('chutesApi');
-	const apiKey = credentials.apiKey as string;
-
 	// Dynamically discover chute capabilities via OpenAPI schema
 	const { discoverChuteCapabilities, buildRequestBody } = await import('./transport/openApiDiscovery');
 	console.log(`[VideoGen] Discovering capabilities for: ${chuteUrl}`);
-	const capabilities = await discoverChuteCapabilities(chuteUrl, apiKey);
+	const capabilities = await discoverChuteCapabilities(chuteUrl, async (openApiUrl: string) =>
+		await this.helpers.requestWithAuthentication.call(this, 'chutesApi', {
+			method: 'GET',
+			url: openApiUrl,
+			headers: {
+				Accept: 'application/json',
+			},
+			json: true,
+		}),
+	);
 	console.log(`[VideoGen] Discovered endpoints:`, capabilities.endpoints.map(e => e.path));
 	console.log(`[VideoGen] Supports T2V: ${capabilities.supportsTextToVideo}, I2V: ${capabilities.supportsImageToVideo}`);
 

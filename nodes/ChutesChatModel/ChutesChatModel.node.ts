@@ -52,7 +52,7 @@ export class ChutesChatModel implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getLLMChutes',
 				},
-				default: 'https://llm.chutes.ai',
+				default: '',
 				description: 'Select a Chutes.ai LLM chute to use',
 				hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>',
 			},
@@ -63,6 +63,7 @@ export class ChutesChatModel implements INodeType {
 				required: false,
 				typeOptions: {
 					loadOptionsMethod: 'getModelsForSelectedChute',
+					loadOptionsDependsOn: ['chuteUrl'],
 				},
 				default: '',
 				description: 'Model to use (leave empty to use chute\'s default model)',
@@ -186,6 +187,12 @@ export class ChutesChatModel implements INodeType {
 				presencePenalty: options.presencePenalty,
 				credentials,
 				requestHelper: this.helpers, // Pass n8n request helper to the model
+				authenticatedRequest: async (requestOptions) =>
+					await this.helpers.requestWithAuthentication.call(
+						this,
+						'chutesApi',
+						requestOptions,
+					),
 			});
 			console.log('[ChutesChatModel] Chat model created successfully');
 

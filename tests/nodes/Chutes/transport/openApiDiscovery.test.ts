@@ -239,6 +239,37 @@ describe('OpenAPI Discovery Module', () => {
 			await discoverChuteCapabilities('https://other-chute.chutes.ai', 'test-api-key');
 			expect(global.fetch).toHaveBeenCalledTimes(2);
 		});
+
+		it('should support callback-based schema loading', async () => {
+			const mockLoader = jest.fn().mockResolvedValue({
+				openapi: '3.1.0',
+				paths: {
+					'/generate': {
+						post: {
+							requestBody: {
+								content: {
+									'application/json': {
+										schema: {
+											properties: {
+												prompt: { type: 'string' },
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			});
+
+			const capabilities = await discoverChuteCapabilities(
+				'https://callback-chute.chutes.ai',
+				mockLoader,
+			);
+
+			expect(mockLoader).toHaveBeenCalledWith('https://callback-chute.chutes.ai/openapi.json');
+			expect(capabilities.endpoints.some((endpoint) => endpoint.path === '/generate')).toBe(true);
+		});
 	});
 
 	describe('buildRequestBody', () => {

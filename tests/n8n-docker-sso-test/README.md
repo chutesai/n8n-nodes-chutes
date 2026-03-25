@@ -34,7 +34,7 @@ chmod +x start-n8n.sh
 
 Once started:
 
-- **URL**: http://localhost:5678
+- **URL**: http://localhost:5679
 - **Username**: `admin`
 - **Password**: `admin`
 
@@ -56,7 +56,7 @@ Once started:
 ### View Logs
 
 ```bash
-docker logs -f n8n-chutes-test
+docker logs -f n8n-chutes-test-sso
 ```
 
 ### Stop n8n
@@ -84,7 +84,7 @@ start-n8n.bat
 ### Access n8n Shell
 
 ```bash
-docker exec -it n8n-chutes-test sh
+docker exec -it n8n-chutes-test-sso sh
 ```
 
 ### Reinstall Node After Code Changes
@@ -95,7 +95,7 @@ cd ../..
 npm run build
 
 # 2. Reinstall in Docker
-docker exec n8n-chutes-test sh -c "cd /data/custom/n8n-nodes-chutes && npm install && npm link"
+docker exec n8n-chutes-test-sso sh -c "cd /data/custom/n8n-nodes-chutes && npm install && npm install -g ."
 
 # 3. Restart n8n
 docker-compose restart

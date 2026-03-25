@@ -9,9 +9,22 @@ import { mockTextModelsResponse, mockImageModelsResponse } from '../../../helper
 
 describe('Load Options Methods', () => {
 	describe('getChutesTextModels', () => {
+		test('uses credential-aware authenticated helper first', async () => {
+			const mockFunctions = createMockLoadOptionsFunctions();
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				mockTextModelsResponse,
+			);
+
+			await loadOptions.getChutesTextModels.call(mockFunctions);
+
+			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalled();
+		});
+
 		test('should load text models from API', async () => {
 			const mockFunctions = createMockLoadOptionsFunctions();
-			(mockFunctions.helpers.request as jest.Mock).mockResolvedValue(mockTextModelsResponse);
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				mockTextModelsResponse,
+			);
 
 			const result = await loadOptions.getChutesTextModels.call(mockFunctions);
 
@@ -21,7 +34,9 @@ describe('Load Options Methods', () => {
 
 		test('should format model options with name and value', async () => {
 			const mockFunctions = createMockLoadOptionsFunctions();
-			(mockFunctions.helpers.request as jest.Mock).mockResolvedValue(mockTextModelsResponse);
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				mockTextModelsResponse,
+			);
 
 			const result = await loadOptions.getChutesTextModels.call(mockFunctions);
 
@@ -31,7 +46,9 @@ describe('Load Options Methods', () => {
 
 		test('should include model metadata in name', async () => {
 			const mockFunctions = createMockLoadOptionsFunctions();
-			(mockFunctions.helpers.request as jest.Mock).mockResolvedValue(mockTextModelsResponse);
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				mockTextModelsResponse,
+			);
 
 			const result = await loadOptions.getChutesTextModels.call(mockFunctions);
 
@@ -41,7 +58,7 @@ describe('Load Options Methods', () => {
 
 		test('should return fallback models on API error', async () => {
 			const mockFunctions = createMockLoadOptionsFunctions();
-			(mockFunctions.helpers.request as jest.Mock).mockRejectedValue(
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
 				new Error('API Error'),
 			);
 
@@ -60,11 +77,14 @@ describe('Load Options Methods', () => {
 					environment: 'production',
 				}),
 			});
-			(mockFunctions.helpers.request as jest.Mock).mockResolvedValue(mockTextModelsResponse);
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				mockTextModelsResponse,
+			);
 
 			await loadOptions.getChutesTextModels.call(mockFunctions);
 
-			expect(mockFunctions.helpers.request).toHaveBeenCalledWith(
+			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'chutesApi',
 				expect.objectContaining({
 					url: expect.stringContaining('/v1/models'),
 				}),
@@ -75,7 +95,9 @@ describe('Load Options Methods', () => {
 	describe('getChutesImageModels', () => {
 		test('should load image models from API', async () => {
 			const mockFunctions = createMockLoadOptionsFunctions();
-			(mockFunctions.helpers.request as jest.Mock).mockResolvedValue(mockImageModelsResponse);
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				mockImageModelsResponse,
+			);
 
 			const result = await loadOptions.getChutesImageModels.call(mockFunctions);
 
@@ -85,7 +107,9 @@ describe('Load Options Methods', () => {
 
 		test('should format image model options', async () => {
 			const mockFunctions = createMockLoadOptionsFunctions();
-			(mockFunctions.helpers.request as jest.Mock).mockResolvedValue(mockImageModelsResponse);
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				mockImageModelsResponse,
+			);
 
 			const result = await loadOptions.getChutesImageModels.call(mockFunctions);
 
@@ -96,7 +120,7 @@ describe('Load Options Methods', () => {
 
 		test('should return fallback image models on API error', async () => {
 			const mockFunctions = createMockLoadOptionsFunctions();
-			(mockFunctions.helpers.request as jest.Mock).mockRejectedValue(
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
 				new Error('API Error'),
 			);
 
@@ -107,6 +131,22 @@ describe('Load Options Methods', () => {
 		// Should return "Default (selected by chute)" option when image endpoint returns 404
 		expect(result.some((opt) => opt.name.includes('Default'))).toBe(true);
 	});
+		test('falls back to unauthenticated request on recoverable discovery error', async () => {
+			const mockFunctions = createMockLoadOptionsFunctions();
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+				statusCode: 401,
+				message: 'invalid token',
+			});
+			(mockFunctions.helpers.request as jest.Mock).mockResolvedValue(mockTextModelsResponse);
+
+			const result = await loadOptions.getModelsForSelectedChute.call({
+				...mockFunctions,
+				getCurrentNodeParameter: jest.fn().mockReturnValue('https://llm.chutes.ai'),
+			} as any);
+
+			expect(mockFunctions.helpers.request).toHaveBeenCalled();
+			expect(Array.isArray(result)).toBe(true);
+		});
 	});
 });
 

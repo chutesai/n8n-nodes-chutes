@@ -2,7 +2,14 @@
  * Tests for loadChutes methods
  */
 
-import { getChutes, getChutesByType, getLLMChutes, getImageChutes, getChuteUrl } from '../../../../nodes/Chutes/methods/loadChutes';
+import {
+	getChuteUrl,
+	getChutes,
+	getChutesByType,
+	getChutesForSelectedResource,
+	getImageChutes,
+	getLLMChutes,
+} from '../../../../nodes/Chutes/methods/loadChutes';
 import { createMockLoadOptionsFunctions } from '../../../helpers/mocks';
 
 describe('Load Chutes Methods', () => {
@@ -28,7 +35,7 @@ describe('Load Chutes Methods', () => {
 		it('should return formatted chute options', async () => {
 			const mockContext = createMockLoadOptionsFunctions();
 			
-			(mockContext.helpers.request as jest.Mock).mockResolvedValue({
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({
 				total: 2,
 				page: 0,
 				limit: 100,
@@ -73,7 +80,9 @@ describe('Load Chutes Methods', () => {
 	it('should return empty array on API error (no hardcoded fallbacks)', async () => {
 		const mockContext = createMockLoadOptionsFunctions();
 		
-		(mockContext.helpers.request as jest.Mock).mockRejectedValue(new Error('API Error'));
+		(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+			new Error('API Error'),
+		);
 
 		const options = await getChutes.call(mockContext);
 
@@ -85,7 +94,7 @@ describe('Load Chutes Methods', () => {
 			const longTagline = 'A'.repeat(150);
 			const mockContext = createMockLoadOptionsFunctions();
 			
-			(mockContext.helpers.request as jest.Mock).mockResolvedValue({
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({
 				total: 1,
 				page: 0,
 				limit: 100,
@@ -113,7 +122,7 @@ describe('Load Chutes Methods', () => {
 		it('should filter chutes by template type', async () => {
 			const mockContext = createMockLoadOptionsFunctions();
 			
-			(mockContext.helpers.request as jest.Mock).mockResolvedValue({
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({
 				total: 3,
 				page: 0,
 				limit: 100,
@@ -151,7 +160,7 @@ describe('Load Chutes Methods', () => {
 		it('should return all chutes when no template specified', async () => {
 			const mockContext = createMockLoadOptionsFunctions();
 			
-			(mockContext.helpers.request as jest.Mock).mockResolvedValue({
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({
 				total: 2,
 				page: 0,
 				limit: 100,
@@ -183,7 +192,7 @@ describe('Load Chutes Methods', () => {
 		it('should include well-known LLM chute at the top', async () => {
 			const mockContext = createMockLoadOptionsFunctions();
 			
-			(mockContext.helpers.request as jest.Mock).mockResolvedValue({
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({
 				total: 1,
 				page: 0,
 				limit: 100,
@@ -212,7 +221,7 @@ describe('Load Chutes Methods', () => {
 		it('should include well-known Image chute at the top', async () => {
 			const mockContext = createMockLoadOptionsFunctions();
 			
-			(mockContext.helpers.request as jest.Mock).mockResolvedValue({
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({
 				total: 1,
 				page: 0,
 				limit: 100,
@@ -235,6 +244,45 @@ describe('Load Chutes Methods', () => {
 		expect(options[0].value).toBe('https://custom-image-slug.chutes.ai');
 		expect(options[0].name).toContain('custom-image');
 	});
+	});
+
+	describe('resource-aware loading and auth fallback', () => {
+		it('routes selected resource through getChutesForSelectedResource', async () => {
+			const mockContext = createMockLoadOptionsFunctions({
+				getCurrentNodeParameter: jest.fn().mockReturnValue('imageGeneration'),
+			} as any);
+
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({
+				items: [],
+			});
+
+			const result = await getChutesForSelectedResource.call(mockContext);
+			expect(Array.isArray(result)).toBe(true);
+		});
+
+		it('falls back to unauthenticated public catalog on 403', async () => {
+			const mockContext = createMockLoadOptionsFunctions();
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+				statusCode: 403,
+				message: 'forbidden',
+			});
+			(mockContext.helpers.request as jest.Mock).mockResolvedValue({
+				items: [
+					{
+						chute_id: 'public-1',
+						name: 'public-model',
+						slug: 'public-model',
+						standard_template: 'vllm',
+						public: true,
+						user: { username: 'chutes' },
+					},
+				],
+			});
+
+			const result = await getChutes.call(mockContext);
+			expect(mockContext.helpers.request).toHaveBeenCalled();
+			expect(result).toHaveLength(1);
+		});
 	});
 });
 

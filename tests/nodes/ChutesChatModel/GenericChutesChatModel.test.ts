@@ -121,6 +121,54 @@ describe('GenericChutesChatModel', () => {
 			);
 		});
 
+		it('should use sessionToken when apiKey is missing', async () => {
+			mockRequestHelper.request.mockResolvedValue({
+				choices: [{ message: { content: 'Response' } }],
+			});
+
+			const modelWithSessionToken = new GenericChutesChatModel({
+				chuteUrl: 'https://llm.chutes.ai',
+				model: 'test-model',
+				credentials: { sessionToken: 'session-token-only' },
+				requestHelper: mockRequestHelper,
+			});
+
+			await modelWithSessionToken._call([new HumanMessage('Test')], {});
+
+			expect(mockRequestHelper.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: expect.objectContaining({
+						Authorization: 'Bearer session-token-only',
+					}),
+				}),
+			);
+		});
+
+		it('should use authenticatedRequest callback when provided', async () => {
+			const authenticatedRequest = jest.fn().mockResolvedValue({
+				choices: [{ message: { content: 'Authenticated response' } }],
+			});
+
+			const modelWithAuthCallback = new GenericChutesChatModel({
+				chuteUrl: 'https://llm.chutes.ai',
+				model: 'test-model',
+				credentials: { sessionToken: 'session-token-only' },
+				requestHelper: mockRequestHelper,
+				authenticatedRequest,
+			});
+
+			const result = await modelWithAuthCallback._call([new HumanMessage('Test')], {});
+
+			expect(authenticatedRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method: 'POST',
+					url: 'https://llm.chutes.ai/v1/chat/completions',
+				}),
+			);
+			expect(mockRequestHelper.request).not.toHaveBeenCalled();
+			expect(result).toBe('Authenticated response');
+		});
+
 		it('should handle API response correctly', async () => {
 			const expectedResponse = 'This is a test response from Chutes.ai';
 			mockRequestHelper.request.mockResolvedValue({

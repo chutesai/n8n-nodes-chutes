@@ -1,25 +1,101 @@
 import { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 import { getChutesBaseUrl } from '../transport/apiRequest';
+import { requestWithChutesCredential } from '../transport/requestWithChutesCredential';
+
+function parseModelsResponse(response: unknown): any[] {
+	if (Array.isArray((response as { data?: unknown[] })?.data)) {
+		return (response as { data: unknown[] }).data;
+	}
+	if (Array.isArray(response)) {
+		return response;
+	}
+	return [];
+}
+
+function isRecoverableDiscoveryError(error: unknown): boolean {
+	if (!error || typeof error !== 'object') {
+		return false;
+	}
+	const candidate = error as Record<string, any>;
+	const statusCode = String(
+		candidate.httpCode ??
+			candidate.statusCode ??
+			candidate.status ??
+			candidate.response?.status ??
+			'',
+	).trim();
+	if (statusCode === '401' || statusCode === '403') {
+		return true;
+	}
+
+	const details = [candidate.description, candidate.message, candidate.error?.detail]
+		.filter((value) => Boolean(value))
+		.join(' ')
+		.toLowerCase();
+	return (
+		details.includes('does not have any credentials set') ||
+		details.includes('missing both an api key and a session token') ||
+		details.includes('invalid token') ||
+		details.includes('user not found') ||
+		details.includes('authorization failed') ||
+		details.includes('permission') ||
+		details.includes('forbidden') ||
+		details.includes('unauthorized')
+	);
+}
+
+async function requestWithoutAuth(context: ILoadOptionsFunctions, url: string): Promise<unknown> {
+	return await context.helpers.request({
+		json: true,
+		method: 'GET',
+		url,
+		headers: {
+			Accept: 'application/json',
+			'Content-Type': 'application/json',
+		},
+	});
+}
+
+function getDefaultImageModelOption(): INodePropertyOptions[] {
+	return [
+		{
+			name: 'Default (selected by chute)',
+			value: '',
+			description:
+				'The model is determined by the selected chute. Most image chutes do not require a model parameter.',
+		},
+	];
+}
 
 export async function getChutesTextModels(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const credentials = await this.getCredentials('chutesApi');
-	const baseUrl = getChutesBaseUrl(credentials, 'textGeneration'); // Routes to llm.chutes.ai
+	let baseUrl = 'https://llm.chutes.ai';
+	try {
+		const credentials = await this.getCredentials('chutesApi');
+		baseUrl = getChutesBaseUrl(credentials, 'textGeneration');
+	} catch {
+		// First-load option requests can arrive before credentials are attached.
+	}
 
 	try {
-		const response = await this.helpers.request({
-			method: 'GET',
-			url: `${baseUrl}/v1/models`,
-			headers: {
-				Authorization: `Bearer ${credentials.apiKey}`,
-				'Content-Type': 'application/json',
-			},
-			json: true,
-		});
+		let response: unknown;
+		try {
+			response = await requestWithChutesCredential(this, {
+				method: 'GET',
+				url: `${baseUrl}/v1/models`,
+				headers: {
+					'Content-Type': 'application/json',
+				},
+			});
+		} catch (error) {
+			if (!isRecoverableDiscoveryError(error)) {
+				throw error;
+			}
+			response = await requestWithoutAuth(this, `${baseUrl}/v1/models`);
+		}
 
-		// Parse response - might be { data: [...] } or just [...]
-		const models = response.data || response;
+		const models = parseModelsResponse(response);
 		
 		// Filter for text/chat models if type field exists
 		const textModels = Array.isArray(models) ? models.filter((model: any) => {
@@ -46,22 +122,24 @@ export async function getChutesTextModels(
 export async function getChutesImageModels(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const credentials = await this.getCredentials('chutesApi');
-	const baseUrl = getChutesBaseUrl(credentials, 'imageGeneration'); // Routes to image.chutes.ai
+	let baseUrl = 'https://image.chutes.ai';
+	try {
+		const credentials = await this.getCredentials('chutesApi');
+		baseUrl = getChutesBaseUrl(credentials, 'imageGeneration');
+	} catch {
+		// First-load option requests can arrive before credentials are attached.
+	}
 
 	try {
-		const response = await this.helpers.request({
+		const response = await requestWithChutesCredential(this, {
 			method: 'GET',
 			url: `${baseUrl}/v1/models`,
 			headers: {
-				Authorization: `Bearer ${credentials.apiKey}`,
 				'Content-Type': 'application/json',
 			},
-			json: true,
 		});
 
-		// Parse response - might be { data: [...] } or just [...]
-		const models = response.data || response;
+		const models = parseModelsResponse(response);
 		
 		// Filter for image generation models if type field exists
 		const imageModels = Array.isArray(models) ? models.filter((model: any) => {
@@ -75,16 +153,10 @@ export async function getChutesImageModels(
 			description: model.description || `Cost: ${model.pricing?.generation || 'N/A'}`,
 		}));
 	} catch (error) {
-		console.error('Failed to load Chutes.ai image models:', error);
-		// Image chutes often don't have /v1/models endpoint
-		// Return message indicating model is selected via chute
-		return [
-			{ 
-				name: 'Default (selected by chute)', 
-				value: '', 
-				description: 'The model is determined by the selected chute. Most image chutes do not require a model parameter.' 
-			},
-		];
+		if (!isRecoverableDiscoveryError(error)) {
+			console.error('Failed to load Chutes.ai image models:', error);
+		}
+		return getDefaultImageModelOption();
 	}
 }
 
@@ -95,8 +167,6 @@ export async function getChutesImageModels(
 export async function getModelsForSelectedChute(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const credentials = await this.getCredentials('chutesApi');
-	
 	// Try to get the selected chute URL from the node parameters
 	let chuteUrl: string;
 	try {
@@ -124,19 +194,23 @@ export async function getModelsForSelectedChute(
 	}
 
 	try {
-		// Query the selected chute's /v1/models endpoint
-		const response = await this.helpers.request({
-			method: 'GET',
-			url: `${chuteUrl}/v1/models`,
-			headers: {
-				Authorization: `Bearer ${credentials.apiKey}`,
-				'Content-Type': 'application/json',
-			},
-			json: true,
-		});
+		let response: unknown;
+		try {
+			response = await requestWithChutesCredential(this, {
+				method: 'GET',
+				url: `${chuteUrl}/v1/models`,
+				headers: {
+					'Content-Type': 'application/json',
+				},
+			});
+		} catch (error) {
+			if (!isRecoverableDiscoveryError(error)) {
+				throw error;
+			}
+			response = await requestWithoutAuth(this, `${chuteUrl}/v1/models`);
+		}
 
-		// Parse response
-		const models = response.data || response;
+		const models = parseModelsResponse(response);
 
 		if (!Array.isArray(models) || models.length === 0) {
 			// Chute has /v1/models but returned no models

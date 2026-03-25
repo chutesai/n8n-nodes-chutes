@@ -3,6 +3,111 @@
  */
 
 import { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { requestWithChutesCredential } from '../transport/requestWithChutesCredential';
+
+let hasLoggedPublicCatalogFallback = false;
+
+function buildChutesListRequestUrl(includePublic: boolean, limit: number): string {
+	const queryParams = new URLSearchParams({
+		include_public: String(includePublic),
+		limit: String(limit),
+	});
+
+	return `https://api.chutes.ai/chutes/?${queryParams}`;
+}
+
+function isPermissionDeniedError(error: unknown): boolean {
+	if (!error || typeof error !== 'object') {
+		return false;
+	}
+
+	const candidate = error as Record<string, any>;
+	const statusCode = String(
+		candidate.httpCode ??
+			candidate.statusCode ??
+			candidate.status ??
+			candidate.response?.status ??
+			'',
+	).trim();
+	if (statusCode !== '403') {
+		return false;
+	}
+
+	const details = [candidate.description, candidate.message, candidate.error?.detail]
+		.filter((value) => Boolean(value))
+		.join(' ')
+		.toLowerCase();
+
+	return details.includes('permission') || details.includes('forbidden');
+}
+
+function isUnauthorizedError(error: unknown): boolean {
+	if (!error || typeof error !== 'object') {
+		return false;
+	}
+
+	const candidate = error as Record<string, any>;
+	const statusCode = String(
+		candidate.httpCode ??
+			candidate.statusCode ??
+			candidate.status ??
+			candidate.response?.status ??
+			'',
+	).trim();
+	if (statusCode !== '401') {
+		return false;
+	}
+
+	const details = [candidate.description, candidate.message, candidate.error?.detail]
+		.filter((value) => Boolean(value))
+		.join(' ')
+		.toLowerCase();
+	return (
+		details.includes('invalid token') ||
+		details.includes('user not found') ||
+		details.includes('authorization failed') ||
+		details.includes('unauthorized')
+	);
+}
+
+function isMissingCredentialError(error: unknown): boolean {
+	if (!error || typeof error !== 'object') {
+		return false;
+	}
+
+	const candidate = error as Record<string, any>;
+	const details = [candidate.description, candidate.message]
+		.filter((value) => Boolean(value))
+		.join(' ')
+		.toLowerCase();
+
+	return (
+		details.includes('does not have any credentials set') ||
+		details.includes('missing both an api key and a session token') ||
+		(details.includes('credential') && details.includes('missing'))
+	);
+}
+
+function shouldFallbackToPublicCatalog(error: unknown): boolean {
+	return (
+		isPermissionDeniedError(error) || isUnauthorizedError(error) || isMissingCredentialError(error)
+	);
+}
+
+async function requestPublicChutesWithoutAuth(
+	context: ILoadOptionsFunctions,
+	url: string,
+): Promise<unknown> {
+	return await context.helpers.request({
+		json: true,
+		method: 'GET',
+		url,
+		headers: {
+			Accept: 'application/json',
+			'Content-Type': 'application/json',
+		},
+	});
+}
 
 export interface ChuteOption {
 	chute_id: string;
@@ -44,22 +149,31 @@ async function getRawChutes(
 	includePublic = true,
 	limit = 500,
 ): Promise<ChuteOption[]> {
-	const credentials = await context.getCredentials('chutesApi');
+	const url = buildChutesListRequestUrl(includePublic, limit);
+	let response: unknown;
 
-	const queryParams = new URLSearchParams({
-		include_public: String(includePublic),
-		limit: String(limit),
-	});
+	try {
+		response = await requestWithChutesCredential(context, {
+			method: 'GET',
+			url,
+			headers: {
+				'Content-Type': 'application/json',
+			},
+		});
+	} catch (error) {
+		if (!includePublic || !shouldFallbackToPublicCatalog(error)) {
+			throw error;
+		}
 
-	const response = await context.helpers.request({
-		method: 'GET',
-		url: `https://api.chutes.ai/chutes/?${queryParams}`,
-		headers: {
-			Authorization: `Bearer ${credentials.apiKey}`,
-			'Content-Type': 'application/json',
-		},
-		json: true,
-	});
+		if (!hasLoggedPublicCatalogFallback) {
+			console.warn(
+				'Authenticated chute discovery was unavailable, retrying the public catalog without credentials.',
+			);
+			hasLoggedPublicCatalogFallback = true;
+		}
+
+		response = await requestPublicChutesWithoutAuth(context, url);
+	}
 
 	const chutesData = response as ChutesListResponse;
 	return chutesData.items || [];
@@ -100,6 +214,43 @@ export async function getChutes(
 	} catch (error) {
 		console.error('Failed to load chutes from Chutes.ai API:', error);
 		return [];
+	}
+}
+
+function getCurrentResource(context: ILoadOptionsFunctions): string {
+	try {
+		return (context.getCurrentNodeParameter('resource') as string) || 'textGeneration';
+	} catch {
+		return 'textGeneration';
+	}
+}
+
+export async function getChutesForSelectedResource(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const resource = getCurrentResource(this);
+
+	switch (resource) {
+		case 'textGeneration':
+			return await getLLMChutes.call(this);
+		case 'imageGeneration':
+			return await getImageChutes.call(this);
+		case 'videoGeneration':
+			return await getVideoChutes.call(this);
+		case 'textToSpeech':
+			return await getTTSChutes.call(this);
+		case 'speechToText':
+			return await getSTTChutes.call(this);
+		case 'musicGeneration':
+			return await getMusicChutes.call(this);
+		case 'embeddings':
+			return await getEmbeddingChutes.call(this);
+		case 'contentModeration':
+			return await getModerationChutes.call(this);
+		case 'inference':
+			return await getChutes.call(this);
+		default:
+			return await getChutes.call(this);
 	}
 }
 

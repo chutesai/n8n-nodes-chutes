@@ -13,6 +13,7 @@ interface ChutesChatModelConfig {
 	presencePenalty?: number;
 	credentials: IDataObject;
 	requestHelper: any; // n8n request helper passed from node
+	authenticatedRequest?: (requestOptions: IDataObject) => Promise<any>;
 }
 
 /**
@@ -29,6 +30,7 @@ export class GenericChutesChatModel extends SimpleChatModel {
 	presencePenalty?: number;
 	credentials: IDataObject;
 	requestHelper: any;
+	authenticatedRequest?: (requestOptions: IDataObject) => Promise<any>;
 
 	constructor(config: ChutesChatModelConfig) {
 		super({});
@@ -41,6 +43,7 @@ export class GenericChutesChatModel extends SimpleChatModel {
 		this.presencePenalty = config.presencePenalty;
 		this.credentials = config.credentials;
 		this.requestHelper = config.requestHelper;
+		this.authenticatedRequest = config.authenticatedRequest;
 	}
 
 	/**
@@ -157,20 +160,23 @@ export class GenericChutesChatModel extends SimpleChatModel {
 		}
 		console.log('[GenericChutesChatModel] Request body:', JSON.stringify(bodyForLogging, null, 2));
 		
-		// Use n8n's request helper to call Chutes.ai API
-		const response = await this.requestHelper.request({
+		const requestOptions: IDataObject = {
 			method: 'POST',
 			url: `${this.chuteUrl}/v1/chat/completions`,
 			headers: {
 				'Content-Type': 'application/json',
 				'Accept': 'application/json',
-				'Authorization': `Bearer ${this.credentials.apiKey}`,
+				'Authorization': `Bearer ${this.credentials.apiKey || this.credentials.sessionToken}`,
 				'User-Agent': 'n8n-ChutesAI-ChatModel/0.0.9',
 				'X-Chutes-Source': 'n8n-ai-agent',
 			},
 			body,
 			json: true,
-		});
+		};
+
+		const response = this.authenticatedRequest
+			? await this.authenticatedRequest(requestOptions)
+			: await this.requestHelper.request(requestOptions);
 		
 		console.log('[GenericChutesChatModel] Got API response');
 

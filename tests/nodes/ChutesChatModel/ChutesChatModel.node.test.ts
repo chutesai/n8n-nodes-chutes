@@ -52,7 +52,12 @@ describe('ChutesChatModel Node', () => {
 			expect(chuteUrlProp).toBeDefined();
 			expect(chuteUrlProp?.type).toBe('options');
 			expect(chuteUrlProp?.required).toBe(true);
-			expect(chuteUrlProp?.default).toBe('https://llm.chutes.ai');
+			expect(chuteUrlProp?.default).toBe('');
+		});
+
+		it('model options should depend on selected chute', () => {
+			const modelProp = chatModelNode.description.properties.find(p => p.name === 'model') as any;
+			expect(modelProp.typeOptions?.loadOptionsDependsOn).toEqual(['chuteUrl']);
 		});
 
 		it('should have model property', () => {
@@ -143,6 +148,7 @@ describe('ChutesChatModel Node', () => {
 				}),
 				helpers: {
 					request: jest.fn(),
+					requestWithAuthentication: jest.fn(),
 				},
 			};
 
@@ -174,6 +180,7 @@ describe('ChutesChatModel Node', () => {
 				}),
 				helpers: {
 					request: jest.fn(),
+					requestWithAuthentication: jest.fn(),
 				},
 			};
 
@@ -187,6 +194,7 @@ describe('ChutesChatModel Node', () => {
 			expect(model.topP).toBe(0.95);
 			expect(model.frequencyPenalty).toBe(0.5);
 			expect(model.presencePenalty).toBe(0.3);
+			expect(typeof model.authenticatedRequest).toBe('function');
 		});
 
 		it('should handle default values correctly', async () => {
@@ -205,6 +213,7 @@ describe('ChutesChatModel Node', () => {
 				}),
 				helpers: {
 					request: jest.fn(),
+					requestWithAuthentication: jest.fn(),
 				},
 			};
 

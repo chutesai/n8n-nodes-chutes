@@ -6,6 +6,7 @@
 import { Chutes } from '../../../nodes/Chutes/Chutes.node';
 import { createMockExecuteFunctions } from '../../helpers/mocks';
 import { mockTextCompletionResponse } from '../../helpers/fixtures';
+import * as openApiDiscovery from '../../../nodes/Chutes/transport/openApiDiscovery';
 
 describe('Chutes Node', () => {
 	let node: Chutes;
@@ -92,6 +93,11 @@ describe('Chutes Node', () => {
 		test('should have getChutesImageModels method', () => {
 			expect(node.methods?.loadOptions?.getChutesImageModels).toBeDefined();
 		});
+
+		test('should have empty default chuteUrl for inference compatibility', () => {
+			const chuteParam = node.description.properties.find((prop) => prop.name === 'chuteUrl');
+			expect(chuteParam?.default).toBe('');
+		});
 	});
 
 	describe('Execute Method', () => {
@@ -168,6 +174,73 @@ describe('Chutes Node', () => {
 			);
 
 			await expect(node.execute.call(mockFunctions)).rejects.toThrow();
+		});
+
+		test('should use requestWithAuthentication for speech-to-text requests', async () => {
+			const mockFunctions = createMockExecuteFunctions({
+				getInputData: jest.fn().mockReturnValue([{ json: {}, binary: undefined }]),
+			});
+			(mockFunctions.getNodeParameter as jest.Mock)
+				.mockReturnValueOnce('speechToText') // resource
+				.mockReturnValueOnce('transcribe') // operation
+				.mockReturnValueOnce('https://stt.chutes.ai') // chuteUrl
+				.mockReturnValueOnce('base64audio') // audio
+				.mockReturnValueOnce({}); // additionalOptions
+
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue([
+				{ text: 'hello ', start: 0, end: 1 },
+				{ text: 'world', start: 1, end: 2 },
+			]);
+
+			const result = await node.execute.call(mockFunctions);
+
+			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalled();
+			expect(result[0][0].json.text).toBe('hello world');
+		});
+
+		test('should pass authenticated loader callback to OpenAPI discovery', async () => {
+			const discoverSpy = jest
+				.spyOn(openApiDiscovery, 'discoverChuteCapabilities')
+				.mockResolvedValue({
+					endpoints: [{ path: '/edit', method: 'POST', parameters: [] }],
+					supportsTextToVideo: false,
+					supportsImageToVideo: false,
+					supportsImageEdit: true,
+					imageEditPath: '/edit',
+					supportsVideoToVideo: false,
+					supportsKeyframeInterp: false,
+				});
+			const buildSpy = jest.spyOn(openApiDiscovery, 'buildRequestBody').mockReturnValue({
+				endpoint: '/edit',
+				body: { prompt: 'edit this', image: 'base64image' },
+			});
+
+			const mockFunctions = createMockExecuteFunctions({
+				getInputData: jest.fn().mockReturnValue([{ json: {}, binary: undefined }]),
+			});
+			(mockFunctions.getNodeParameter as jest.Mock)
+				.mockReturnValueOnce('imageGeneration') // resource
+				.mockReturnValueOnce('edit') // operation
+				.mockReturnValueOnce('https://image.chutes.ai') // chuteUrl
+				.mockReturnValueOnce('edit this') // prompt
+				.mockReturnValueOnce('1024x1024') // size
+				.mockReturnValueOnce(1) // n
+				.mockReturnValueOnce({}) // additionalOptions
+				.mockReturnValueOnce('base64image'); // image
+
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				Buffer.from('fake-image'),
+			);
+			(mockFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue({
+				data: 'binary',
+			});
+
+			await node.execute.call(mockFunctions);
+
+			expect(discoverSpy).toHaveBeenCalled();
+			const secondArg = discoverSpy.mock.calls[0][1];
+			expect(typeof secondArg).toBe('function');
+			expect(buildSpy).toHaveBeenCalled();
 		});
 	});
 });

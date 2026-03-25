@@ -47,6 +47,9 @@ function createMockSupplyDataContext(options: {
 		getCredentials: jest.fn().mockResolvedValue(credentials),
 		helpers: {
 			request: requestMock,
+			requestWithAuthentication: jest.fn().mockImplementation(
+				(_credentialType: string, requestOptions: any) => requestMock(requestOptions),
+			),
 		} as any,
 	};
 }

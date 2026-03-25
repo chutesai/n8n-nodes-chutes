@@ -20,26 +20,59 @@ interface ModelTestConfig {
 	endpoint: string;
 }
 
-const MODELS_TO_TEST: ModelTestConfig[] = [
-	{
-		name: 'DeepSeek-V3',
-		subdomain: 'chutes-deepseek-ai-deepseek-v3',
-		modelId: 'deepseek-ai/DeepSeek-V3',
-		endpoint: '/v1/completions',
-	},
-	{
-		name: 'Qwen2.5',
-		subdomain: 'chutes-qwen-qwen2-5-72b-instruct',
-		modelId: 'Qwen/Qwen2.5-72B-Instruct',
-		endpoint: '/v1/completions',
-	},
-	{
-		name: 'Llama-3',
-		subdomain: 'chutes-meta-llama-llama-3-1-70b-instruct',
-		modelId: 'meta-llama/Llama-3.1-70B-Instruct',
-		endpoint: '/v1/completions',
-	},
-];
+async function discoverModelsToTest(apiKey: string): Promise<ModelTestConfig[]> {
+	const listResponse = await fetch('https://api.chutes.ai/chutes/?include_public=true&limit=200', {
+		headers: {
+			Authorization: `Bearer ${apiKey}`,
+			'Content-Type': 'application/json',
+		},
+	});
+	if (!listResponse.ok) {
+		throw new Error(`Failed to fetch chute catalog: HTTP ${listResponse.status}`);
+	}
+
+	const listData = (await listResponse.json()) as { items?: Array<Record<string, any>> };
+	const llmChutes = (Array.isArray(listData.items) ? listData.items : [])
+		.filter((item) => item?.public && String(item?.standard_template || '').toLowerCase() === 'vllm')
+		.filter((item) => typeof item?.slug === 'string' && item.slug.length > 0)
+		.slice(0, 20);
+
+	const discovered: ModelTestConfig[] = [];
+	for (const chute of llmChutes) {
+		if (discovered.length >= 3) {
+			break;
+		}
+
+		const subdomain = `chutes-${chute.slug}`;
+		const modelsResponse = await fetch(`https://${subdomain}.chutes.ai/v1/models`, {
+			headers: {
+				Authorization: `Bearer ${apiKey}`,
+				'Content-Type': 'application/json',
+			},
+		});
+		if (!modelsResponse.ok) {
+			continue;
+		}
+
+		const modelsData = (await modelsResponse.json()) as { data?: Array<Record<string, any>> } | Array<Record<string, any>>;
+		const models = Array.isArray((modelsData as { data?: unknown[] })?.data)
+			? ((modelsData as { data: Array<Record<string, any>> }).data)
+			: (Array.isArray(modelsData) ? modelsData : []);
+		const modelId = models.find((model) => typeof model?.id === 'string' && model.id.length > 0)?.id;
+		if (!modelId) {
+			continue;
+		}
+
+		discovered.push({
+			name: String(chute.name || chute.slug),
+			subdomain,
+			modelId,
+			endpoint: '/v1/completions',
+		});
+	}
+
+	return discovered;
+}
 
 interface TruncationIndicator {
 	found: boolean;
@@ -221,6 +254,9 @@ describe('🔍 Alternative Model Truncation Test', () => {
 	}
 
 	it('Test all alternative models for truncation issues', async () => {
+		const MODELS_TO_TEST = await discoverModelsToTest(testConfig.apiKey);
+		expect(MODELS_TO_TEST.length).toBeGreaterThan(0);
+
 		console.log('\n' + '═'.repeat(80));
 		console.log(' TESTING ALTERNATIVE MODELS FOR TRUNCATION');
 		console.log('═'.repeat(80));

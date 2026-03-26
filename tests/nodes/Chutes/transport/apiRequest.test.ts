@@ -267,6 +267,17 @@ describe('API Request Helper', () => {
 			expect(context.helpers.requestWithAuthentication).toHaveBeenCalled();
 		});
 
+		test('should skip introspection when sessionToken is empty', async () => {
+			const context = createContext({
+				authType: 'sso',
+				sessionToken: '',
+				grantedScopes: '',
+			});
+
+			await chutesApiRequest.call(context, 'GET', '/v1/models');
+			expect(context.helpers.requestWithAuthentication).toHaveBeenCalled();
+		});
+
 		test('should allow non-SSO credentials without apiKey', async () => {
 			const context = createContext({
 				authType: 'manualToken',

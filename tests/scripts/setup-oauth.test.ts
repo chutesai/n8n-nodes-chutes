@@ -10,7 +10,7 @@ describe('setup-oauth CLI', () => {
 
 		test('should have a bin entry for n8n-nodes-chutes-setup-oauth', () => {
 			expect(pkg.bin).toBeDefined();
-			expect(pkg.bin['n8n-nodes-chutes-setup-oauth']).toBe('./dist/scripts/setup-oauth.js');
+			expect(pkg.bin['n8n-nodes-chutes-setup-oauth']).toBe('./dist/scripts/cli-entry.js');
 		});
 
 		test('should include dist/scripts in the files array', () => {
@@ -25,6 +25,25 @@ describe('setup-oauth CLI', () => {
 
 		test('should include scripts/**/* in the include array', () => {
 			expect(tsconfig.include).toContain('scripts/**/*');
+		});
+	});
+
+	describe('jest.config.js coverage configuration', () => {
+		const jestConfig = require('../../jest.config.js');
+
+		test('should include scripts/**/*.ts in collectCoverageFrom', () => {
+			expect(jestConfig.collectCoverageFrom).toContain('scripts/**/*.ts');
+		});
+	});
+
+	describe('coverage gate script', () => {
+		const gateScript = fs.readFileSync(
+			path.resolve(__dirname, '../../scripts/check-runtime-surface-coverage.js'),
+			'utf-8',
+		);
+
+		test('should check scripts/ directory in coverage gate', () => {
+			expect(gateScript).toContain("'scripts/'");
 		});
 	});
 
@@ -75,6 +94,10 @@ describe('setup-oauth CLI', () => {
 
 		test('should export runSetup function', () => {
 			expect(typeof mod.runSetup).toBe('function');
+		});
+
+		test('should export main function', () => {
+			expect(typeof mod.main).toBe('function');
 		});
 	});
 
@@ -219,6 +242,23 @@ describe('setup-oauth CLI', () => {
 			).rejects.toThrow('HTTP 500');
 		});
 
+		test('should throw with message when detail is absent but message is present', async () => {
+			jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+				ok: false,
+				status: 422,
+				json: async () => ({ message: 'Validation failed' }),
+			} as unknown as Response);
+
+			await expect(
+				registerOAuthApp({
+					apiKey: 'cpat_key',
+					name: 'Test',
+					redirectUris: ['http://localhost:5678/rest/oauth2-credential/callback'],
+					scopes: ['openid'],
+				}),
+			).rejects.toThrow('Validation failed');
+		});
+
 		test('should throw with HTTP status when json parsing fails', async () => {
 			jest.spyOn(global, 'fetch').mockResolvedValueOnce({
 				ok: false,
@@ -351,6 +391,28 @@ describe('setup-oauth CLI', () => {
 			expect(result.written).toEqual([]);
 			expect(result.skipped).toEqual([]);
 		});
+
+		test('should skip all keys when all already exist in file', () => {
+			const envPath = path.join(tmpDir, '.env');
+			fs.writeFileSync(envPath, 'KEY_A=old_a\nKEY_B=old_b\n');
+
+			const result = writeEnvFile(envPath, { KEY_A: 'new_a', KEY_B: 'new_b' });
+			expect(result.written).toEqual([]);
+			expect(result.skipped).toEqual(['KEY_A', 'KEY_B']);
+
+			const content = fs.readFileSync(envPath, 'utf-8');
+			expect(content).toBe('KEY_A=old_a\nKEY_B=old_b\n');
+		});
+
+		test('should prepend newline when existing file lacks trailing newline', () => {
+			const envPath = path.join(tmpDir, '.env');
+			fs.writeFileSync(envPath, 'EXISTING=value');
+
+			writeEnvFile(envPath, { NEW_KEY: 'new_val' });
+
+			const content = fs.readFileSync(envPath, 'utf-8');
+			expect(content).toBe('EXISTING=value\nNEW_KEY=new_val\n');
+		});
 	});
 
 	describe('buildAuthorizationUrl', () => {
@@ -482,6 +544,44 @@ describe('setup-oauth CLI', () => {
 					codeVerifier: 'verifier_value',
 				}),
 			).rejects.toThrow('HTTP 500');
+		});
+
+		test('should throw with HTTP status when json parsing fails', async () => {
+			jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+				ok: false,
+				status: 502,
+				json: async () => {
+					throw new Error('invalid json');
+				},
+			} as unknown as Response);
+
+			await expect(
+				exchangeCodeForTokens({
+					clientId: 'cid_abc',
+					clientSecret: 'csc_xyz',
+					code: 'code',
+					redirectUri: 'http://localhost:5678/rest/oauth2-credential/callback',
+					codeVerifier: 'verifier_value',
+				}),
+			).rejects.toThrow('HTTP 502');
+		});
+
+		test('should throw with detail when error_description is absent but detail is present', async () => {
+			jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+				ok: false,
+				status: 400,
+				json: async () => ({ detail: 'Token revoked' }),
+			} as unknown as Response);
+
+			await expect(
+				exchangeCodeForTokens({
+					clientId: 'cid_abc',
+					clientSecret: 'csc_xyz',
+					code: 'code',
+					redirectUri: 'http://localhost:5678/rest/oauth2-credential/callback',
+					codeVerifier: 'verifier_value',
+				}),
+			).rejects.toThrow('Token revoked');
 		});
 	});
 
@@ -680,13 +780,401 @@ describe('setup-oauth CLI', () => {
 		});
 	});
 
+	describe('main() interactive CLI', () => {
+		const setupOAuth = require('../../scripts/setup-oauth');
+		const { main } = setupOAuth;
+		let exitSpy: jest.SpyInstance;
+		let logSpy: jest.SpyInstance;
+		let errorSpy: jest.SpyInstance;
+
+		function mockReadline(answers: string[]) {
+			let callIndex = 0;
+			const closeFn = jest.fn();
+			const questionFn = jest.fn((_q: string, cb: (a: string) => void) => {
+				cb(answers[callIndex++] || '');
+			});
+			jest.spyOn(require('readline'), 'createInterface').mockReturnValue({
+				question: questionFn,
+				close: closeFn,
+			} as any);
+			return { questionFn, closeFn };
+		}
+
+		beforeEach(() => {
+			jest.restoreAllMocks();
+			exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {
+				throw new Error('process.exit called');
+			}) as any);
+			logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+			errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			jest.restoreAllMocks();
+		});
+
+		test('should exit with error when API key is empty', async () => {
+			mockReadline(['']);
+
+			await expect(main()).rejects.toThrow('process.exit called');
+			expect(errorSpy).toHaveBeenCalledWith('API key is required.');
+			expect(exitSpy).toHaveBeenCalledWith(1);
+		});
+
+		test('should exit with error when API key is invalid', async () => {
+			mockReadline(['cpat_bad_key']);
+			jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+				ok: false,
+				status: 401,
+			} as Response);
+
+			await expect(main()).rejects.toThrow('process.exit called');
+			expect(errorSpy).toHaveBeenCalledWith(
+				'Invalid API key. Please check and try again.',
+			);
+			expect(exitSpy).toHaveBeenCalledWith(1);
+		});
+
+		test('should run multi-user flow with default redirect and write to default .env', async () => {
+			const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'main-test-'));
+			const envPath = path.join(tmpDir, '.env');
+
+			mockReadline([
+				'cpat_valid',
+				'1',
+				'',
+				'Y',
+				envPath,
+			]);
+
+			jest.spyOn(global, 'fetch')
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						app_id: 'app_1',
+						client_id: 'cid_main',
+						client_secret: 'csc_main',
+					}),
+				} as Response);
+
+			await main();
+			expect(exitSpy).not.toHaveBeenCalled();
+
+			fs.rmSync(tmpDir, { recursive: true, force: true });
+		});
+
+		test('should print env vars to screen when user declines writing to file', async () => {
+			mockReadline([
+				'cpat_valid',
+				'1',
+				'',
+				'n',
+			]);
+
+			jest.spyOn(global, 'fetch')
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						app_id: 'app_1',
+						client_id: 'cid_screen',
+						client_secret: 'csc_screen',
+					}),
+				} as Response);
+
+			await main();
+			expect(logSpy).toHaveBeenCalledWith(
+				expect.stringContaining('Add these to your environment'),
+			);
+		});
+
+		test('should use custom redirect URI when provided', async () => {
+			mockReadline([
+				'cpat_valid',
+				'1',
+				'https://myhost.com/rest/oauth2-credential/callback',
+				'n',
+			]);
+
+			const fetchSpy = jest.spyOn(global, 'fetch')
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						app_id: 'app_1',
+						client_id: 'cid_custom',
+						client_secret: 'csc_custom',
+					}),
+				} as Response);
+
+			await main();
+
+			const registerCall = fetchSpy.mock.calls[2];
+			const body = JSON.parse((registerCall[1] as any).body);
+			expect(body.redirect_uris).toContain(
+				'https://myhost.com/rest/oauth2-credential/callback',
+			);
+		});
+
+		test('should exit with error when auth code is empty in single-account mode', async () => {
+			mockReadline([
+				'cpat_valid',
+				'2',
+				'',
+				'',
+			]);
+
+			jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+				ok: true,
+			} as Response);
+
+			await expect(main()).rejects.toThrow('process.exit called');
+			expect(errorSpy).toHaveBeenCalledWith(
+				'Authorization code is required for single-account mode.',
+			);
+		});
+
+		test('should run single-account flow with tokens and write to file', async () => {
+			const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'main-sa-'));
+			const envPath = path.join(tmpDir, '.env');
+
+			mockReadline([
+				'cpat_valid',
+				'2',
+				'',
+				'auth_code_123',
+				'Y',
+				envPath,
+			]);
+
+			jest.spyOn(global, 'fetch')
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						app_id: 'app_1',
+						client_id: 'cid_sa',
+						client_secret: 'csc_sa',
+					}),
+				} as Response)
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						access_token: 'at_main',
+						refresh_token: 'rt_main',
+						token_type: 'Bearer',
+						expires_in: 3600,
+					}),
+				} as Response);
+
+			await main();
+
+			const content = fs.readFileSync(envPath, 'utf-8');
+			expect(content).toContain('CHUTES_SERVER_ACCESS_TOKEN=at_main');
+			expect(content).toContain('CHUTES_SERVER_REFRESH_TOKEN=rt_main');
+
+			fs.rmSync(tmpDir, { recursive: true, force: true });
+		});
+
+		test('should handle setup failure and exit', async () => {
+			mockReadline([
+				'cpat_valid',
+				'1',
+				'',
+			]);
+
+			jest.spyOn(global, 'fetch')
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({
+					ok: false,
+					status: 403,
+					json: async () => ({}),
+				} as unknown as Response);
+
+			await expect(main()).rejects.toThrow('process.exit called');
+			expect(errorSpy).toHaveBeenCalledWith(
+				expect.stringContaining('Setup failed'),
+			);
+		});
+
+		test('should handle non-Error thrown in setup', async () => {
+			mockReadline([
+				'cpat_valid',
+				'1',
+				'',
+			]);
+
+			jest.spyOn(global, 'fetch')
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockRejectedValueOnce('string error');
+
+			await expect(main()).rejects.toThrow('process.exit called');
+			expect(errorSpy).toHaveBeenCalledWith(
+				expect.stringContaining('string error'),
+			);
+		});
+
+		test('should show written and skipped keys', async () => {
+			const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'main-skip-'));
+			const envPath = path.join(tmpDir, '.env');
+			fs.writeFileSync(envPath, 'CHUTES_OAUTH_CLIENT_ID=existing\n');
+
+			mockReadline([
+				'cpat_valid',
+				'1',
+				'',
+				'Y',
+				envPath,
+			]);
+
+			jest.spyOn(global, 'fetch')
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						app_id: 'app_1',
+						client_id: 'cid_skip',
+						client_secret: 'csc_skip',
+					}),
+				} as Response);
+
+			await main();
+
+			expect(logSpy).toHaveBeenCalledWith(
+				expect.stringContaining('Skipped'),
+			);
+			expect(logSpy).toHaveBeenCalledWith(
+				expect.stringContaining('Written to'),
+			);
+
+			fs.rmSync(tmpDir, { recursive: true, force: true });
+		});
+
+		test('should handle write with all keys already existing', async () => {
+			const tmpDir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'main-allskip-'));
+			const envPath = path.join(tmpDir2, '.env');
+			fs.writeFileSync(
+				envPath,
+				'CHUTES_OAUTH_CLIENT_ID=existing\nCHUTES_OAUTH_CLIENT_SECRET=existing\n',
+			);
+
+			mockReadline([
+				'cpat_valid',
+				'1',
+				'',
+				'Y',
+				envPath,
+			]);
+
+			jest.spyOn(global, 'fetch')
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						app_id: 'app_1',
+						client_id: 'cid_skip2',
+						client_secret: 'csc_skip2',
+					}),
+				} as Response);
+
+			await main();
+
+			const allLogCalls = logSpy.mock.calls.map((c: any[]) => c.join(' '));
+			const hasWrittenTo = allLogCalls.some((l: string) => l.includes('Written to'));
+			expect(hasWrittenTo).toBe(false);
+
+			fs.rmSync(tmpDir2, { recursive: true, force: true });
+		});
+
+		test('should use default .env path when no custom path provided', async () => {
+			const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'main-def-'));
+			const origCwd = process.cwd();
+
+			mockReadline([
+				'cpat_valid',
+				'1',
+				'',
+				'Y',
+				'',
+			]);
+
+			jest.spyOn(global, 'fetch')
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						app_id: 'app_1',
+						client_id: 'cid_def',
+						client_secret: 'csc_def',
+					}),
+				} as Response);
+
+			try {
+				process.chdir(tmpDir);
+				await main();
+				const content = fs.readFileSync(path.join(tmpDir, '.env'), 'utf-8');
+				expect(content).toContain('CHUTES_OAUTH_CLIENT_ID=cid_def');
+			} finally {
+				process.chdir(origCwd);
+				fs.rmSync(tmpDir, { recursive: true, force: true });
+			}
+		});
+	});
+
+	describe('cli-entry module', () => {
+		test('cli-entry.ts should exist', () => {
+			const cliPath = path.resolve(__dirname, '../../scripts/cli-entry.ts');
+			expect(fs.existsSync(cliPath)).toBe(true);
+		});
+
+		test('cli-entry.ts should have shebang', () => {
+			const content = fs.readFileSync(
+				path.resolve(__dirname, '../../scripts/cli-entry.ts'),
+				'utf-8',
+			);
+			expect(content.startsWith('#!/usr/bin/env node')).toBe(true);
+		});
+
+		test('cli-entry should import and call main()', () => {
+			const content = fs.readFileSync(
+				path.resolve(__dirname, '../../scripts/cli-entry.ts'),
+				'utf-8',
+			);
+			expect(content).toContain("from './setup-oauth'");
+			expect(content).toContain('main()');
+		});
+
+		test('cli-entry should invoke main() when loaded', () => {
+			jest.isolateModules(() => {
+				const mockMain = jest.fn().mockResolvedValue(undefined);
+				jest.doMock('../../scripts/setup-oauth', () => ({
+					main: mockMain,
+				}));
+
+				require('../../scripts/cli-entry');
+
+				expect(mockMain).toHaveBeenCalledTimes(1);
+			});
+		});
+	});
+
 	describe('script shebang', () => {
-		test('should have #!/usr/bin/env node shebang', () => {
+		test('setup-oauth.ts should not have a shebang (moved to cli-entry.ts)', () => {
 			const scriptContent = fs.readFileSync(
 				path.resolve(__dirname, '../../scripts/setup-oauth.ts'),
 				'utf-8',
 			);
-			expect(scriptContent.startsWith('#!/usr/bin/env node')).toBe(true);
+			expect(scriptContent.startsWith('#!/usr/bin/env node')).toBe(false);
 		});
 	});
 });

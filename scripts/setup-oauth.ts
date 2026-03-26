@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import * as fs from 'fs';
 import * as crypto from 'crypto';
 
@@ -243,8 +241,7 @@ export async function runSetup(options: SetupOptions): Promise<SetupResult> {
 	};
 }
 
-/* istanbul ignore next -- interactive CLI entry point */
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
 	const readline = await import('readline');
 	const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
@@ -375,6 +372,3 @@ async function main(): Promise<void> {
 	rl.close();
 }
 
-if (require.main === module) {
-	main();
-}

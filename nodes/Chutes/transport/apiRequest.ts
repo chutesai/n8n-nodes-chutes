@@ -34,7 +34,6 @@ export function parseGrantedScopes(grantedScopes: unknown): string[] {
 }
 
 async function introspectGrantedScopes(sessionToken: string): Promise<string[]> {
-	/* istanbul ignore next */
 	if (!sessionToken) {
 		return [];
 	}

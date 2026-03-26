@@ -28,7 +28,7 @@
   },
   "main": "index.js",
   "bin": {
-    "n8n-nodes-chutes-setup-oauth": "./dist/scripts/setup-oauth.js"
+    "n8n-nodes-chutes-setup-oauth": "./dist/scripts/cli-entry.js"
   },
   "scripts": {
     "build": "tsc && gulp build:icons",
@@ -45,7 +45,7 @@
     "test:coverage": "jest --coverage",
     "test:critical-auth": "jest --forceExit --runInBand tests/credentials/ChutesApi.credentials.test.ts tests/nodes/Chutes/transport/apiRequest.test.ts tests/nodes/Chutes/transport/requestWithChutesCredential.test.ts",
     "test:critical-auth:coverage": "jest --forceExit --runInBand --coverage --coverageReporters=text-summary --coverageReporters=json-summary --coverageReporters=json --collectCoverageFrom=\"credentials/ChutesApi.credentials.ts\" --collectCoverageFrom=\"nodes/Chutes/transport/apiRequest.ts\" --collectCoverageFrom=\"nodes/Chutes/transport/requestWithChutesCredential.ts\" tests/credentials/ChutesApi.credentials.test.ts tests/nodes/Chutes/transport/apiRequest.test.ts tests/nodes/Chutes/transport/requestWithChutesCredential.test.ts && node scripts/check-critical-auth-coverage.js",
-    "test:runtime-surface:coverage": "jest --forceExit --coverage --coverageThreshold={} --coverageReporters=text-summary --coverageReporters=json-summary --coverageReporters=json --collectCoverageFrom=\"credentials/**/*.ts\" --collectCoverageFrom=\"nodes/**/*.ts\" --collectCoverageFrom=\"!**/*.d.ts\" --collectCoverageFrom=\"!dist/**\" tests/credentials tests/nodes tests/unit && node scripts/check-runtime-surface-coverage.js",
+    "test:runtime-surface:coverage": "jest --forceExit --coverage --coverageThreshold={} --coverageReporters=text-summary --coverageReporters=json-summary --coverageReporters=json --collectCoverageFrom=\"credentials/**/*.ts\" --collectCoverageFrom=\"nodes/**/*.ts\" --collectCoverageFrom=\"scripts/**/*.ts\" --collectCoverageFrom=\"!**/*.d.ts\" --collectCoverageFrom=\"!dist/**\" tests/credentials tests/nodes tests/unit tests/scripts && node scripts/check-runtime-surface-coverage.js",
     "test:verbose": "jest --verbose",
     "test:tdd": "jest --watch --verbose --coverage",
     "test:docker": "jest --testPathPatterns=tests/integration/docker",

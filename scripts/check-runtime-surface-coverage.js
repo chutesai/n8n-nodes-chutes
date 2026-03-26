@@ -3,7 +3,7 @@ const path = require('node:path');
 
 const COVERAGE_SUMMARY_PATH = path.join(process.cwd(), 'coverage', 'coverage-summary.json');
 const REQUIRED_THRESHOLD = 100;
-const REQUIRED_PREFIXES = ['nodes/', 'credentials/'];
+const REQUIRED_PREFIXES = ['nodes/', 'credentials/', 'scripts/'];
 
 function normalizePath(inputPath) {
 	return String(inputPath).replace(/\\/g, '/');
@@ -27,7 +27,7 @@ const summary = JSON.parse(fs.readFileSync(COVERAGE_SUMMARY_PATH, 'utf8'));
 const coverageEntries = Object.entries(summary).filter(([entryPath]) => isRuntimeSurfaceFile(entryPath));
 
 if (coverageEntries.length === 0) {
-	fail('No coverage entries found for runtime surface under /nodes and /credentials');
+	fail('No coverage entries found for runtime surface under /nodes, /credentials, and /scripts');
 }
 
 const failures = [];
@@ -54,5 +54,5 @@ if (failures.length > 0) {
 }
 
 process.stdout.write(
-	`Runtime surface coverage gate passed (${REQUIRED_THRESHOLD}% on all /nodes and /credentials files).\n`,
+	`Runtime surface coverage gate passed (${REQUIRED_THRESHOLD}% on all /nodes, /credentials, and /scripts files).\n`,
 );

@@ -99,6 +99,14 @@ describe('setup-oauth CLI', () => {
 		test('should export main function', () => {
 			expect(typeof mod.main).toBe('function');
 		});
+
+		test('should export readExistingOAuthCredentials function', () => {
+			expect(typeof mod.readExistingOAuthCredentials).toBe('function');
+		});
+
+		test('should export runUpgradeToSingleAccount function', () => {
+			expect(typeof mod.runUpgradeToSingleAccount).toBe('function');
+		});
 	});
 
 	describe('verifyApiKey', () => {
@@ -786,6 +794,8 @@ describe('setup-oauth CLI', () => {
 		let exitSpy: jest.SpyInstance;
 		let logSpy: jest.SpyInstance;
 		let errorSpy: jest.SpyInstance;
+		let cleanCwdDir: string;
+		let origCwd: string;
 
 		function mockReadline(answers: string[]) {
 			let callIndex = 0;
@@ -802,6 +812,9 @@ describe('setup-oauth CLI', () => {
 
 		beforeEach(() => {
 			jest.restoreAllMocks();
+			origCwd = process.cwd();
+			cleanCwdDir = fs.mkdtempSync(path.join(os.tmpdir(), 'main-cli-clean-'));
+			process.chdir(cleanCwdDir);
 			exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {
 				throw new Error('process.exit called');
 			}) as any);
@@ -811,6 +824,8 @@ describe('setup-oauth CLI', () => {
 
 		afterEach(() => {
 			jest.restoreAllMocks();
+			process.chdir(origCwd);
+			fs.rmSync(cleanCwdDir, { recursive: true, force: true });
 		});
 
 		test('should exit with error when API key is empty', async () => {
@@ -1095,6 +1110,329 @@ describe('setup-oauth CLI', () => {
 			fs.rmSync(tmpDir2, { recursive: true, force: true });
 		});
 
+		test('should detect existing OAuth credentials and offer upgrade to single-account', async () => {
+			const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'main-upgrade-'));
+			const envPath = path.join(tmpDir, '.env');
+			fs.writeFileSync(
+				envPath,
+				'CHUTES_OAUTH_CLIENT_ID=cid_pre\nCHUTES_OAUTH_CLIENT_SECRET=csc_pre\n',
+			);
+			const origCwd = process.cwd();
+
+			mockReadline([
+				'y',
+				'',
+				'upgrade_auth_code',
+				'Y',
+				envPath,
+			]);
+
+			jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({
+					access_token: 'at_upgraded',
+					refresh_token: 'rt_upgraded',
+					token_type: 'Bearer',
+					expires_in: 3600,
+				}),
+			} as Response);
+
+			try {
+				process.chdir(tmpDir);
+				await main();
+
+				expect(logSpy).toHaveBeenCalledWith(
+					expect.stringContaining('Existing OAuth app detected'),
+				);
+
+				const content = fs.readFileSync(envPath, 'utf-8');
+				expect(content).toContain('CHUTES_SERVER_ACCESS_TOKEN=at_upgraded');
+				expect(content).toContain('CHUTES_SERVER_REFRESH_TOKEN=rt_upgraded');
+			} finally {
+				process.chdir(origCwd);
+				fs.rmSync(tmpDir, { recursive: true, force: true });
+			}
+		});
+
+		test('should proceed to normal setup when user declines upgrade', async () => {
+			const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'main-decline-'));
+			fs.writeFileSync(
+				path.join(tmpDir, '.env'),
+				'CHUTES_OAUTH_CLIENT_ID=cid_pre\nCHUTES_OAUTH_CLIENT_SECRET=csc_pre\n',
+			);
+			const origCwd = process.cwd();
+
+			mockReadline([
+				'n',
+				'cpat_valid',
+				'1',
+				'',
+				'n',
+			]);
+
+			jest.spyOn(global, 'fetch')
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						app_id: 'app_new',
+						client_id: 'cid_new',
+						client_secret: 'csc_new',
+					}),
+				} as Response);
+
+			try {
+				process.chdir(tmpDir);
+				await main();
+
+				expect(logSpy).toHaveBeenCalledWith(
+					expect.stringContaining('Existing OAuth app detected'),
+				);
+				expect(exitSpy).not.toHaveBeenCalled();
+			} finally {
+				process.chdir(origCwd);
+				fs.rmSync(tmpDir, { recursive: true, force: true });
+			}
+		});
+
+		test('should exit when auth code is empty during upgrade', async () => {
+			const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'main-upgrade-nocode-'));
+			fs.writeFileSync(
+				path.join(tmpDir, '.env'),
+				'CHUTES_OAUTH_CLIENT_ID=cid_pre\nCHUTES_OAUTH_CLIENT_SECRET=csc_pre\n',
+			);
+			const origCwd = process.cwd();
+
+			mockReadline([
+				'y',
+				'',
+				'',
+			]);
+
+			try {
+				process.chdir(tmpDir);
+				await expect(main()).rejects.toThrow('process.exit called');
+				expect(errorSpy).toHaveBeenCalledWith('Authorization code is required.');
+			} finally {
+				process.chdir(origCwd);
+				fs.rmSync(tmpDir, { recursive: true, force: true });
+			}
+		});
+
+		test('should handle upgrade failure and exit', async () => {
+			const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'main-upgrade-fail-'));
+			fs.writeFileSync(
+				path.join(tmpDir, '.env'),
+				'CHUTES_OAUTH_CLIENT_ID=cid_pre\nCHUTES_OAUTH_CLIENT_SECRET=csc_pre\n',
+			);
+			const origCwd = process.cwd();
+
+			mockReadline([
+				'y',
+				'',
+				'bad_code',
+			]);
+
+			jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+				ok: false,
+				status: 400,
+				json: async () => ({ error_description: 'Invalid code' }),
+			} as unknown as Response);
+
+			try {
+				process.chdir(tmpDir);
+				await expect(main()).rejects.toThrow('process.exit called');
+				expect(errorSpy).toHaveBeenCalledWith(
+					expect.stringContaining('Upgrade failed'),
+				);
+			} finally {
+				process.chdir(origCwd);
+				fs.rmSync(tmpDir, { recursive: true, force: true });
+			}
+		});
+
+		test('should print upgrade tokens to screen when user declines writing', async () => {
+			const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'main-upgrade-nowrite-'));
+			fs.writeFileSync(
+				path.join(tmpDir, '.env'),
+				'CHUTES_OAUTH_CLIENT_ID=cid_pre\nCHUTES_OAUTH_CLIENT_SECRET=csc_pre\n',
+			);
+			const origCwd = process.cwd();
+
+			mockReadline([
+				'y',
+				'',
+				'upgrade_code',
+				'n',
+			]);
+
+			jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({
+					access_token: 'at_screen',
+					refresh_token: 'rt_screen',
+					token_type: 'Bearer',
+					expires_in: 3600,
+				}),
+			} as Response);
+
+			try {
+				process.chdir(tmpDir);
+				await main();
+
+				expect(logSpy).toHaveBeenCalledWith(
+					expect.stringContaining('Add these to your environment'),
+				);
+			} finally {
+				process.chdir(origCwd);
+				fs.rmSync(tmpDir, { recursive: true, force: true });
+			}
+		});
+
+		test('should use default .env path and handle all-skipped during upgrade write', async () => {
+			const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'main-upgrade-defpath-'));
+			const envPath = path.join(tmpDir, '.env');
+			fs.writeFileSync(
+				envPath,
+				'CHUTES_OAUTH_CLIENT_ID=cid_pre\nCHUTES_OAUTH_CLIENT_SECRET=csc_pre\nCHUTES_SERVER_ACCESS_TOKEN=old_at\nCHUTES_SERVER_REFRESH_TOKEN=old_rt\n',
+			);
+			const origCwd = process.cwd();
+
+			mockReadline([
+				'y',
+				'',
+				'upgrade_code',
+				'Y',
+				'',
+			]);
+
+			jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({
+					access_token: 'at_dup',
+					refresh_token: 'rt_dup',
+					token_type: 'Bearer',
+					expires_in: 3600,
+				}),
+			} as Response);
+
+			try {
+				process.chdir(tmpDir);
+				await main();
+
+				const allLogs = logSpy.mock.calls.map((c: any[]) => c.join(' '));
+				const hasWrittenTo = allLogs.some((l: string) => l.includes('Written to'));
+				expect(hasWrittenTo).toBe(false);
+			} finally {
+				process.chdir(origCwd);
+				fs.rmSync(tmpDir, { recursive: true, force: true });
+			}
+		});
+
+		test('should show skipped keys when upgrade writes to file with existing tokens', async () => {
+			const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'main-upgrade-skip-'));
+			const envPath = path.join(tmpDir, '.env');
+			fs.writeFileSync(
+				envPath,
+				'CHUTES_OAUTH_CLIENT_ID=cid_pre\nCHUTES_OAUTH_CLIENT_SECRET=csc_pre\nCHUTES_SERVER_ACCESS_TOKEN=old_token\n',
+			);
+			const origCwd = process.cwd();
+
+			mockReadline([
+				'y',
+				'',
+				'upgrade_code',
+				'Y',
+				envPath,
+			]);
+
+			jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({
+					access_token: 'at_new',
+					refresh_token: 'rt_new',
+					token_type: 'Bearer',
+					expires_in: 3600,
+				}),
+			} as Response);
+
+			try {
+				process.chdir(tmpDir);
+				await main();
+
+				expect(logSpy).toHaveBeenCalledWith(
+					expect.stringContaining('Skipped'),
+				);
+			} finally {
+				process.chdir(origCwd);
+				fs.rmSync(tmpDir, { recursive: true, force: true });
+			}
+		});
+
+		test('should handle non-Error thrown during upgrade', async () => {
+			const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'main-upgrade-nonerr-'));
+			fs.writeFileSync(
+				path.join(tmpDir, '.env'),
+				'CHUTES_OAUTH_CLIENT_ID=cid_pre\nCHUTES_OAUTH_CLIENT_SECRET=csc_pre\n',
+			);
+			const origCwd = process.cwd();
+
+			mockReadline([
+				'y',
+				'',
+				'code_123',
+			]);
+
+			jest.spyOn(global, 'fetch').mockRejectedValueOnce('string error from upgrade');
+
+			try {
+				process.chdir(tmpDir);
+				await expect(main()).rejects.toThrow('process.exit called');
+				expect(errorSpy).toHaveBeenCalledWith(
+					expect.stringContaining('string error from upgrade'),
+				);
+			} finally {
+				process.chdir(origCwd);
+				fs.rmSync(tmpDir, { recursive: true, force: true });
+			}
+		});
+
+		test('should skip upgrade detection when no existing credentials found', async () => {
+			const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'main-no-creds-'));
+			const origCwd = process.cwd();
+
+			mockReadline([
+				'cpat_valid',
+				'1',
+				'',
+				'n',
+			]);
+
+			jest.spyOn(global, 'fetch')
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						app_id: 'app_1',
+						client_id: 'cid_norm',
+						client_secret: 'csc_norm',
+					}),
+				} as Response);
+
+			try {
+				process.chdir(tmpDir);
+				await main();
+
+				const allLogs = logSpy.mock.calls.map((c: any[]) => c.join(' '));
+				expect(allLogs.some((l: string) => l.includes('Existing OAuth app detected'))).toBe(false);
+			} finally {
+				process.chdir(origCwd);
+				fs.rmSync(tmpDir, { recursive: true, force: true });
+			}
+		});
+
 		test('should use default .env path when no custom path provided', async () => {
 			const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'main-def-'));
 			const origCwd = process.cwd();
@@ -1165,6 +1503,179 @@ describe('setup-oauth CLI', () => {
 
 				expect(mockMain).toHaveBeenCalledTimes(1);
 			});
+		});
+	});
+
+	describe('runUpgradeToSingleAccount', () => {
+		const { runUpgradeToSingleAccount } = require('../../scripts/setup-oauth');
+		let tmpDir: string;
+
+		beforeEach(() => {
+			jest.restoreAllMocks();
+			tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'upgrade-test-'));
+		});
+
+		afterEach(() => {
+			fs.rmSync(tmpDir, { recursive: true, force: true });
+		});
+
+		test('should exchange tokens using existing client credentials without registering a new app', async () => {
+			jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({
+					access_token: 'at_upgrade',
+					refresh_token: 'rt_upgrade',
+					token_type: 'Bearer',
+					expires_in: 3600,
+				}),
+			} as Response);
+
+			const envPath = path.join(tmpDir, '.env');
+			const result = await runUpgradeToSingleAccount({
+				clientId: 'cid_existing',
+				clientSecret: 'csc_existing',
+				redirectUri: 'http://localhost:5678/rest/oauth2-credential/callback',
+				authCode: 'auth_code_upgrade',
+				codeVerifier: 'verifier_upgrade',
+				envFilePath: envPath,
+				writeToFile: true,
+			});
+
+			expect(result.accessToken).toBe('at_upgrade');
+			expect(result.refreshToken).toBe('rt_upgrade');
+
+			const content = fs.readFileSync(envPath, 'utf-8');
+			expect(content).toContain('CHUTES_SERVER_ACCESS_TOKEN=at_upgrade');
+			expect(content).toContain('CHUTES_SERVER_REFRESH_TOKEN=rt_upgrade');
+			expect(content).not.toContain('CHUTES_OAUTH_CLIENT_ID');
+		});
+
+		test('should not write to file when writeToFile is false', async () => {
+			jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({
+					access_token: 'at_nowrite',
+					refresh_token: 'rt_nowrite',
+					token_type: 'Bearer',
+					expires_in: 3600,
+				}),
+			} as Response);
+
+			const envPath = path.join(tmpDir, '.env');
+			const result = await runUpgradeToSingleAccount({
+				clientId: 'cid_existing',
+				clientSecret: 'csc_existing',
+				redirectUri: 'http://localhost:5678/rest/oauth2-credential/callback',
+				authCode: 'code',
+				codeVerifier: 'verifier',
+				envFilePath: envPath,
+				writeToFile: false,
+			});
+
+			expect(result.accessToken).toBe('at_nowrite');
+			expect(fs.existsSync(envPath)).toBe(false);
+		});
+
+		test('should propagate errors from token exchange', async () => {
+			jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+				ok: false,
+				status: 400,
+				json: async () => ({ error_description: 'Code expired' }),
+			} as unknown as Response);
+
+			await expect(
+				runUpgradeToSingleAccount({
+					clientId: 'cid_existing',
+					clientSecret: 'csc_existing',
+					redirectUri: 'http://localhost:5678/rest/oauth2-credential/callback',
+					authCode: 'expired_code',
+					codeVerifier: 'verifier',
+					envFilePath: path.join(tmpDir, '.env'),
+					writeToFile: false,
+				}),
+			).rejects.toThrow('Code expired');
+		});
+	});
+
+	describe('readExistingOAuthCredentials', () => {
+		const { readExistingOAuthCredentials } = require('../../scripts/setup-oauth');
+		let tmpDir: string;
+
+		beforeEach(() => {
+			tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'read-creds-'));
+		});
+
+		afterEach(() => {
+			fs.rmSync(tmpDir, { recursive: true, force: true });
+		});
+
+		test('should return both values when both keys exist in env file', () => {
+			const envPath = path.join(tmpDir, '.env');
+			fs.writeFileSync(envPath, 'CHUTES_OAUTH_CLIENT_ID=cid_existing\nCHUTES_OAUTH_CLIENT_SECRET=csc_existing\n');
+
+			const result = readExistingOAuthCredentials(envPath);
+			expect(result).toEqual({ clientId: 'cid_existing', clientSecret: 'csc_existing' });
+		});
+
+		test('should return null when file does not exist', () => {
+			const result = readExistingOAuthCredentials(path.join(tmpDir, 'nonexistent.env'));
+			expect(result).toBeNull();
+		});
+
+		test('should return null when only client ID is present', () => {
+			const envPath = path.join(tmpDir, '.env');
+			fs.writeFileSync(envPath, 'CHUTES_OAUTH_CLIENT_ID=cid_only\n');
+
+			const result = readExistingOAuthCredentials(envPath);
+			expect(result).toBeNull();
+		});
+
+		test('should return null when only client secret is present', () => {
+			const envPath = path.join(tmpDir, '.env');
+			fs.writeFileSync(envPath, 'CHUTES_OAUTH_CLIENT_SECRET=csc_only\n');
+
+			const result = readExistingOAuthCredentials(envPath);
+			expect(result).toBeNull();
+		});
+
+		test('should return null when neither key is present', () => {
+			const envPath = path.join(tmpDir, '.env');
+			fs.writeFileSync(envPath, 'OTHER_VAR=value\n');
+
+			const result = readExistingOAuthCredentials(envPath);
+			expect(result).toBeNull();
+		});
+
+		test('should handle values with equals signs', () => {
+			const envPath = path.join(tmpDir, '.env');
+			fs.writeFileSync(envPath, 'CHUTES_OAUTH_CLIENT_ID=cid=with=equals\nCHUTES_OAUTH_CLIENT_SECRET=csc_ok\n');
+
+			const result = readExistingOAuthCredentials(envPath);
+			expect(result).toEqual({ clientId: 'cid=with=equals', clientSecret: 'csc_ok' });
+		});
+
+		test('should ignore commented out lines', () => {
+			const envPath = path.join(tmpDir, '.env');
+			fs.writeFileSync(envPath, '# CHUTES_OAUTH_CLIENT_ID=commented\nCHUTES_OAUTH_CLIENT_SECRET=csc_ok\n');
+
+			const result = readExistingOAuthCredentials(envPath);
+			expect(result).toBeNull();
+		});
+
+		test('should trim whitespace from values', () => {
+			const envPath = path.join(tmpDir, '.env');
+			fs.writeFileSync(envPath, 'CHUTES_OAUTH_CLIENT_ID= cid_spaced \nCHUTES_OAUTH_CLIENT_SECRET= csc_spaced \n');
+
+			const result = readExistingOAuthCredentials(envPath);
+			expect(result).toEqual({ clientId: 'cid_spaced', clientSecret: 'csc_spaced' });
+		});
+
+		test('should return null when values are empty strings', () => {
+			const envPath = path.join(tmpDir, '.env');
+			fs.writeFileSync(envPath, 'CHUTES_OAUTH_CLIENT_ID=\nCHUTES_OAUTH_CLIENT_SECRET=\n');
+
+			const result = readExistingOAuthCredentials(envPath);
+			expect(result).toBeNull();
 		});
 	});
 

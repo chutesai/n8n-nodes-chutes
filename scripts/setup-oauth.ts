@@ -104,6 +104,40 @@ export function writeEnvFile(
 	return { written, skipped };
 }
 
+export function readExistingOAuthCredentials(
+	filePath: string,
+): { clientId: string; clientSecret: string } | null {
+	if (!fs.existsSync(filePath)) {
+		return null;
+	}
+
+	const content = fs.readFileSync(filePath, 'utf-8');
+	const lines = content.split('\n');
+
+	let clientId = '';
+	let clientSecret = '';
+
+	for (const line of lines) {
+		const trimmed = line.trim();
+		if (trimmed.startsWith('#')) continue;
+
+		const eqIdx = trimmed.indexOf('=');
+		if (eqIdx === -1) continue;
+
+		const key = trimmed.substring(0, eqIdx).trim();
+		const value = trimmed.substring(eqIdx + 1).trim();
+
+		if (key === 'CHUTES_OAUTH_CLIENT_ID') clientId = value;
+		if (key === 'CHUTES_OAUTH_CLIENT_SECRET') clientSecret = value;
+	}
+
+	if (!clientId || !clientSecret) {
+		return null;
+	}
+
+	return { clientId, clientSecret };
+}
+
 export function formatEnvOutput(vars: Record<string, string>): string {
 	return Object.entries(vars)
 		.map(([key, value]) => `${key}=${value}`)
@@ -241,6 +275,43 @@ export async function runSetup(options: SetupOptions): Promise<SetupResult> {
 	};
 }
 
+interface UpgradeOptions {
+	clientId: string;
+	clientSecret: string;
+	redirectUri: string;
+	authCode: string;
+	codeVerifier: string;
+	envFilePath: string;
+	writeToFile: boolean;
+}
+
+interface UpgradeResult {
+	accessToken: string;
+	refreshToken: string;
+}
+
+export async function runUpgradeToSingleAccount(options: UpgradeOptions): Promise<UpgradeResult> {
+	const tokens = await exchangeCodeForTokens({
+		clientId: options.clientId,
+		clientSecret: options.clientSecret,
+		code: options.authCode,
+		redirectUri: options.redirectUri,
+		codeVerifier: options.codeVerifier,
+	});
+
+	if (options.writeToFile) {
+		writeEnvFile(options.envFilePath, {
+			CHUTES_SERVER_ACCESS_TOKEN: tokens.access_token,
+			CHUTES_SERVER_REFRESH_TOKEN: tokens.refresh_token,
+		});
+	}
+
+	return {
+		accessToken: tokens.access_token,
+		refreshToken: tokens.refresh_token,
+	};
+}
+
 export async function main(): Promise<void> {
 	const readline = await import('readline');
 	const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -251,6 +322,94 @@ export async function main(): Promise<void> {
 	console.log('\n╔════════════════════════════════════════════════════════════╗');
 	console.log('║      n8n-nodes-chutes — OAuth Setup Wizard                ║');
 	console.log('╚════════════════════════════════════════════════════════════╝\n');
+
+	const existingCreds = readExistingOAuthCredentials('.env');
+	if (existingCreds) {
+		console.log('Existing OAuth app detected in .env:');
+		console.log(`  Client ID: ${existingCreds.clientId.substring(0, 8)}...`);
+		console.log('');
+		console.log('Would you like to upgrade to single-account mode?');
+		console.log('(Your account will pay for all inference used by all users)\n');
+
+		const upgradeChoice = await ask('Upgrade to single-account? [y/N]: ');
+		if (upgradeChoice.toLowerCase() === 'y') {
+			const redirectUri =
+				(await ask(
+					`Redirect URI (Example: https://<n8n-host>/rest/oauth2-credential/callback)\n` +
+						`Press Enter for default [${DEFAULT_REDIRECT_URI}]: `,
+				)) || DEFAULT_REDIRECT_URI;
+
+			const pkce = await generatePKCE();
+
+			console.log('\nTo authorize, you will need to:');
+			console.log('1. Open the authorization URL in your browser');
+			console.log('2. Authorize the application');
+			console.log('3. Copy the authorization code from the callback URL\n');
+
+			const authCode = await ask('Enter the authorization code: ');
+			if (!authCode) {
+				console.error('Authorization code is required.');
+				rl.close();
+				process.exit(1);
+			}
+
+			try {
+				const result = await runUpgradeToSingleAccount({
+					clientId: existingCreds.clientId,
+					clientSecret: existingCreds.clientSecret,
+					redirectUri,
+					authCode,
+					codeVerifier: pkce.codeVerifier,
+					envFilePath: '.env',
+					writeToFile: false,
+				});
+
+				const envVars: Record<string, string> = {
+					CHUTES_SERVER_ACCESS_TOKEN: result.accessToken,
+					CHUTES_SERVER_REFRESH_TOKEN: result.refreshToken,
+				};
+
+				console.log('\nUpgrade complete!\n');
+
+				const writeChoice = await ask('Write tokens to .env file? [Y/n]: ');
+				if (writeChoice.toLowerCase() !== 'n') {
+					let filePath = '.env';
+					const customPath = await ask('File path (default: .env): ');
+					if (customPath) {
+						filePath = customPath;
+					}
+
+					const writeResult = writeEnvFile(filePath, envVars);
+					if (writeResult.written.length > 0) {
+						console.log(`\nWritten to ${filePath}:`);
+						for (const key of writeResult.written) {
+							console.log(`  ${key}`);
+						}
+					}
+					if (writeResult.skipped.length > 0) {
+						console.log(`\nSkipped (already exist in ${filePath}):`);
+						for (const key of writeResult.skipped) {
+							console.log(`  ${key}`);
+						}
+					}
+				} else {
+					console.log('\nAdd these to your environment:\n');
+					console.log(formatEnvOutput(envVars));
+				}
+
+				console.log('\nDone! Restart n8n for the changes to take effect.\n');
+			} catch (err) {
+				console.error(`\nUpgrade failed: ${err instanceof Error ? err.message : String(err)}`);
+				rl.close();
+				process.exit(1);
+			}
+
+			rl.close();
+			return;
+		}
+
+		console.log('\nProceeding with fresh setup...\n');
+	}
 
 	console.log('You need a Chutes API key to register an OAuth app.');
 	console.log('Get one at: https://chutes.ai/app/api\n');

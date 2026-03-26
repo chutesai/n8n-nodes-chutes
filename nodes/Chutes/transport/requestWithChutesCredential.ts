@@ -7,7 +7,11 @@ type AuthCapableContext = Pick<ILoadOptionsFunctions, 'helpers' | 'getCredential
 
 function buildFallbackHeaders(credentials: IDataObject, headers: IDataObject): IDataObject {
 	const bearerToken = String(
-		credentials.apiKey || credentials.sessionToken || credentials.accessToken || '',
+		credentials.apiKey ||
+			credentials.sessionToken ||
+			credentials.serverAccessToken ||
+			credentials.accessToken ||
+			'',
 	).trim();
 
 	if (!bearerToken) {

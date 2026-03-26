@@ -10,6 +10,10 @@ import {
 const DEFAULT_REFRESH_WINDOW_SECONDS = 300;
 const FORCE_REFRESH_FLAG = '__n8nForceCredentialRefresh';
 
+function isServerAccessTokenConfigured(): boolean {
+	return Boolean(process.env.CHUTES_SERVER_ACCESS_TOKEN?.trim());
+}
+
 function getCredentialTestBaseUrl(): string {
 	return (
 		process.env.CHUTES_CREDENTIAL_TEST_BASE_URL?.trim() ||
@@ -65,6 +69,17 @@ export class ChutesApi implements ICredentialType {
 	documentationUrl = 'https://chutes.ai/app/api';
 	icon: any = 'file:../nodes/Chutes/chutes.png';
 	properties: INodeProperties[] = [
+		...(isServerAccessTokenConfigured()
+			? [
+					{
+						displayName:
+							'A server account is configured. Save this credential to use it — no API key needed.',
+						name: 'serverAccountNotice',
+						type: 'notice' as const,
+						default: '',
+					},
+				]
+			: []),
 		{
 			displayName: 'Chutes API Key',
 			name: 'apiKey',
@@ -73,8 +88,14 @@ export class ChutesApi implements ICredentialType {
 				password: true,
 			},
 			default: '',
-			required: true,
+			required: false,
 			hint: 'Create a Chutes API key from your Chutes dashboard at chutes.ai/app/api',
+		},
+		{
+			displayName: 'Server Access Token',
+			name: 'serverAccessToken',
+			type: 'hidden',
+			default: '={{$env.CHUTES_SERVER_ACCESS_TOKEN || ""}}',
 		},
 		{
 			displayName: 'Environment',
@@ -148,7 +169,8 @@ export class ChutesApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: '={{"Bearer " + ($credentials.apiKey || $credentials.sessionToken)}}',
+				Authorization:
+					'={{"Bearer " + ($credentials.apiKey || $credentials.sessionToken || $credentials.serverAccessToken)}}',
 				'X-Chutes-Client': 'n8n-integration',
 			},
 		},
@@ -168,6 +190,11 @@ export class ChutesApi implements ICredentialType {
 	): Promise<ICredentialDataDecryptedObject> {
 		const apiKey = String(credentials.apiKey ?? '').trim();
 		if (apiKey) {
+			return {};
+		}
+
+		const serverAccessToken = String(credentials.serverAccessToken ?? '').trim();
+		if (serverAccessToken) {
 			return {};
 		}
 

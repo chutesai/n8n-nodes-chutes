@@ -152,6 +152,30 @@ describe('requestWithChutesCredential', () => {
 		);
 	});
 
+	test('falls back to serverAccessToken when apiKey and sessionToken are missing', async () => {
+		const mockContext = {
+			helpers: {
+				request: jest.fn().mockResolvedValue({ ok: true }),
+			},
+			getCredentials: jest.fn().mockResolvedValue({
+				serverAccessToken: 'server-managed-token',
+			}),
+		};
+
+		await requestWithChutesCredential(mockContext as any, {
+			method: 'GET',
+			url: 'https://api.chutes.ai/chutes/',
+		});
+
+		expect(mockContext.helpers.request).toHaveBeenCalledWith(
+			expect.objectContaining({
+				headers: expect.objectContaining({
+					Authorization: 'Bearer server-managed-token',
+				}),
+			}),
+		);
+	});
+
 	test('throws when both apiKey and sessionToken are missing', async () => {
 		const mockContext = {
 			helpers: {

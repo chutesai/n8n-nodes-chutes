@@ -56,13 +56,47 @@ describe('ChutesApi Credentials', () => {
 			}
 		});
 
-		test('should have API key property as required', () => {
+		test('should have API key property as not required (server token may be used instead)', () => {
 			const apiKeyProperty = credentials.properties.find((prop) => prop.name === 'apiKey');
 
 			expect(apiKeyProperty).toBeDefined();
 			expect(apiKeyProperty?.displayName).toBe('Chutes API Key');
 			expect(apiKeyProperty?.type).toBe('string');
-			expect(apiKeyProperty?.required).toBe(true);
+			expect(apiKeyProperty?.required).toBe(false);
+		});
+
+		test('should have hidden serverAccessToken field defaulting to env var', () => {
+			const field = credentials.properties.find((prop) => prop.name === 'serverAccessToken');
+			expect(field).toBeDefined();
+			expect(field?.type).toBe('hidden');
+			expect(field?.default).toContain('CHUTES_SERVER_ACCESS_TOKEN');
+		});
+
+		test('should show server account notice when CHUTES_SERVER_ACCESS_TOKEN is set', () => {
+			const original = process.env.CHUTES_SERVER_ACCESS_TOKEN;
+			process.env.CHUTES_SERVER_ACCESS_TOKEN = 'some-token';
+
+			const configured = new ChutesApi();
+			const notice = configured.properties.find(
+				(prop) => prop.type === 'notice' && prop.name === 'serverAccountNotice',
+			);
+			expect(notice).toBeDefined();
+			expect(notice?.displayName).toContain('server account');
+
+			process.env.CHUTES_SERVER_ACCESS_TOKEN = original;
+		});
+
+		test('should NOT show server account notice when CHUTES_SERVER_ACCESS_TOKEN is not set', () => {
+			const original = process.env.CHUTES_SERVER_ACCESS_TOKEN;
+			delete process.env.CHUTES_SERVER_ACCESS_TOKEN;
+
+			const configured = new ChutesApi();
+			const notice = configured.properties.find(
+				(prop) => prop.type === 'notice' && prop.name === 'serverAccountNotice',
+			);
+			expect(notice).toBeUndefined();
+
+			process.env.CHUTES_SERVER_ACCESS_TOKEN = original;
 		});
 
 		test('should have API key as password type', () => {
@@ -122,13 +156,14 @@ describe('ChutesApi Credentials', () => {
 			expect(credentials.authenticate?.type).toBe('generic');
 		});
 
-		test('should include Authorization header using apiKey or sessionToken', () => {
+		test('should include Authorization header using apiKey, sessionToken, or serverAccessToken', () => {
 			const headers = credentials.authenticate?.properties?.headers as any;
 
 			expect(headers).toHaveProperty('Authorization');
 			expect(headers.Authorization).toContain('Bearer');
 			expect(headers.Authorization).toContain('$credentials.apiKey');
 			expect(headers.Authorization).toContain('$credentials.sessionToken');
+			expect(headers.Authorization).toContain('$credentials.serverAccessToken');
 			expect(headers.Authorization).not.toContain('$credentials.accessToken');
 		});
 
@@ -153,6 +188,19 @@ describe('ChutesApi Credentials', () => {
 
 		afterEach(() => {
 			process.env = { ...originalEnv };
+		});
+
+		test('should skip refresh when serverAccessToken exists (no apiKey, no sessionToken)', async () => {
+			const httpRequest = jest.fn();
+			(credentials as any).helpers = { httpRequest };
+
+			const result = await (credentials as any).preAuthentication.call(credentials as any, {
+				apiKey: '',
+				serverAccessToken: 'server-managed-token',
+			});
+
+			expect(result).toEqual({});
+			expect(httpRequest).not.toHaveBeenCalled();
 		});
 
 		test('should skip refresh when apiKey exists', async () => {

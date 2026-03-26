@@ -18,7 +18,7 @@ describe('ChutesApi Credentials', () => {
 		});
 
 		test('should have correct display name', () => {
-			expect(credentials.displayName).toBe('Sign in With Chutes');
+			expect(credentials.displayName).toBe('Chutes API');
 		});
 
 		test('should have documentation URL', () => {
@@ -31,57 +31,38 @@ describe('ChutesApi Credentials', () => {
 	});
 
 	describe('Credential Properties', () => {
-		test('should extend n8n base OAuth2 credential', () => {
-			expect(credentials.extends).toEqual(['oAuth2Api']);
+		test('should NOT extend oAuth2Api (simple API key credential)', () => {
+			expect((credentials as any).extends).toBeUndefined();
 		});
 
-		test('should define hidden OAuth defaults', () => {
-			const expectedHiddenOAuthFields = [
+		test('should NOT include any OAuth-specific fields', () => {
+			const oauthOnlyFields = [
 				'grantType',
 				'authUrl',
 				'accessTokenUrl',
+				'clientId',
+				'clientSecret',
 				'scope',
 				'authQueryParameters',
-				'authentication',
+				'oauthClientConfigured',
+				'oauthRedirectHelp',
+				'oauthEnvWarning',
+				'oauthConnectHelp',
 			];
 
-			for (const fieldName of expectedHiddenOAuthFields) {
+			for (const fieldName of oauthOnlyFields) {
 				const field = credentials.properties.find((prop) => prop.name === fieldName);
-				expect(field).toBeDefined();
-				expect(field?.type).toBe('hidden');
+				expect(field).toBeUndefined();
 			}
 		});
 
-		test('should have API key property', () => {
+		test('should have API key property as required', () => {
 			const apiKeyProperty = credentials.properties.find((prop) => prop.name === 'apiKey');
 
 			expect(apiKeyProperty).toBeDefined();
 			expect(apiKeyProperty?.displayName).toBe('Chutes API Key');
 			expect(apiKeyProperty?.type).toBe('string');
-			expect(apiKeyProperty?.required).toBe(false);
-		});
-
-		test('should include a notice explaining oauth redirect url requires no user input', () => {
-			const redirectHelpProperty = credentials.properties.find(
-				(prop) => prop.name === 'oauthRedirectHelp',
-			);
-			expect(redirectHelpProperty).toBeDefined();
-			expect(redirectHelpProperty?.type).toBe('notice');
-			expect(redirectHelpProperty?.displayName).toContain('OAuth Redirect URL is auto-generated');
-			expect(redirectHelpProperty?.displayName).toContain('do not need to enter anything');
-		});
-
-		test('should keep oauth client id and secret hidden and env-backed', () => {
-			const clientIdProperty = credentials.properties.find((prop) => prop.name === 'clientId');
-			const clientSecretProperty = credentials.properties.find((prop) => prop.name === 'clientSecret');
-
-			expect(clientIdProperty).toBeDefined();
-			expect(clientIdProperty?.type).toBe('hidden');
-			expect(clientIdProperty?.default).toContain('CHUTES_OAUTH_CLIENT_ID');
-			expect(clientSecretProperty).toBeDefined();
-			expect(clientSecretProperty?.type).toBe('hidden');
-			expect(clientSecretProperty?.default).toContain('CHUTES_OAUTH_CLIENT_SECRET');
-			expect(clientSecretProperty?.typeOptions?.password).toBe(true);
+			expect(apiKeyProperty?.required).toBe(true);
 		});
 
 		test('should have API key as password type', () => {
@@ -117,30 +98,6 @@ describe('ChutesApi Credentials', () => {
 			expect(customUrlProperty?.type).toBe('hidden');
 		});
 
-		test('should show oauth environment warning notice when env vars are missing', () => {
-			const warningProperty = credentials.properties.find((prop) => prop.name === 'oauthEnvWarning');
-			expect(warningProperty).toBeDefined();
-			expect(warningProperty?.type).toBe('notice');
-			expect(warningProperty?.displayName).toContain('Please contact your administrator');
-			expect(warningProperty?.displayName).toContain(
-				'https://github.com/chutesai/Sign-in-with-Chutes',
-			);
-			expect(warningProperty?.displayOptions?.show).toEqual({
-				oauthClientConfigured: ['false'],
-			});
-		});
-
-		test('should show oauth connect guidance notice when env vars are set', () => {
-			const connectHelpProperty = credentials.properties.find((prop) => prop.name === 'oauthConnectHelp');
-			expect(connectHelpProperty).toBeDefined();
-			expect(connectHelpProperty?.type).toBe('notice');
-			expect(connectHelpProperty?.displayName).toBe(
-				"Click the 'Connect my account' button below to Sign in With Chutes.",
-			);
-			expect(connectHelpProperty?.displayOptions?.show).toEqual({
-				oauthClientConfigured: ['true'],
-			});
-		});
 
 		test('should define hidden SSO credential fields', () => {
 			const expectedHiddenFields = [
@@ -165,13 +122,14 @@ describe('ChutesApi Credentials', () => {
 			expect(credentials.authenticate?.type).toBe('generic');
 		});
 
-		test('should include Authorization header', () => {
+		test('should include Authorization header using apiKey or sessionToken', () => {
 			const headers = credentials.authenticate?.properties?.headers as any;
 
 			expect(headers).toHaveProperty('Authorization');
 			expect(headers.Authorization).toContain('Bearer');
+			expect(headers.Authorization).toContain('$credentials.apiKey');
 			expect(headers.Authorization).toContain('$credentials.sessionToken');
-			expect(headers.Authorization).toContain('$credentials.accessToken');
+			expect(headers.Authorization).not.toContain('$credentials.accessToken');
 		});
 
 		test('should include custom client header', () => {
@@ -203,18 +161,6 @@ describe('ChutesApi Credentials', () => {
 
 			const result = await (credentials as any).preAuthentication.call(credentials as any, {
 				apiKey: 'plain-api-key',
-			});
-
-			expect(result).toEqual({});
-			expect(httpRequest).not.toHaveBeenCalled();
-		});
-
-		test('should skip refresh when oauth accessToken exists', async () => {
-			const httpRequest = jest.fn();
-			(credentials as any).helpers = { httpRequest };
-
-			const result = await (credentials as any).preAuthentication.call(credentials as any, {
-				accessToken: 'oauth-access-token',
 			});
 
 			expect(result).toEqual({});

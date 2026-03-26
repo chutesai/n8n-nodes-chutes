@@ -1,6 +1,9 @@
 import { IDataObject, ILoadOptionsFunctions, IRequestOptions } from 'n8n-workflow';
+import { resolveCredentialType } from './credentialConfig';
 
-type AuthCapableContext = Pick<ILoadOptionsFunctions, 'helpers' | 'getCredentials'>;
+type AuthCapableContext = Pick<ILoadOptionsFunctions, 'helpers' | 'getCredentials'> & {
+	getNodeParameter?: (...args: any[]) => any;
+};
 
 function buildFallbackHeaders(credentials: IDataObject, headers: IDataObject): IDataObject {
 	const bearerToken = String(
@@ -22,10 +25,11 @@ export async function requestWithChutesCredential(
 	context: AuthCapableContext,
 	requestOptions: IRequestOptions,
 ): Promise<unknown> {
+	const credentialType = resolveCredentialType(context as any);
 	const authenticatedRequest = (context.helpers as any).requestWithAuthentication;
 
 	if (typeof authenticatedRequest === 'function') {
-		return await authenticatedRequest.call(context, 'chutesApi', {
+		return await authenticatedRequest.call(context, credentialType, {
 			json: true,
 			...requestOptions,
 			headers: {
@@ -35,7 +39,7 @@ export async function requestWithChutesCredential(
 		});
 	}
 
-	const credential = (await context.getCredentials('chutesApi')) as IDataObject;
+	const credential = (await context.getCredentials(credentialType)) as IDataObject;
 	return await context.helpers.request({
 		json: true,
 		...requestOptions,

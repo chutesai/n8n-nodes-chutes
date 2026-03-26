@@ -9,6 +9,7 @@ import {
 import { GenericChutesChatModel } from './GenericChutesChatModel';
 import * as loadChutes from '../Chutes/methods/loadChutes';
 import * as loadOptions from '../Chutes/methods/loadOptions';
+import { getChutesCredentials, getChutesAuthenticationProperty } from '../Chutes/transport/credentialConfig';
 
 export class ChutesChatModel implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,12 +22,7 @@ export class ChutesChatModel implements INodeType {
 		defaults: {
 			name: 'Chutes Chat Model',
 		},
-		credentials: [
-			{
-				name: 'chutesApi',
-				required: true,
-			},
-		],
+		credentials: getChutesCredentials(),
 		codex: {
 			categories: ['AI'],
 			subcategories: {
@@ -44,6 +40,7 @@ export class ChutesChatModel implements INodeType {
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		properties: [
+			...getChutesAuthenticationProperty(),
 			{
 				displayName: 'Chute',
 				name: 'chuteUrl',

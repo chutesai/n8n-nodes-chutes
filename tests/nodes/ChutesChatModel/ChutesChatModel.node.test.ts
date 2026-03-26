@@ -19,13 +19,50 @@ describe('ChutesChatModel Node', () => {
 			expect(chatModelNode.description.icon).toBe('file:chutes.png');
 		});
 
-		it('should require chutesApi credentials', () => {
-			expect(chatModelNode.description.credentials).toEqual([
-				{
-					name: 'chutesApi',
-					required: true,
-				},
-			]);
+		it('should require chutesApi credentials when OAuth is not configured', () => {
+			expect(chatModelNode.description.credentials).toHaveLength(1);
+			expect(chatModelNode.description.credentials?.[0].name).toBe('chutesApi');
+			expect(chatModelNode.description.credentials?.[0].required).toBe(true);
+			expect(chatModelNode.description.credentials?.[0].displayOptions).toBeUndefined();
+		});
+
+		it('should not have authentication property when OAuth is not configured', () => {
+			const authProp = chatModelNode.description.properties.find((p) => p.name === 'authentication');
+			expect(authProp).toBeUndefined();
+		});
+	});
+
+	describe('OAuth Configured', () => {
+		let oauthChatNode: ChutesChatModel;
+
+		beforeEach(() => {
+			process.env.CHUTES_OAUTH_CLIENT_ID = 'test-client-id';
+			process.env.CHUTES_OAUTH_CLIENT_SECRET = 'test-client-secret';
+			oauthChatNode = new ChutesChatModel();
+		});
+
+		afterEach(() => {
+			delete process.env.CHUTES_OAUTH_CLIENT_ID;
+			delete process.env.CHUTES_OAUTH_CLIENT_SECRET;
+		});
+
+		it('should include both credentials with displayOptions when OAuth is configured', () => {
+			const creds = oauthChatNode.description.credentials;
+			expect(creds).toHaveLength(2);
+			expect(creds?.[0].name).toBe('chutesApi');
+			expect(creds?.[0].displayOptions).toEqual({
+				show: { authentication: ['apiKey'] },
+			});
+			expect(creds?.[1].name).toBe('chutesOAuth2Api');
+			expect(creds?.[1].displayOptions).toEqual({
+				show: { authentication: ['oAuth2'] },
+			});
+		});
+
+		it('should have authentication dropdown when OAuth is configured', () => {
+			const authProp = oauthChatNode.description.properties.find((p) => p.name === 'authentication');
+			expect(authProp).toBeDefined();
+			expect(authProp?.type).toBe('options');
 		});
 
 		it('should have no inputs', () => {

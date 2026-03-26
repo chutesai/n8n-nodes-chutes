@@ -19,6 +19,7 @@ import { inferenceOperations } from './operations/inference';
 import { chutesApiRequestWithRetry } from './transport/apiRequest';
 import * as loadOptions from './methods/loadOptions';
 import * as loadChutes from './methods/loadChutes';
+import { getChutesCredentials, getChutesAuthenticationProperty } from './transport/credentialConfig';
 
 export class Chutes implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,13 +35,9 @@ export class Chutes implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: [
-			{
-				name: 'chutesApi',
-				required: true,
-			},
-		],
+		credentials: getChutesCredentials(),
 		properties: [
+			...getChutesAuthenticationProperty(),
 			// Resource selector
 			{
 				displayName: 'Resource',

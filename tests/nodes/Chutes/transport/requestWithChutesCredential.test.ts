@@ -196,6 +196,72 @@ describe('requestWithChutesCredential', () => {
 		);
 	});
 
+	test('uses chutesOAuth2Api when authentication parameter is oAuth2', async () => {
+		const mockContext = {
+			helpers: {
+				requestWithAuthentication: jest.fn().mockResolvedValue({ ok: true }),
+			},
+			getCredentials: jest.fn(),
+			getNodeParameter: jest.fn().mockReturnValue('oAuth2'),
+		};
+
+		await requestWithChutesCredential(mockContext as any, {
+			method: 'GET',
+			url: 'https://api.chutes.ai/chutes/',
+		});
+
+		expect(mockContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			'chutesOAuth2Api',
+			expect.objectContaining({
+				json: true,
+				url: 'https://api.chutes.ai/chutes/',
+			}),
+		);
+	});
+
+	test('uses chutesApi when authentication parameter is apiKey', async () => {
+		const mockContext = {
+			helpers: {
+				requestWithAuthentication: jest.fn().mockResolvedValue({ ok: true }),
+			},
+			getCredentials: jest.fn(),
+			getNodeParameter: jest.fn().mockReturnValue('apiKey'),
+		};
+
+		await requestWithChutesCredential(mockContext as any, {
+			method: 'GET',
+			url: 'https://api.chutes.ai/chutes/',
+		});
+
+		expect(mockContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			'chutesApi',
+			expect.objectContaining({
+				json: true,
+			}),
+		);
+	});
+
+	test('defaults to chutesApi when getNodeParameter is not available', async () => {
+		const mockContext = {
+			helpers: {
+				requestWithAuthentication: jest.fn().mockResolvedValue({ ok: true }),
+			},
+			getCredentials: jest.fn(),
+		};
+
+		await requestWithChutesCredential(mockContext as any, {
+			method: 'GET',
+			url: 'https://api.chutes.ai/chutes/',
+		});
+
+		expect(mockContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			'chutesApi',
+			expect.objectContaining({
+				json: true,
+			}),
+		);
+	});
+
 	test('throws credential error when chutesApi is unavailable', async () => {
 		const mockContext = {
 			helpers: {

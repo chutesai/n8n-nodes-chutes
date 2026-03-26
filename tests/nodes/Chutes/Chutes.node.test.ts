@@ -41,11 +41,53 @@ describe('Chutes Node', () => {
 			expect(node.description.outputs).toContain('main');
 		});
 
-		test('should require chutesApi credentials', () => {
+		test('should require chutesApi credentials when OAuth is not configured', () => {
 			const creds = node.description.credentials;
 			expect(creds).toBeDefined();
+			expect(creds).toHaveLength(1);
 			expect(creds?.[0].name).toBe('chutesApi');
 			expect(creds?.[0].required).toBe(true);
+			expect(creds?.[0].displayOptions).toBeUndefined();
+		});
+
+		test('should not have authentication property when OAuth is not configured', () => {
+			const authProp = node.description.properties.find((p) => p.name === 'authentication');
+			expect(authProp).toBeUndefined();
+		});
+	});
+
+	describe('OAuth Configured', () => {
+		let oauthNode: Chutes;
+
+		beforeEach(() => {
+			process.env.CHUTES_OAUTH_CLIENT_ID = 'test-client-id';
+			process.env.CHUTES_OAUTH_CLIENT_SECRET = 'test-client-secret';
+			oauthNode = new Chutes();
+		});
+
+		afterEach(() => {
+			delete process.env.CHUTES_OAUTH_CLIENT_ID;
+			delete process.env.CHUTES_OAUTH_CLIENT_SECRET;
+		});
+
+		test('should include both credentials with displayOptions when OAuth is configured', () => {
+			const creds = oauthNode.description.credentials;
+			expect(creds).toBeDefined();
+			expect(creds).toHaveLength(2);
+			expect(creds?.[0].name).toBe('chutesApi');
+			expect(creds?.[0].displayOptions).toEqual({
+				show: { authentication: ['apiKey'] },
+			});
+			expect(creds?.[1].name).toBe('chutesOAuth2Api');
+			expect(creds?.[1].displayOptions).toEqual({
+				show: { authentication: ['oAuth2'] },
+			});
+		});
+
+		test('should have authentication dropdown when OAuth is configured', () => {
+			const authProp = oauthNode.description.properties.find((p) => p.name === 'authentication');
+			expect(authProp).toBeDefined();
+			expect(authProp?.type).toBe('options');
 		});
 	});
 

@@ -107,7 +107,9 @@ describe('ChutesApi Credentials', () => {
 			const warningProperty = credentials.properties.find((prop) => prop.name === 'oauthEnvWarning');
 			expect(warningProperty).toBeDefined();
 			expect(warningProperty?.type).toBe('notice');
-			expect(warningProperty?.displayName).toContain('Please contact your administrator');
+			expect(warningProperty?.displayName).toContain(
+				'Please contact your n8n instance administrator',
+			);
 			expect(warningProperty?.displayName).toContain(
 				'https://github.com/chutesai/Sign-in-with-Chutes#quick-start-nextjs',
 			);

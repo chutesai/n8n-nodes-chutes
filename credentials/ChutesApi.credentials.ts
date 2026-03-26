@@ -146,7 +146,7 @@ export class ChutesApi implements ICredentialType {
 		},
 		{
 			displayName:
-				'Sign in With Chutes requires server OAuth app credentials (`CHUTES_OAUTH_CLIENT_ID` and `CHUTES_OAUTH_CLIENT_SECRET`). Please contact your administrator to register the app with Chutes.ai. Setup docs: https://github.com/chutesai/Sign-in-with-Chutes#quick-start-nextjs',
+				'Sign in With Chutes is not configured on this n8n instance. Please contact your n8n instance administrator to register this app with Chutes.ai and set CHUTES_OAUTH_CLIENT_ID and CHUTES_OAUTH_CLIENT_SECRET in the server environment. Setup docs: https://github.com/chutesai/Sign-in-with-Chutes#quick-start-nextjs',
 			name: 'oauthEnvWarning',
 			type: 'notice',
 			default: '',

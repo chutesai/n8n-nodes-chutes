@@ -10,9 +10,22 @@ import * as openApiDiscovery from '../../../nodes/Chutes/transport/openApiDiscov
 
 describe('Chutes Node', () => {
 	let node: Chutes;
+	const savedOAuthClientId = process.env.CHUTES_OAUTH_CLIENT_ID;
+	const savedOAuthClientSecret = process.env.CHUTES_OAUTH_CLIENT_SECRET;
 
 	beforeEach(() => {
+		delete process.env.CHUTES_OAUTH_CLIENT_ID;
+		delete process.env.CHUTES_OAUTH_CLIENT_SECRET;
 		node = new Chutes();
+	});
+
+	afterEach(() => {
+		if (savedOAuthClientId !== undefined) {
+			process.env.CHUTES_OAUTH_CLIENT_ID = savedOAuthClientId;
+		}
+		if (savedOAuthClientSecret !== undefined) {
+			process.env.CHUTES_OAUTH_CLIENT_SECRET = savedOAuthClientSecret;
+		}
 	});
 
 	describe('Node Properties', () => {

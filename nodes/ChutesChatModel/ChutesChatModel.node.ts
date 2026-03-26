@@ -12,6 +12,7 @@ import * as loadOptions from '../Chutes/methods/loadOptions';
 import {
 	getChutesCredentials,
 	getChutesAuthenticationProperty,
+	resolveCredentialType,
 } from '../Chutes/transport/credentialConfig';
 
 export class ChutesChatModel implements INodeType {
@@ -171,12 +172,11 @@ export class ChutesChatModel implements INodeType {
 				presencePenalty?: number;
 			};
 
-			// Get credentials
 			console.log('[ChutesChatModel] Getting credentials...');
-			const credentials = await this.getCredentials('chutesApi');
+			const credentialType = resolveCredentialType(this);
+			const credentials = await this.getCredentials(credentialType);
 			console.log('[ChutesChatModel] Credentials obtained');
 
-			// Create and configure the chat model
 			console.log('[ChutesChatModel] Creating GenericChutesChatModel...');
 			const chatModel = new GenericChutesChatModel({
 				chuteUrl,
@@ -187,9 +187,9 @@ export class ChutesChatModel implements INodeType {
 				frequencyPenalty: options.frequencyPenalty,
 				presencePenalty: options.presencePenalty,
 				credentials,
-				requestHelper: this.helpers, // Pass n8n request helper to the model
+				requestHelper: this.helpers,
 				authenticatedRequest: async (requestOptions) =>
-					await this.helpers.requestWithAuthentication.call(this, 'chutesApi', requestOptions),
+					await this.helpers.requestWithAuthentication.call(this, credentialType, requestOptions),
 			});
 			console.log('[ChutesChatModel] Chat model created successfully');
 

@@ -3,9 +3,22 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 describe('ChutesChatModel Node', () => {
 	let chatModelNode: ChutesChatModel;
+	const savedOAuthClientId = process.env.CHUTES_OAUTH_CLIENT_ID;
+	const savedOAuthClientSecret = process.env.CHUTES_OAUTH_CLIENT_SECRET;
 
 	beforeEach(() => {
+		delete process.env.CHUTES_OAUTH_CLIENT_ID;
+		delete process.env.CHUTES_OAUTH_CLIENT_SECRET;
 		chatModelNode = new ChutesChatModel();
+	});
+
+	afterEach(() => {
+		if (savedOAuthClientId !== undefined) {
+			process.env.CHUTES_OAUTH_CLIENT_ID = savedOAuthClientId;
+		}
+		if (savedOAuthClientSecret !== undefined) {
+			process.env.CHUTES_OAUTH_CLIENT_SECRET = savedOAuthClientSecret;
+		}
 	});
 
 	describe('Node Description', () => {
@@ -315,6 +328,69 @@ describe('ChutesChatModel Node', () => {
 				'chutesApi',
 				expect.objectContaining({ method: 'GET', url: 'https://x' }),
 			);
+		});
+
+		it('should use chutesOAuth2Api credential when authentication is oAuth2', async () => {
+			const requestWithAuthentication = jest.fn().mockResolvedValue({
+				choices: [{ message: { content: 'ok' } }],
+			});
+			const mockContext = {
+				getNodeParameter: jest.fn((paramName: string, _itemIndex: number, defaultValue?: any) => {
+					const params: any = {
+						authentication: 'oAuth2',
+						chuteUrl: 'https://llm.chutes.ai',
+						model: 'deepseek-ai/DeepSeek-V3',
+						temperature: 0.7,
+						options: {},
+					};
+					return params[paramName] ?? defaultValue;
+				}),
+				getCredentials: jest.fn().mockResolvedValue({
+					accessToken: 'oauth-access-token',
+				}),
+				helpers: {
+					request: jest.fn(),
+					requestWithAuthentication,
+				},
+			};
+
+			const result = await chatModelNode.supplyData.call(mockContext as any, 0);
+
+			expect(mockContext.getCredentials).toHaveBeenCalledWith('chutesOAuth2Api');
+
+			const model = result.response as any;
+			await model.authenticatedRequest({ method: 'GET', url: 'https://x' });
+
+			expect(requestWithAuthentication).toHaveBeenCalledWith(
+				'chutesOAuth2Api',
+				expect.objectContaining({ method: 'GET', url: 'https://x' }),
+			);
+		});
+
+		it('should use chutesApi credential when authentication is apiKey (OAuth enabled)', async () => {
+			const mockContext = {
+				getNodeParameter: jest.fn((paramName: string, _itemIndex: number, defaultValue?: any) => {
+					const params: any = {
+						authentication: 'apiKey',
+						chuteUrl: 'https://llm.chutes.ai',
+						model: 'test-model',
+						temperature: 0.7,
+						options: {},
+					};
+					return params[paramName] ?? defaultValue;
+				}),
+				getCredentials: jest.fn().mockResolvedValue({
+					apiKey: 'my-api-key',
+				}),
+				helpers: {
+					request: jest.fn(),
+					requestWithAuthentication: jest.fn(),
+				},
+			};
+
+			await chatModelNode.supplyData.call(mockContext as any, 0);
+
+			expect(mockContext.getCredentials).toHaveBeenCalledWith('chutesApi');
 		});
 	});
 });

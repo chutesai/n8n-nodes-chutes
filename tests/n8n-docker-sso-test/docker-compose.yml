@@ -23,6 +23,9 @@ services:
       # Custom Extensions Path
       - N8N_CUSTOM_EXTENSIONS=/data/custom
       
+      # Tell n8n its external URL so OAuth redirects use the correct port
+      - N8N_EDITOR_BASE_URL=http://localhost:5679
+      
       # Security (disable for local testing)
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_VERSION_NOTIFICATIONS_ENABLED=false

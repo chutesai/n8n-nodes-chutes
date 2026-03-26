@@ -393,6 +393,53 @@ describe('API Request Helper', () => {
 			);
 		});
 
+		test('should use chutesOAuth2Api credential when authentication is oAuth2', async () => {
+			const context = createContext({
+				accessToken: 'oauth-access-token',
+				environment: 'production',
+			});
+			context.getNodeParameter = jest.fn().mockReturnValue('oAuth2');
+
+			await chutesApiRequest.call(context, 'GET', '/v1/models');
+
+			expect(context.getCredentials).toHaveBeenCalledWith('chutesOAuth2Api');
+			expect(context.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'chutesOAuth2Api',
+				expect.objectContaining({ method: 'GET' }),
+			);
+		});
+
+		test('should use chutesApi credential when authentication is apiKey (OAuth enabled)', async () => {
+			const context = createContext({
+				apiKey: 'my-api-key',
+				environment: 'production',
+			});
+			context.getNodeParameter = jest.fn().mockReturnValue('apiKey');
+
+			await chutesApiRequest.call(context, 'GET', '/v1/models');
+
+			expect(context.getCredentials).toHaveBeenCalledWith('chutesApi');
+			expect(context.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'chutesApi',
+				expect.objectContaining({ method: 'GET' }),
+			);
+		});
+
+		test('should fall back to chutesApi when authentication parameter is absent', async () => {
+			const context = createContext({
+				apiKey: 'my-api-key',
+				environment: 'production',
+			});
+
+			await chutesApiRequest.call(context, 'GET', '/v1/models');
+
+			expect(context.getCredentials).toHaveBeenCalledWith('chutesApi');
+			expect(context.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'chutesApi',
+				expect.objectContaining({ method: 'GET' }),
+			);
+		});
+
 		test('should throw credential error when chutesApi lookup fails', async () => {
 			const context = {
 				getCredentials: jest.fn().mockRejectedValue(new Error('No data found for credential chutesApi')),

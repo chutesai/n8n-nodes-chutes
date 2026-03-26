@@ -8,6 +8,7 @@ import {
 	IWebhookFunctions,
 	NodeApiError,
 } from 'n8n-workflow';
+import { resolveCredentialType } from './credentialConfig';
 
 const grantedScopeCache = new Map<string, string[]>();
 
@@ -182,7 +183,8 @@ export async function chutesApiRequest(
 	resourceType?: ChuteResourceType,
 	customChuteUrl?: string,
 ): Promise<any> {
-	const credentials = await this.getCredentials('chutesApi');
+	const credentialType = resolveCredentialType(this);
+	const credentials = await this.getCredentials(credentialType);
 	await ensureChutesInvokeScope(credentials);
 	const baseUrl = getChutesBaseUrl(credentials, resourceType, customChuteUrl);
 
@@ -199,17 +201,20 @@ export async function chutesApiRequest(
 		qs,
 		body,
 		json: true,
-		encoding: 'utf8', // Explicitly set encoding to prevent BOM issues
+		encoding: 'utf8',
 		...option,
 	};
 
-	// Remove body for GET requests
 	if (method === 'GET' && options.body !== undefined) {
 		delete options.body;
 	}
 
 	try {
-		const response = await this.helpers.requestWithAuthentication.call(this, 'chutesApi', options);
+		const response = await this.helpers.requestWithAuthentication.call(
+			this,
+			credentialType,
+			options,
+		);
 
 		return response;
 	} catch (error) {

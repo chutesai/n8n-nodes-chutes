@@ -109,7 +109,9 @@ export class GenericChutesChatModel extends SimpleChatModel {
 			return {
 				role,
 				content:
-					typeof message.content === 'string' ? message.content : JSON.stringify(message.content),
+					typeof message.content === 'string' || Array.isArray(message.content)
+						? message.content
+						: JSON.stringify(message.content),
 			};
 		});
 
@@ -154,22 +156,20 @@ export class GenericChutesChatModel extends SimpleChatModel {
 
 			// Log body with image data redacted (for vision models)
 			const bodyForLogging = { ...body };
-			if (bodyForLogging.messages && Array.isArray(bodyForLogging.messages)) {
-				bodyForLogging.messages = bodyForLogging.messages.map((msg: any) => {
-					if (msg.content && Array.isArray(msg.content)) {
-						return {
-							...msg,
-							content: msg.content.map((item: any) => {
-								if (item.type === 'image_url' && item.image_url) {
-									return { type: 'image_url', image_url: '[redacted]' };
-								}
-								return item;
-							}),
-						};
-					}
-					return msg;
-				});
-			}
+			bodyForLogging.messages = (bodyForLogging.messages as any[]).map((msg: any) => {
+				if (msg.content && Array.isArray(msg.content)) {
+					return {
+						...msg,
+						content: msg.content.map((item: any) => {
+							if (item.type === 'image_url' && item.image_url) {
+								return { type: 'image_url', image_url: '[redacted]' };
+							}
+							return item;
+						}),
+					};
+				}
+				return msg;
+			});
 			console.log(
 				'[GenericChutesChatModel] Request body:',
 				JSON.stringify(bodyForLogging, null, 2),
@@ -205,7 +205,14 @@ export class GenericChutesChatModel extends SimpleChatModel {
 			return response.choices[0]?.message?.content ?? '';
 		} catch (error: any) {
 			// Provide helpful error messages
-			const errorMessage = error.response?.data?.error?.message || error.message || 'Unknown error';
+			const apiErrorMessage = error?.response?.data?.error?.message;
+			const genericErrorMessage = error?.message;
+			let errorMessage = 'Unknown error';
+			if (typeof apiErrorMessage === 'string' && apiErrorMessage.length > 0) {
+				errorMessage = apiErrorMessage;
+			} else if (typeof genericErrorMessage === 'string' && genericErrorMessage.length > 0) {
+				errorMessage = genericErrorMessage;
+			}
 			throw new Error(`Chutes.ai API error: ${errorMessage}`);
 		}
 	}

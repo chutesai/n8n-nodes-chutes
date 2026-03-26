@@ -22,6 +22,7 @@ import * as loadChutes from './methods/loadChutes';
 import {
 	getChutesCredentials,
 	getChutesAuthenticationProperty,
+	resolveCredentialType,
 } from './transport/credentialConfig';
 
 export class Chutes implements INodeType {
@@ -685,10 +686,11 @@ export async function handleImageGeneration(
 			'./transport/openApiDiscovery'
 		);
 		console.log(`[ImageEdit] Discovering capabilities for: ${chuteUrl}`);
+		const imageEditCredentialType = resolveCredentialType(this);
 		const capabilities = await discoverChuteCapabilities(
 			chuteUrl,
 			async (openApiUrl: string) =>
-				await this.helpers.requestWithAuthentication.call(this, 'chutesApi', {
+				await this.helpers.requestWithAuthentication.call(this, imageEditCredentialType, {
 					method: 'GET',
 					url: openApiUrl,
 					headers: {
@@ -1071,9 +1073,10 @@ export async function handleSpeechToText(
 		const requestUrl = `${chuteUrl}/transcribe`;
 		const timeout = additionalOptions.timeout as number | undefined;
 
+		const sttCredentialType = resolveCredentialType(this);
 		try {
 			const response = await withTimeout(
-				this.helpers.requestWithAuthentication.call(this, 'chutesApi', {
+				this.helpers.requestWithAuthentication.call(this, sttCredentialType, {
 					method: 'POST',
 					url: requestUrl,
 					body,
@@ -1608,10 +1611,11 @@ export async function handleVideoGeneration(
 		'./transport/openApiDiscovery'
 	);
 	console.log(`[VideoGen] Discovering capabilities for: ${chuteUrl}`);
+	const videoCredentialType = resolveCredentialType(this);
 	const capabilities = await discoverChuteCapabilities(
 		chuteUrl,
 		async (openApiUrl: string) =>
-			await this.helpers.requestWithAuthentication.call(this, 'chutesApi', {
+			await this.helpers.requestWithAuthentication.call(this, videoCredentialType, {
 				method: 'GET',
 				url: openApiUrl,
 				headers: {

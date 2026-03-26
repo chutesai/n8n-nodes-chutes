@@ -298,5 +298,61 @@ describe('Chutes Node', () => {
 			expect(buildSpy).toHaveBeenCalled();
 		});
 	});
+
+	describe('credential type safety — no hardcoded credential strings in requestWithAuthentication', () => {
+		const fs = require('fs');
+		const path = require('path');
+
+		function findNodeSourceFiles(): string[] {
+			const nodesDir = path.resolve(__dirname, '../../../nodes');
+			const files: string[] = [];
+			const walk = (dir: string) => {
+				for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+					const full = path.join(dir, entry.name);
+					if (entry.isDirectory()) {
+						walk(full);
+					} else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts') && !entry.name.endsWith('.d.ts')) {
+						files.push(full);
+					}
+				}
+			};
+			walk(nodesDir);
+			return files;
+		}
+
+		test('no node source file should call requestWithAuthentication with a hardcoded credential string', () => {
+			const files = findNodeSourceFiles();
+			expect(files.length).toBeGreaterThan(0);
+
+			const violations: { file: string; line: number; text: string }[] = [];
+			const pattern = /requestWithAuthentication\s*\.?\s*(?:call\s*\()?\s*(?:this\s*,\s*)?['"](?:chutesApi|chutesOAuth2Api)['"]/;
+
+			for (const filePath of files) {
+				const content = fs.readFileSync(filePath, 'utf-8');
+				const lines = content.split('\n');
+				for (let i = 0; i < lines.length; i++) {
+					if (pattern.test(lines[i])) {
+						violations.push({
+							file: path.relative(path.resolve(__dirname, '../../..'), filePath),
+							line: i + 1,
+							text: lines[i].trim(),
+						});
+					}
+				}
+			}
+
+			if (violations.length > 0) {
+				const report = violations
+					.map((v) => `  ${v.file}:${v.line} → ${v.text}`)
+					.join('\n');
+				throw new Error(
+					`Found ${violations.length} hardcoded credential string(s) in requestWithAuthentication calls.\n` +
+						`All calls must use resolveCredentialType() instead of literal 'chutesApi' or 'chutesOAuth2Api'.\n\n` +
+						report,
+				);
+			}
+			expect(violations).toHaveLength(0);
+		});
+	});
 });
 

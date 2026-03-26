@@ -398,16 +398,59 @@ describe('Load Chutes Methods', () => {
 			}
 		});
 
-		it('falls back for 403 without permission keywords to empty', async () => {
+		it('falls back to public catalog on ANY error when includePublic is true', async () => {
 			const mockContext = createMockLoadOptionsFunctions();
-			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
-				statusCode: 403,
-				message: 'some other failure',
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+				new Error('Request failed with status code 401'),
+			);
+			(mockContext.helpers.request as jest.Mock).mockResolvedValue({
+				items: [
+					{
+						chute_id: 'pub-1',
+						name: 'public-llm',
+						slug: 'public-llm',
+						standard_template: 'vllm',
+						public: true,
+						user: { username: 'chutes' },
+					},
+				],
 			});
 
 			const result = await getChutes.call(mockContext);
+			expect(mockContext.helpers.request).toHaveBeenCalled();
+			expect(result).toHaveLength(1);
+		});
+
+		it('falls back to public catalog on completely unknown error shape', async () => {
+			const mockContext = createMockLoadOptionsFunctions();
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+				code: 'ECONNREFUSED',
+			});
+			(mockContext.helpers.request as jest.Mock).mockResolvedValue({ items: [] });
+
+			const result = await getChutes.call(mockContext);
+			expect(mockContext.helpers.request).toHaveBeenCalled();
 			expect(result).toEqual([]);
-			expect(mockContext.helpers.request).not.toHaveBeenCalled();
+		});
+
+		it('falls back to public catalog on string error when includePublic is true', async () => {
+			const mockContext = createMockLoadOptionsFunctions();
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue('boom');
+			(mockContext.helpers.request as jest.Mock).mockResolvedValue({ items: [] });
+
+			const result = await getChutes.call(mockContext);
+			expect(mockContext.helpers.request).toHaveBeenCalled();
+			expect(result).toEqual([]);
+		});
+
+		it('falls back to public catalog on null error when includePublic is true', async () => {
+			const mockContext = createMockLoadOptionsFunctions();
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(null);
+			(mockContext.helpers.request as jest.Mock).mockResolvedValue({ items: [] });
+
+			const result = await getChutes.call(mockContext);
+			expect(mockContext.helpers.request).toHaveBeenCalled();
+			expect(result).toEqual([]);
 		});
 
 		it('falls back for missing-credential phrase variant', async () => {
@@ -419,22 +462,6 @@ describe('Load Chutes Methods', () => {
 
 			await getChutes.call(mockContext);
 			expect(mockContext.helpers.request).toHaveBeenCalled();
-		});
-
-		it('does not fallback when thrown error is non-object', async () => {
-			const mockContext = createMockLoadOptionsFunctions();
-			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue('boom');
-			const result = await getChutes.call(mockContext);
-			expect(result).toEqual([]);
-			expect(mockContext.helpers.request).not.toHaveBeenCalled();
-		});
-
-		it('does not fallback when thrown error is null', async () => {
-			const mockContext = createMockLoadOptionsFunctions();
-			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(null);
-			const result = await getChutes.call(mockContext);
-			expect(result).toEqual([]);
-			expect(mockContext.helpers.request).not.toHaveBeenCalled();
 		});
 
 		it('returns empty arrays from all specialized loaders when API throws', async () => {

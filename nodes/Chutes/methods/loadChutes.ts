@@ -16,86 +16,6 @@ function buildChutesListRequestUrl(includePublic: boolean, limit: number): strin
 	return `https://api.chutes.ai/chutes/?${queryParams}`;
 }
 
-function isPermissionDeniedError(error: unknown): boolean {
-	if (!error || typeof error !== 'object') {
-		return false;
-	}
-
-	const candidate = error as Record<string, any>;
-	const statusCode = String(
-		candidate.httpCode ??
-			candidate.statusCode ??
-			candidate.status ??
-			candidate.response?.status ??
-			'',
-	).trim();
-	if (statusCode !== '403') {
-		return false;
-	}
-
-	const details = [candidate.description, candidate.message, candidate.error?.detail]
-		.filter((value) => Boolean(value))
-		.join(' ')
-		.toLowerCase();
-
-	return details.includes('permission') || details.includes('forbidden');
-}
-
-function isUnauthorizedError(error: unknown): boolean {
-	if (!error || typeof error !== 'object') {
-		return false;
-	}
-
-	const candidate = error as Record<string, any>;
-	const statusCode = String(
-		candidate.httpCode ??
-			candidate.statusCode ??
-			candidate.status ??
-			candidate.response?.status ??
-			'',
-	).trim();
-	if (statusCode !== '401') {
-		return false;
-	}
-
-	const details = [candidate.description, candidate.message, candidate.error?.detail]
-		.filter((value) => Boolean(value))
-		.join(' ')
-		.toLowerCase();
-	return (
-		details.includes('invalid token') ||
-		details.includes('user not found') ||
-		details.includes('authorization failed') ||
-		details.includes('unauthorized')
-	);
-}
-
-function isMissingCredentialError(error: unknown): boolean {
-	if (!error || typeof error !== 'object') {
-		return false;
-	}
-
-	const candidate = error as Record<string, any>;
-	const details = [candidate.description, candidate.message]
-		.filter((value) => Boolean(value))
-		.join(' ')
-		.toLowerCase();
-
-	return (
-		details.includes('does not have any credentials set') ||
-		details.includes('does not have credentials of type') ||
-		details.includes('missing both an api key and a session token') ||
-		(details.includes('credential') && details.includes('missing')) ||
-		(details.includes('credential') && details.includes('not found'))
-	);
-}
-
-function shouldFallbackToPublicCatalog(error: unknown): boolean {
-	return (
-		isPermissionDeniedError(error) || isUnauthorizedError(error) || isMissingCredentialError(error)
-	);
-}
-
 async function requestPublicChutesWithoutAuth(
 	context: ILoadOptionsFunctions,
 	url: string,
@@ -165,7 +85,7 @@ async function getRawChutes(
 			},
 		});
 	} catch (error) {
-		if (!effectiveIncludePublic || !shouldFallbackToPublicCatalog(error)) {
+		if (!effectiveIncludePublic) {
 			throw error;
 		}
 

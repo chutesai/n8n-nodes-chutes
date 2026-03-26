@@ -27,6 +27,9 @@
     "url": "git+https://github.com/chutesai/n8n-nodes-chutes.git"
   },
   "main": "index.js",
+  "bin": {
+    "n8n-nodes-chutes-setup-oauth": "./dist/scripts/setup-oauth.js"
+  },
   "scripts": {
     "build": "tsc && gulp build:icons",
     "dev": "tsc --watch",

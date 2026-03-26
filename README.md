@@ -31,38 +31,77 @@ cd ~/.n8n
 npm install n8n-nodes-chutes
 ```
 
-## Authentication (With Example)
+## Authentication
 
-This package uses one credential type: **Sign in With Chutes**.
+This package supports two authentication methods. By default, only **API Key** authentication is shown. When the n8n server administrator enables **Sign in With Chutes**, users see an additional OAuth option.
 
-### Option A: Sign in With Chutes (OAuth)
-
-1. Go to **Credentials** > **New**
-2. Select **Sign in With Chutes**
-3. Ensure your n8n server administrator has set `CHUTES_OAUTH_CLIENT_ID` and `CHUTES_OAUTH_CLIENT_SECRET`
-4. Click **Connect my account** and complete Chutes sign-in/consent
-5. Save the credential
-
-### Option B: API Key (manual secret, same credential)
+### Option A: API Key
 
 1. Sign up at [chutes.ai](https://chutes.ai)
 2. Navigate to your [API Keys dashboard](https://chutes.ai/app/api)
 3. Create a new API key (you will only be shown it once)
-4. Add the key to the same credential:
-   - Go to **Credentials** > **New**
-   - Select **Sign in With Chutes**
-   - Enter your API key in **Chutes API Key**
-   - Choose your environment (Production/Sandbox)
-   - Save
+4. In n8n, go to **Credentials** > **New** > select **Chutes API**
+5. Enter your API key, choose your environment (Production/Sandbox), and save
 
 ![API Keys Example](examples/chutes_api_key_n8n2.gif)
 
-### Boundary: package OAuth vs server-managed SSO
+### Option B: Sign in With Chutes (OAuth)
 
-- **Package OAuth credential (`Sign in With Chutes`)**: OAuth app credentials are supplied by server environment variables, and users only click connect.
-- **Server-managed SSO provisioning (`Sign in With Chutes` hidden fields)**: external platform code can still inject/manage `sessionToken`/`refreshToken` on the n8n server side.
+When enabled by a server administrator, users can authenticate with their own Chutes account. Each user's API usage is billed to their own account.
 
-Both paths remain supported for backward compatibility.
+**What end users see:** An "Authentication" dropdown in each Chutes node with the option "Sign in With Chutes". Selecting it shows an OAuth credential with a **Connect my account** button. One click opens the Chutes login/consent screen.
+
+**What server admins need to do:** Set two environment variables on the n8n server:
+
+```
+CHUTES_OAUTH_CLIENT_ID=cid_xxx
+CHUTES_OAUTH_CLIENT_SECRET=csc_xxx
+```
+
+Without these, the OAuth option is hidden and only API Key authentication is available.
+
+#### Setting Up OAuth Credentials (CLI Wizard)
+
+The easiest way to register an OAuth app with Chutes and get your credentials is the built-in setup wizard:
+
+```bash
+npx n8n-nodes-chutes-setup-oauth
+```
+
+The wizard will:
+1. Ask for your [Chutes API key](https://chutes.ai/app/api)
+2. Let you choose between two modes:
+   - **Sign in With Chutes** -- each user connects their own Chutes account
+   - **Single account (Advanced)** -- your account pays for all inference
+3. Ask for your n8n callback URL (default: `http://localhost:5678/rest/oauth2-credential/callback`)
+4. Register the OAuth app with Chutes
+5. Write the credentials to your `.env` file (or print them to the screen)
+
+For more details on Sign in With Chutes, see the [official documentation](https://chutes.ai/docs/sign-in-with-chutes/overview).
+
+#### Manual OAuth App Registration
+
+You can also register an OAuth app directly via the Chutes API:
+
+```bash
+curl -X POST "https://api.chutes.ai/idp/apps" \
+  -H "Authorization: Bearer $CHUTES_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My n8n Instance",
+    "redirect_uris": ["https://<n8n-host>/rest/oauth2-credential/callback"],
+    "allowed_scopes": ["openid", "profile", "chutes:invoke"]
+  }'
+```
+
+#### Optional Environment Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `CHUTES_OAUTH_CLIENT_ID` | OAuth client ID from Chutes | _(none -- OAuth disabled)_ |
+| `CHUTES_OAUTH_CLIENT_SECRET` | OAuth client secret from Chutes | _(none -- OAuth disabled)_ |
+| `CHUTES_IDP_BASE_URL` | Override the identity provider base URL | `https://api.chutes.ai` |
+| `CHUTES_CREDENTIAL_TEST_BASE_URL` | Override the credential test endpoint | _(auto-detected from environment)_ |
 
 ## Features
 
@@ -712,6 +751,17 @@ See [tests/README.md](tests/README.md) for detailed testing documentation.
 - **Chutes.ai API**: v1
 
 ## Changelog
+
+### [0.2.0] - 2026-03-26
+#### Sign in With Chutes (OAuth)
+- **New credential type: Sign in With Chutes** (`ChutesOAuth2Api`) -- users can authenticate with their Chutes account via OAuth 2.0 with PKCE
+- **Conditional authentication dropdown** -- Chutes nodes show an "Authentication" selector (API Key / Sign in With Chutes) when OAuth is configured on the server
+- **Server-side OAuth configuration** -- client credentials are set via environment variables (`CHUTES_OAUTH_CLIENT_ID`, `CHUTES_OAUTH_CLIENT_SECRET`), never exposed to end users
+- **CLI setup wizard** (`npx n8n-nodes-chutes-setup-oauth`) -- interactive tool to register an OAuth app with Chutes and write credentials to `.env`
+  - Multi-user mode: each user connects their own Chutes account
+  - Single-account mode (Advanced): one account pays for all inference
+- **Dynamic credential routing** -- transport layer resolves the correct credential type at runtime based on user selection
+- **100% test coverage** maintained across all credential and node files
 
 ### [0.1.0] - 2026-02-15 Official Release
 #### Tool Calling Support (AI Agent)

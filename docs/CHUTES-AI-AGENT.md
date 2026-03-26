@@ -447,7 +447,7 @@ Here's a complete example workflow you can import:
 ## Resources
 
 - [Chutes.ai Playground](https://chutes.ai/app/playground) - Test models before using them
-- [Chutes.ai Documentation](https://docs.chutes.ai) - Full API reference
+- [Chutes.ai Documentation](https://chutes.ai/docs) - Full API reference
 - [n8n Community](https://community.n8n.io) - Get help and share workflows
 - [GitHub Issues](https://github.com/chutesai/n8n-nodes-chutes/issues) - Report bugs or request features
 

@@ -618,7 +618,7 @@ The node dynamically loads available chutes from the Chutes.ai Management API:
 
 ## Resources
 
-- [Chutes.ai Documentation](https://docs.chutes.ai)
+- [Chutes.ai Documentation](https://chutes.ai/docs)
 - [API Reference](https://chutes.ai/docs/api-reference/overview)
 - [Playground](https://chutes.ai/app)
 - [n8n Community Forum](https://community.n8n.io)

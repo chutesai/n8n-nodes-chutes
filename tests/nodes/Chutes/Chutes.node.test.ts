@@ -41,11 +41,19 @@ describe('Chutes Node', () => {
 			expect(node.description.outputs).toContain('main');
 		});
 
-		test('should require chutesApi credentials', () => {
+		test('should support both API key and OAuth2 credentials', () => {
 			const creds = node.description.credentials;
 			expect(creds).toBeDefined();
-			expect(creds?.[0].name).toBe('chutesApi');
-			expect(creds?.[0].required).toBe(true);
+			expect(creds).toEqual([
+				{
+					name: 'chutesApi',
+					required: false,
+				},
+				{
+					name: 'chutesOAuth2Api',
+					required: false,
+				},
+			]);
 		});
 	});
 

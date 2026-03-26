@@ -59,7 +59,8 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/ChutesApi.credentials.js"
+      "dist/credentials/ChutesApi.credentials.js",
+      "dist/credentials/ChutesOAuth2Api.credentials.js"
     ],
     "nodes": [
       "dist/nodes/Chutes/Chutes.node.js",

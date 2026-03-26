@@ -6,7 +6,7 @@ describe('requestWithChutesCredential', () => {
 			helpers: {
 				requestWithAuthentication: jest.fn().mockResolvedValue({ ok: true }),
 			},
-			getCredentials: jest.fn(),
+			getCredentials: jest.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
 		};
 
 		const options = {
@@ -31,7 +31,7 @@ describe('requestWithChutesCredential', () => {
 				}),
 			}),
 		);
-		expect(mockContext.getCredentials).not.toHaveBeenCalled();
+		expect(mockContext.getCredentials).toHaveBeenCalledWith('chutesApi');
 	});
 
 	test('adds default Accept header when authenticated request has no headers', async () => {
@@ -49,6 +49,32 @@ describe('requestWithChutesCredential', () => {
 
 		expect(mockContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 			'chutesApi',
+			expect.objectContaining({
+				headers: {
+					Accept: 'application/json',
+				},
+			}),
+		);
+	});
+
+	test('uses OAuth credential when API key credential is unavailable', async () => {
+		const mockContext = {
+			helpers: {
+				requestWithAuthentication: jest.fn().mockResolvedValue({ ok: true }),
+			},
+			getCredentials: jest
+				.fn()
+				.mockRejectedValueOnce(new Error('No data found for credential chutesApi'))
+				.mockResolvedValueOnce({ accessToken: 'oauth-access-token' }),
+		};
+
+		await requestWithChutesCredential(mockContext as any, {
+			method: 'GET',
+			url: 'https://api.chutes.ai/chutes/',
+		});
+
+		expect(mockContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			'chutesOAuth2Api',
 			expect.objectContaining({
 				headers: {
 					Accept: 'application/json',
@@ -105,6 +131,30 @@ describe('requestWithChutesCredential', () => {
 		);
 	});
 
+	test('falls back to OAuth access token when generic request is used', async () => {
+		const mockContext = {
+			helpers: {
+				request: jest.fn().mockResolvedValue({ ok: true }),
+			},
+			getCredentials: jest.fn().mockResolvedValue({
+				accessToken: 'oauth-access-token',
+			}),
+		};
+
+		await requestWithChutesCredential(mockContext as any, {
+			method: 'GET',
+			url: 'https://api.chutes.ai/chutes/',
+		});
+
+		expect(mockContext.helpers.request).toHaveBeenCalledWith(
+			expect.objectContaining({
+				headers: expect.objectContaining({
+					Authorization: 'Bearer oauth-access-token',
+				}),
+			}),
+		);
+	});
+
 	test('throws when both apiKey and sessionToken are missing', async () => {
 		const mockContext = {
 			helpers: {
@@ -118,7 +168,7 @@ describe('requestWithChutesCredential', () => {
 				method: 'GET',
 				url: 'https://api.chutes.ai/chutes/',
 			}),
-		).rejects.toThrow('missing both an API key and a session token');
+		).rejects.toThrow('missing both an API key and an OAuth access token');
 	});
 
 	test('preserves explicit caller headers in fallback mode', async () => {
@@ -147,5 +197,43 @@ describe('requestWithChutesCredential', () => {
 				}),
 			}),
 		);
+	});
+
+	test('throws underlying credential error when both credential types are unavailable', async () => {
+		const mockContext = {
+			helpers: {
+				requestWithAuthentication: jest.fn(),
+			},
+			getCredentials: jest
+				.fn()
+				.mockRejectedValueOnce(new Error('missing chutesApi'))
+				.mockRejectedValueOnce(new Error('missing chutesOAuth2Api')),
+		};
+
+		await expect(
+			requestWithChutesCredential(mockContext as any, {
+				method: 'GET',
+				url: 'https://api.chutes.ai/chutes/',
+			}),
+		).rejects.toThrow('missing chutesOAuth2Api');
+	});
+
+	test('normalizes non-error credential lookup failures', async () => {
+		const mockContext = {
+			helpers: {
+				requestWithAuthentication: jest.fn(),
+			},
+			getCredentials: jest
+				.fn()
+				.mockRejectedValueOnce('missing generic credential')
+				.mockRejectedValueOnce(null),
+		};
+
+		await expect(
+			requestWithChutesCredential(mockContext as any, {
+				method: 'GET',
+				url: 'https://api.chutes.ai/chutes/',
+			}),
+		).rejects.toThrow('No Chutes credential is configured.');
 	});
 });

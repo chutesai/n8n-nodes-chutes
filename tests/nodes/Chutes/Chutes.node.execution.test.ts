@@ -142,12 +142,16 @@ describe('Chutes Node - Execute Method Response Handling', () => {
 			expect(node.description.outputs).toEqual(['main']);
 		});
 
-		test('should require chutesApi credentials', () => {
+		test('should support both API key and OAuth2 credentials', () => {
 			const node = new Chutes();
 			expect(node.description.credentials).toEqual([
 				{
 					name: 'chutesApi',
-					required: true,
+					required: false,
+				},
+				{
+					name: 'chutesOAuth2Api',
+					required: false,
 				},
 			]);
 		});

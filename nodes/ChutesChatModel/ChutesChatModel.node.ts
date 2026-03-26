@@ -24,7 +24,11 @@ export class ChutesChatModel implements INodeType {
 		credentials: [
 			{
 				name: 'chutesApi',
-				required: true,
+				required: false,
+			},
+			{
+				name: 'chutesOAuth2Api',
+				required: false,
 			},
 		],
 		codex: {
@@ -173,7 +177,14 @@ export class ChutesChatModel implements INodeType {
 
 			// Get credentials
 			console.log('[ChutesChatModel] Getting credentials...');
-			const credentials = await this.getCredentials('chutesApi');
+			let credentialName: 'chutesApi' | 'chutesOAuth2Api' = 'chutesApi';
+			let credentials: any;
+			try {
+				credentials = await this.getCredentials('chutesApi');
+			} catch {
+				credentialName = 'chutesOAuth2Api';
+				credentials = await this.getCredentials('chutesOAuth2Api');
+			}
 			console.log('[ChutesChatModel] Credentials obtained');
 
 			// Create and configure the chat model
@@ -189,7 +200,7 @@ export class ChutesChatModel implements INodeType {
 				credentials,
 				requestHelper: this.helpers, // Pass n8n request helper to the model
 				authenticatedRequest: async (requestOptions) =>
-					await this.helpers.requestWithAuthentication.call(this, 'chutesApi', requestOptions),
+					await this.helpers.requestWithAuthentication.call(this, credentialName, requestOptions),
 			});
 			console.log('[ChutesChatModel] Chat model created successfully');
 

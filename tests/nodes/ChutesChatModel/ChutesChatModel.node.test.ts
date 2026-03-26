@@ -19,11 +19,15 @@ describe('ChutesChatModel Node', () => {
 			expect(chatModelNode.description.icon).toBe('file:chutes.png');
 		});
 
-		it('should require chutesApi credentials', () => {
+		it('should support both API key and OAuth2 credentials', () => {
 			expect(chatModelNode.description.credentials).toEqual([
 				{
 					name: 'chutesApi',
-					required: true,
+					required: false,
+				},
+				{
+					name: 'chutesOAuth2Api',
+					required: false,
 				},
 			]);
 		});

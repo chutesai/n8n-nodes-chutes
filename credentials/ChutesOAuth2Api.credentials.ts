@@ -6,10 +6,7 @@ import {
 } from 'n8n-workflow';
 
 function getIdpBaseUrl(): string {
-	return (process.env.CHUTES_IDP_BASE_URL?.trim() || 'https://api.chutes.ai').replace(
-		/\/+$/,
-		'',
-	);
+	return (process.env.CHUTES_IDP_BASE_URL?.trim() || 'https://api.chutes.ai').replace(/\/+$/, '');
 }
 
 function getCredentialTestBaseUrl(): string {
@@ -78,8 +75,7 @@ export class ChutesOAuth2Api implements ICredentialType {
 			default: 'body',
 		},
 		{
-			displayName:
-				"Click the 'Connect my account' button below to Sign in With Chutes.",
+			displayName: "Click the 'Connect my account' button below to Sign in With Chutes.",
 			name: 'oauthConnectHelp',
 			type: 'notice',
 			default: '',
@@ -113,8 +109,7 @@ export class ChutesOAuth2Api implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization:
-					'={{"Bearer " + ($credentials.accessToken)}}',
+				Authorization: '={{"Bearer " + ($credentials.accessToken)}}',
 				'X-Chutes-Client': 'n8n-integration',
 			},
 		},

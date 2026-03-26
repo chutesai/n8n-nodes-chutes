@@ -9,7 +9,10 @@ import {
 import { GenericChutesChatModel } from './GenericChutesChatModel';
 import * as loadChutes from '../Chutes/methods/loadChutes';
 import * as loadOptions from '../Chutes/methods/loadOptions';
-import { getChutesCredentials, getChutesAuthenticationProperty } from '../Chutes/transport/credentialConfig';
+import {
+	getChutesCredentials,
+	getChutesAuthenticationProperty,
+} from '../Chutes/transport/credentialConfig';
 
 export class ChutesChatModel implements INodeType {
 	description: INodeTypeDescription = {

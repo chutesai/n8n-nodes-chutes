@@ -119,5 +119,40 @@ describe('ChutesOAuth2Api Credentials', () => {
 		test('should test with /v1/models endpoint', () => {
 			expect(credentials.test?.request.url).toBe('/v1/models');
 		});
+
+		test('should use CHUTES_CREDENTIAL_TEST_BASE_URL when set', () => {
+			const original = process.env.CHUTES_CREDENTIAL_TEST_BASE_URL;
+			process.env.CHUTES_CREDENTIAL_TEST_BASE_URL = 'https://custom-test.chutes.ai';
+			try {
+				const creds = new ChutesOAuth2Api();
+				expect(creds.test?.request.baseURL).toBe('https://custom-test.chutes.ai');
+			} finally {
+				if (original === undefined) {
+					delete process.env.CHUTES_CREDENTIAL_TEST_BASE_URL;
+				} else {
+					process.env.CHUTES_CREDENTIAL_TEST_BASE_URL = original;
+				}
+			}
+		});
+	});
+
+	describe('Environment Variable Overrides', () => {
+		test('should use CHUTES_IDP_BASE_URL when set for authUrl and accessTokenUrl', () => {
+			const original = process.env.CHUTES_IDP_BASE_URL;
+			process.env.CHUTES_IDP_BASE_URL = 'https://custom-idp.chutes.ai/';
+			try {
+				const creds = new ChutesOAuth2Api();
+				const authUrl = creds.properties.find((p) => p.name === 'authUrl');
+				const accessTokenUrl = creds.properties.find((p) => p.name === 'accessTokenUrl');
+				expect(authUrl?.default).toBe('https://custom-idp.chutes.ai/idp/authorize');
+				expect(accessTokenUrl?.default).toBe('https://custom-idp.chutes.ai/idp/token');
+			} finally {
+				if (original === undefined) {
+					delete process.env.CHUTES_IDP_BASE_URL;
+				} else {
+					process.env.CHUTES_IDP_BASE_URL = original;
+				}
+			}
+		});
 	});
 });

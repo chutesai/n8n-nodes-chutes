@@ -62,7 +62,7 @@ function isTokenExpiringSoon(tokenExpiresAt: string): boolean {
 export class ChutesApi implements ICredentialType {
 	name = 'chutesApi';
 	displayName = 'Chutes API';
-	documentationUrl = 'https://chutes.ai/docs';
+	documentationUrl = 'https://chutes.ai/app/api';
 	icon: any = 'file:../nodes/Chutes/chutes.png';
 	properties: INodeProperties[] = [
 		{
@@ -148,8 +148,7 @@ export class ChutesApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization:
-					'={{"Bearer " + ($credentials.apiKey || $credentials.sessionToken)}}',
+				Authorization: '={{"Bearer " + ($credentials.apiKey || $credentials.sessionToken)}}',
 				'X-Chutes-Client': 'n8n-integration',
 			},
 		},

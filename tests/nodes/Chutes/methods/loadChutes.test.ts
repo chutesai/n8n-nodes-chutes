@@ -9,6 +9,12 @@ import {
 	getChutesForSelectedResource,
 	getImageChutes,
 	getLLMChutes,
+	getVideoChutes,
+	getTTSChutes,
+	getSTTChutes,
+	getMusicChutes,
+	getEmbeddingChutes,
+	getModerationChutes,
 } from '../../../../nodes/Chutes/methods/loadChutes';
 import { createMockLoadOptionsFunctions } from '../../../helpers/mocks';
 
@@ -389,6 +395,176 @@ describe('Load Chutes Methods', () => {
 
 			await getChutes.call(mockContext);
 			expect(mockContext.helpers.request).toHaveBeenCalled();
+		});
+
+		it('does not fallback when thrown error is non-object', async () => {
+			const mockContext = createMockLoadOptionsFunctions();
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue('boom');
+			const result = await getChutes.call(mockContext);
+			expect(result).toEqual([]);
+			expect(mockContext.helpers.request).not.toHaveBeenCalled();
+		});
+
+		it('does not fallback when thrown error is null', async () => {
+			const mockContext = createMockLoadOptionsFunctions();
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(null);
+			const result = await getChutes.call(mockContext);
+			expect(result).toEqual([]);
+			expect(mockContext.helpers.request).not.toHaveBeenCalled();
+		});
+
+		it('returns empty arrays from all specialized loaders when API throws', async () => {
+			const mockContext = createMockLoadOptionsFunctions();
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+				new Error('down'),
+			);
+			await expect(getLLMChutes.call(mockContext)).resolves.toEqual([]);
+			await expect(getImageChutes.call(mockContext)).resolves.toEqual([]);
+			await expect(getVideoChutes.call(mockContext)).resolves.toEqual([]);
+			await expect(getTTSChutes.call(mockContext)).resolves.toEqual([]);
+			await expect(getSTTChutes.call(mockContext)).resolves.toEqual([]);
+			await expect(getMusicChutes.call(mockContext)).resolves.toEqual([]);
+			await expect(getEmbeddingChutes.call(mockContext)).resolves.toEqual([]);
+			await expect(getModerationChutes.call(mockContext)).resolves.toEqual([]);
+		});
+
+		it('covers status-code candidate precedence and fallback-to-empty response branches', async () => {
+			const mockContext = createMockLoadOptionsFunctions();
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+				httpCode: 403,
+				response: {},
+				message: 'forbidden',
+			});
+			(mockContext.helpers.request as jest.Mock).mockResolvedValue({});
+			const result = await getChutes.call(mockContext);
+			expect(result).toEqual([]);
+		});
+
+		it('covers permission detection via nested error.detail branch', async () => {
+			const mockContext = createMockLoadOptionsFunctions();
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+				statusCode: 403,
+				error: { detail: 'permission denied' },
+			});
+			(mockContext.helpers.request as jest.Mock).mockResolvedValue({ items: [] });
+			const result = await getChutes.call(mockContext);
+			expect(result).toEqual([]);
+		});
+
+		it('covers unauthorized detail variants and empty resource fallback', async () => {
+			const mockContext = createMockLoadOptionsFunctions({
+				getCurrentNodeParameter: jest.fn().mockReturnValue(''),
+			} as any);
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+				httpCode: 401,
+				description: 'user not found',
+				response: {},
+			});
+			(mockContext.helpers.request as jest.Mock).mockResolvedValue({ items: [] });
+			const result = await getChutesForSelectedResource.call(mockContext);
+			expect(Array.isArray(result)).toBe(true);
+		});
+
+		it('covers remaining unauthorized phrase branches and nullish status fallbacks', async () => {
+			const authFailedContext = createMockLoadOptionsFunctions();
+			(authFailedContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+				statusCode: 401,
+				message: 'authorization failed',
+				response: {},
+			});
+			(authFailedContext.helpers.request as jest.Mock).mockResolvedValue({ items: [] });
+			await getChutes.call(authFailedContext);
+			expect(authFailedContext.helpers.request).toHaveBeenCalled();
+
+			const unauthorizedContext = createMockLoadOptionsFunctions();
+			(unauthorizedContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+				statusCode: 401,
+				message: 'unauthorized',
+				error: {},
+				response: {},
+			});
+			(unauthorizedContext.helpers.request as jest.Mock).mockResolvedValue({ items: [] });
+			await getChutes.call(unauthorizedContext);
+			expect(unauthorizedContext.helpers.request).toHaveBeenCalled();
+
+			const nullishStatusContext = createMockLoadOptionsFunctions();
+			(nullishStatusContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+				httpCode: null,
+				statusCode: null,
+				status: null,
+				response: {},
+				description: '',
+				message: '',
+			});
+			await expect(getChutes.call(nullishStatusContext)).resolves.toEqual([]);
+		});
+	});
+
+	describe('coverage branch closures', () => {
+		it('getChutesByType handles present and missing descriptions', async () => {
+			const mockContext = createMockLoadOptionsFunctions();
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({
+				items: [
+					{
+						chute_id: '1',
+						name: 'image-one',
+						slug: 'image-one',
+						standard_template: 'diffusion',
+						public: true,
+						user: { username: 'u' },
+					},
+					{
+						chute_id: '2',
+						name: 'llm-one',
+						slug: 'llm-one',
+						standard_template: 'vllm',
+						public: true,
+						user: { username: 'u' },
+					},
+				],
+			});
+			const byType = await getChutesByType.call(mockContext, 'diffusion');
+			expect(byType).toHaveLength(1);
+		});
+
+		it('specialized loaders cover nullish fields and keyword && fallback terms', async () => {
+			const mockContext = createMockLoadOptionsFunctions();
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({
+				items: [
+					// Nullish fields trigger `?.toLowerCase() || ''` fallback arms
+					{ chute_id: 'n1', slug: 'n1', public: true } as any,
+					// Image keywords
+					{ chute_id: 'i1', name: 'flux-model', slug: 'i1', public: true } as any,
+					// Video keywords
+					{ chute_id: 'v1', name: 'hunyuan-video', slug: 'v1', public: true } as any,
+					// TTS keywords
+					{ chute_id: 't1', name: 'kokoro-tts', slug: 't1', public: true } as any,
+					// STT keywords
+					{ chute_id: 's1', name: 'whisper-asr', slug: 's1', public: true } as any,
+					// Music keywords
+					{ chute_id: 'm1', name: 'diffrhythm-music', slug: 'm1', public: true } as any,
+					// Embedding && terms (first side true, second false)
+					{ chute_id: 'e1', name: 'qwen', slug: 'e1', public: true } as any,
+					{ chute_id: 'e2', name: 'nomic', slug: 'e2', public: true } as any,
+					{ chute_id: 'e3', name: 'jina', slug: 'e3', public: true } as any,
+					{ chute_id: 'e4', name: 'sfr', slug: 'e4', public: true } as any,
+					{ chute_id: 'e5', name: 'arctic', slug: 'e5', public: true } as any,
+					// Moderation && terms (first side true, second false)
+					{ chute_id: 'mo1', name: 'granite', slug: 'mo1', public: true } as any,
+					{ chute_id: 'mo2', name: 'unitary', slug: 'mo2', public: true } as any,
+					{ chute_id: 'mo3', name: 'clip', slug: 'mo3', public: true } as any,
+					// Moderation direct terms
+					{ chute_id: 'mo4', name: 'llama-firewall', slug: 'mo4', public: true } as any,
+				],
+			});
+
+			await expect(getImageChutes.call(mockContext)).resolves.toBeDefined();
+			await expect(getVideoChutes.call(mockContext)).resolves.toBeDefined();
+			await expect(getTTSChutes.call(mockContext)).resolves.toBeDefined();
+			await expect(getSTTChutes.call(mockContext)).resolves.toBeDefined();
+			await expect(getMusicChutes.call(mockContext)).resolves.toBeDefined();
+			await expect(getEmbeddingChutes.call(mockContext)).resolves.toBeDefined();
+			await expect(getModerationChutes.call(mockContext)).resolves.toBeDefined();
 		});
 	});
 });

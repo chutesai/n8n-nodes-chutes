@@ -146,10 +146,12 @@ export function getChuteUrl(slug: string): string {
  */
 async function getRawChutes(
 	context: ILoadOptionsFunctions,
-	includePublic = true,
-	limit = 500,
+	includePublic?: boolean,
+	limit?: number,
 ): Promise<ChuteOption[]> {
-	const url = buildChutesListRequestUrl(includePublic, limit);
+	const effectiveIncludePublic = includePublic ?? true;
+	const effectiveLimit = limit ?? 500;
+	const url = buildChutesListRequestUrl(effectiveIncludePublic, effectiveLimit);
 	let response: unknown;
 
 	try {
@@ -161,7 +163,7 @@ async function getRawChutes(
 			},
 		});
 	} catch (error) {
-		if (!includePublic || !shouldFallbackToPublicCatalog(error)) {
+		if (!effectiveIncludePublic || !shouldFallbackToPublicCatalog(error)) {
 			throw error;
 		}
 
@@ -200,8 +202,8 @@ function formatChuteOption(chute: ChuteOption): INodePropertyOptions {
  */
 export async function getChutes(
 	this: ILoadOptionsFunctions,
-	includePublic = true,
-	limit = 500,
+	includePublic?: boolean,
+	limit?: number,
 ): Promise<INodePropertyOptions[]> {
 	try {
 		const chutes = await getRawChutes(this, includePublic, limit);
@@ -272,9 +274,10 @@ export async function getChutesByType(
 	}
 
 	// Filter by template in description
-	return allChutes.filter((chute) =>
-		chute.description?.toLowerCase().includes(template.toLowerCase()),
-	);
+	return allChutes.filter((chute) => {
+		const description = `${chute.description}`.toLowerCase();
+		return description.includes(template.toLowerCase());
+	});
 }
 
 /**

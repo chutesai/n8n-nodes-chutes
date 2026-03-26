@@ -821,6 +821,45 @@ describe('OpenAPI Discovery Module', () => {
 		expect(result?.endpoint).toBe('/edit');
 	});
 
+	it('uses /generate fallback for image_edit when imageEditPath is absent', () => {
+		const caps = {
+			endpoints: [{ path: '/generate', method: 'POST', parameters: [] }],
+			supportsTextToVideo: false,
+			supportsImageToVideo: false,
+			supportsImageEdit: false,
+			supportsVideoToVideo: false,
+			supportsKeyframeInterp: false,
+		};
+		const result = buildRequestBody('image_edit', caps, { prompt: 'x' });
+		expect(result?.endpoint).toBe('/generate');
+	});
+
+	it('uses /generate final fallback for operation outside text2video/edit', () => {
+		const caps = {
+			endpoints: [],
+			supportsTextToVideo: false,
+			supportsImageToVideo: false,
+			supportsImageEdit: false,
+			supportsVideoToVideo: false,
+			supportsKeyframeInterp: false,
+		};
+		const result = buildRequestBody('video2video', caps, { prompt: 'x' });
+		expect(result?.endpoint).toBe('/generate');
+	});
+
+	it('falls back for unknown operation (covers non-edit branch in endpoint chain)', () => {
+		const caps = {
+			endpoints: [{ path: '/generate', method: 'POST', parameters: [] }],
+			supportsTextToVideo: false,
+			supportsImageToVideo: false,
+			supportsImageEdit: false,
+			supportsVideoToVideo: false,
+			supportsKeyframeInterp: false,
+		};
+		const result = buildRequestBody('unknown' as any, caps, { prompt: 'x' });
+		expect(result?.endpoint).toBe('/generate');
+	});
+
 	it('maps text-only /generate endpoint for text2video fallback detection', () => {
 		const caps = {
 			endpoints: [
@@ -889,6 +928,31 @@ describe('OpenAPI Discovery Module', () => {
 		};
 		const result = buildRequestBody('text2video', caps, { resolution: 'bad-format' });
 		expect(result?.body.resolution).toBe('bad-format');
+	});
+
+	it('does not rewrite resolution when split does not produce width/height tokens', () => {
+		const caps = {
+			endpoints: [
+				{
+					path: '/generate',
+					method: 'POST',
+					parameters: [
+						{ name: 'width', required: false, type: 'integer' },
+						{ name: 'height', required: false, type: 'integer' },
+					],
+				},
+			],
+			supportsTextToVideo: true,
+			supportsImageToVideo: false,
+			supportsImageEdit: false,
+			supportsVideoToVideo: false,
+			supportsKeyframeInterp: false,
+			textToVideoPath: '/generate',
+		};
+		const result = buildRequestBody('text2video', caps, { resolution: 'badtoken' });
+		expect(result?.body.resolution).toBe('badtoken');
+		expect(result?.body.width).toBeUndefined();
+		expect(result?.body.height).toBeUndefined();
 	});
 	});
 

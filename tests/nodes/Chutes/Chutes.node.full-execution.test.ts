@@ -264,4 +264,67 @@ describe('Chutes full execute coverage', () => {
 
 		await expect(node.execute.call(ctx as any)).rejects.toThrow('at least 2 keyframe images');
 	});
+
+	test('execute handles unsupported resource error and continueOnFail path', async () => {
+		const node = new Chutes();
+		const ctx = makeContext({
+			resource: 'unknown-resource',
+		});
+		(ctx.continueOnFail as jest.Mock).mockReturnValue(true);
+		const out = await node.execute.call(ctx as any);
+		expect((out[0][0].json as any).error).toContain('not implemented');
+	});
+
+	test('execute rethrows errors when continueOnFail is false', async () => {
+		const node = new Chutes();
+		const ctx = makeContext({
+			resource: 'unknown-resource',
+		});
+		(ctx.continueOnFail as jest.Mock).mockReturnValue(false);
+		await expect(node.execute.call(ctx as any)).rejects.toThrow('not implemented');
+	});
+
+	test('execute wraps array JSON items without binaryData marker', async () => {
+		(chutesApiRequestWithRetry as jest.Mock).mockResolvedValue([{ a: 1 }, { b: 2 }]);
+		const node = new Chutes();
+		const ctx = makeContext({
+			resource: 'textGeneration',
+			operation: 'complete',
+			chuteUrl: 'https://llm.chutes.ai',
+			prompt: 'hello',
+			additionalOptions: {},
+		});
+		const out = await node.execute.call(ctx as any);
+		expect(out[0]).toHaveLength(2);
+		expect((out[0][0].json as any).a).toBe(1);
+		expect((out[0][1].json as any).b).toBe(2);
+	});
+
+	test('execute wraps string responses into data field', async () => {
+		(chutesApiRequestWithRetry as jest.Mock).mockResolvedValue('plain-response');
+		const node = new Chutes();
+		const ctx = makeContext({
+			resource: 'textGeneration',
+			operation: 'complete',
+			chuteUrl: 'https://llm.chutes.ai',
+			prompt: 'hello',
+			additionalOptions: {},
+		});
+		const out = await node.execute.call(ctx as any);
+		expect((out[0][0].json as any).data).toBe('plain-response');
+	});
+
+	test('execute wraps primitive responses into value field', async () => {
+		(chutesApiRequestWithRetry as jest.Mock).mockResolvedValue(123);
+		const node = new Chutes();
+		const ctx = makeContext({
+			resource: 'textGeneration',
+			operation: 'complete',
+			chuteUrl: 'https://llm.chutes.ai',
+			prompt: 'hello',
+			additionalOptions: {},
+		});
+		const out = await node.execute.call(ctx as any);
+		expect((out[0][0].json as any).value).toBe(123);
+	});
 });

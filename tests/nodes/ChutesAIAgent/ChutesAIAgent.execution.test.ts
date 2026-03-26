@@ -63,6 +63,11 @@ describe('ChutesAIAgent execute', () => {
 		).toEqual([{ name: 'legacy', args: { z: 3 } }]);
 		expect(
 			parseToolCalls({
+				tool_calls: [{ function: { name: 'obj', arguments: { q: 1 } } }],
+			}),
+		).toEqual([{ name: 'obj', args: { q: 1 } }]);
+		expect(
+			parseToolCalls({
 				function_call: { name: 'obj-args', arguments: { x: 9 } },
 			}),
 		).toEqual([{ name: 'obj-args', args: { x: 9 } }]);
@@ -399,6 +404,146 @@ describe('ChutesAIAgent execute', () => {
 		const out = await node.execute.call(ctx as any);
 		expect(out[0][0].json.output).toBe('ok');
 	});
+
+	test('handles non-array tool connection payload', async () => {
+		const node = new ChutesAIAgent();
+		const ctx = createContext({
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return { _call: jest.fn().mockResolvedValue('ok') };
+				if (type === NodeConnectionTypes.AiTool) return { name: 'single', invoke: jest.fn() };
+				throw new Error('not connected');
+			}),
+		});
+		const out = await node.execute.call(ctx as any);
+		expect(out[0][0].json.output).toBe('ok');
+	});
+
+	test('memory history non-array is ignored and non-string content logging path executes', async () => {
+		const node = new ChutesAIAgent();
+		const memory = {
+			loadMemoryVariables: jest.fn().mockResolvedValue({ chat_history: [{ content: { a: 1 }, constructor: { name: 'X' } }] }),
+		};
+		const ctx = createContext({
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return { _call: jest.fn().mockResolvedValue('ok') };
+				if (type === NodeConnectionTypes.AiMemory) return memory;
+				throw new Error('not connected');
+			}),
+		});
+		const out = await node.execute.call(ctx as any);
+		expect(out[0][0].json.output).toBe('ok');
+	});
+
+	test('memory history non-array value skips splice branch', async () => {
+		const node = new ChutesAIAgent();
+		const memory = {
+			loadMemoryVariables: jest.fn().mockResolvedValue({ chat_history: 'not-an-array' }),
+		};
+		const ctx = createContext({
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return { _call: jest.fn().mockResolvedValue('ok') };
+				if (type === NodeConnectionTypes.AiMemory) return memory;
+				throw new Error('not connected');
+			}),
+		});
+		const out = await node.execute.call(ctx as any);
+		expect(out[0][0].json.output).toBe('ok');
+	});
+
+	test('simple invoke path falls back to JSON.stringify when no content/text', async () => {
+		const node = new ChutesAIAgent();
+		const ctx = createContext({
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return { invoke: jest.fn().mockResolvedValue({ foo: 'bar' }) };
+				throw new Error('not connected');
+			}),
+		});
+		const out = await node.execute.call(ctx as any);
+		expect(out[0][0].json.output).toBe('{"foo":"bar"}');
+	});
+
+	test('tool loop final answer falls back to JSON.stringify for object response', async () => {
+		const node = new ChutesAIAgent();
+		const model = { _call: jest.fn().mockResolvedValue({ foo: 'bar' }) };
+		const ctx = createContext({
+			getNodeParameter: jest.fn((name: string, _item: number, defaultValue?: any) => {
+				if (name === 'options') return { maxIterations: 1 };
+				return defaultValue;
+			}),
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return model;
+				if (type === NodeConnectionTypes.AiTool) return [{ name: 't', invoke: jest.fn() }];
+				throw new Error('not connected');
+			}),
+		});
+		const out = await node.execute.call(ctx as any);
+		expect(out[0][0].json.output).toBe('{"foo":"bar"}');
+	});
+
+	test('continueOnFail returns unknown fallback for non-Error thrown before wrapping', async () => {
+		const node = new ChutesAIAgent();
+		const ctx = createContext({
+			continueOnFail: jest.fn().mockReturnValue(true),
+			getNodeParameter: jest.fn((name: string) => {
+				if (name === 'promptType') throw {};
+				return {};
+			}),
+		});
+		const out = await node.execute.call(ctx as any);
+		expect(out[0][0].json.error).toContain('Unknown error occurred');
+	});
+
+	test(
+		'simple _call timeout branch executes',
+		async () => {
+			jest.useFakeTimers();
+			try {
+				const node = new ChutesAIAgent();
+				const ctx = createContext({
+					getInputConnectionData: jest.fn(async (type: string) => {
+						if (type === NodeConnectionTypes.AiLanguageModel) {
+							return { _call: jest.fn().mockImplementation(() => new Promise(() => {})) };
+						}
+						throw new Error('not connected');
+					}),
+				});
+				const run = node.execute.call(ctx as any);
+				const caught = run.catch((error) => error);
+				await jest.advanceTimersByTimeAsync(61000);
+				const error = await caught;
+				expect(error.message).toContain('timeout after 60 seconds');
+			} finally {
+				jest.useRealTimers();
+			}
+		},
+		20000,
+	);
+
+	test(
+		'simple invoke timeout branch executes',
+		async () => {
+			jest.useFakeTimers();
+			try {
+				const node = new ChutesAIAgent();
+				const ctx = createContext({
+					getInputConnectionData: jest.fn(async (type: string) => {
+						if (type === NodeConnectionTypes.AiLanguageModel) {
+							return { invoke: jest.fn().mockImplementation(() => new Promise(() => {})) };
+						}
+						throw new Error('not connected');
+					}),
+				});
+				const run = node.execute.call(ctx as any);
+				const caught = run.catch((error) => error);
+				await jest.advanceTimersByTimeAsync(61000);
+				const error = await caught;
+				expect(error.message).toContain('timeout after 60 seconds');
+			} finally {
+				jest.useRealTimers();
+			}
+		},
+		20000,
+	);
 
 	test('handles nullable connected data for optional inputs', async () => {
 		const node = new ChutesAIAgent();

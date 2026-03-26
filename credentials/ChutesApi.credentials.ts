@@ -78,10 +78,12 @@ export class ChutesApi implements ICredentialType {
 						type: 'notice' as const,
 						default: '',
 					},
-				]
+			  ]
 			: []),
 		{
-			displayName: 'Chutes API Key',
+			displayName: isServerAccessTokenConfigured()
+				? 'Do Not Use — Server Account Is Already Set'
+				: 'Chutes API Key',
 			name: 'apiKey',
 			type: 'string',
 			typeOptions: {
@@ -89,7 +91,9 @@ export class ChutesApi implements ICredentialType {
 			},
 			default: '',
 			required: false,
-			hint: 'Create a Chutes API key from your Chutes dashboard at chutes.ai/app/api',
+			hint: isServerAccessTokenConfigured()
+				? 'Save and close this window. No API key is needed.'
+				: 'Create a Chutes API key from your Chutes dashboard at chutes.ai/app/api',
 		},
 		{
 			displayName: 'Server Access Token',

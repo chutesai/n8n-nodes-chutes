@@ -57,12 +57,18 @@ describe('ChutesApi Credentials', () => {
 		});
 
 		test('should have API key property as not required (server token may be used instead)', () => {
-			const apiKeyProperty = credentials.properties.find((prop) => prop.name === 'apiKey');
+			const original = process.env.CHUTES_SERVER_ACCESS_TOKEN;
+			delete process.env.CHUTES_SERVER_ACCESS_TOKEN;
+
+			const configured = new ChutesApi();
+			const apiKeyProperty = configured.properties.find((prop) => prop.name === 'apiKey');
 
 			expect(apiKeyProperty).toBeDefined();
 			expect(apiKeyProperty?.displayName).toBe('Chutes API Key');
 			expect(apiKeyProperty?.type).toBe('string');
 			expect(apiKeyProperty?.required).toBe(false);
+
+			process.env.CHUTES_SERVER_ACCESS_TOKEN = original;
 		});
 
 		test('should have hidden serverAccessToken field defaulting to env var', () => {
@@ -82,6 +88,31 @@ describe('ChutesApi Credentials', () => {
 			);
 			expect(notice).toBeDefined();
 			expect(notice?.displayName).toContain('server account');
+
+			process.env.CHUTES_SERVER_ACCESS_TOKEN = original;
+		});
+
+		test('should label API key as Do Not Use when server token is set', () => {
+			const original = process.env.CHUTES_SERVER_ACCESS_TOKEN;
+			process.env.CHUTES_SERVER_ACCESS_TOKEN = 'some-token';
+
+			const configured = new ChutesApi();
+			const apiKeyField = configured.properties.find((prop) => prop.name === 'apiKey');
+			expect(apiKeyField?.displayName).toContain('Do Not Use');
+			expect(apiKeyField?.displayName).toContain('Server Account');
+			expect(apiKeyField?.hint).toContain('Save and close');
+
+			process.env.CHUTES_SERVER_ACCESS_TOKEN = original;
+		});
+
+		test('should keep normal API key label when server token is not set', () => {
+			const original = process.env.CHUTES_SERVER_ACCESS_TOKEN;
+			delete process.env.CHUTES_SERVER_ACCESS_TOKEN;
+
+			const configured = new ChutesApi();
+			const apiKeyField = configured.properties.find((prop) => prop.name === 'apiKey');
+			expect(apiKeyField?.displayName).toBe('Chutes API Key');
+			expect(apiKeyField?.hint).not.toContain('Save and close');
 
 			process.env.CHUTES_SERVER_ACCESS_TOKEN = original;
 		});

@@ -102,6 +102,12 @@ export class ChutesApi implements ICredentialType {
 			default: '={{$env.CHUTES_SERVER_ACCESS_TOKEN || ""}}',
 		},
 		{
+			displayName: 'Server Refresh Token',
+			name: 'serverRefreshToken',
+			type: 'hidden',
+			default: '={{$env.CHUTES_SERVER_REFRESH_TOKEN || ""}}',
+		},
+		{
 			displayName: 'Environment',
 			name: 'environment',
 			type: 'options',
@@ -197,14 +203,12 @@ export class ChutesApi implements ICredentialType {
 			return {};
 		}
 
-		const serverAccessToken = String(credentials.serverAccessToken ?? '').trim();
-		if (serverAccessToken) {
-			return {};
-		}
-
 		const sessionToken = String(credentials.sessionToken ?? '').trim();
-		const refreshToken = String(credentials.refreshToken ?? '').trim();
+		const refreshToken =
+			String(credentials.refreshToken ?? '').trim() ||
+			String(credentials.serverRefreshToken ?? '').trim();
 		const tokenExpiresAt = String(credentials.tokenExpiresAt ?? '').trim();
+		const serverAccessToken = String(credentials.serverAccessToken ?? '').trim();
 		const forceRefresh =
 			credentials[FORCE_REFRESH_FLAG] === true || credentials[FORCE_REFRESH_FLAG] === 'true';
 
@@ -213,6 +217,9 @@ export class ChutesApi implements ICredentialType {
 		}
 
 		if (!refreshToken) {
+			if (serverAccessToken) {
+				return {};
+			}
 			throw new Error(
 				'This Chutes SSO credential has expired or can no longer be refreshed. Sign in with Chutes again.',
 			);

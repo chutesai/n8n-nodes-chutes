@@ -78,6 +78,13 @@ describe('ChutesApi Credentials', () => {
 			expect(field?.default).toContain('CHUTES_SERVER_ACCESS_TOKEN');
 		});
 
+		test('should have hidden serverRefreshToken field defaulting to env var', () => {
+			const field = credentials.properties.find((prop) => prop.name === 'serverRefreshToken');
+			expect(field).toBeDefined();
+			expect(field?.type).toBe('hidden');
+			expect(field?.default).toContain('CHUTES_SERVER_REFRESH_TOKEN');
+		});
+
 		test('should show server account notice when CHUTES_SERVER_ACCESS_TOKEN is set', () => {
 			const original = process.env.CHUTES_SERVER_ACCESS_TOKEN;
 			process.env.CHUTES_SERVER_ACCESS_TOKEN = 'some-token';
@@ -221,13 +228,44 @@ describe('ChutesApi Credentials', () => {
 			process.env = { ...originalEnv };
 		});
 
-		test('should skip refresh when serverAccessToken exists (no apiKey, no sessionToken)', async () => {
+		test('should refresh using serverRefreshToken when sessionToken is empty and serverAccessToken is present', async () => {
+			const httpRequest = jest.fn().mockResolvedValue({
+				access_token: 'fresh-session-token',
+				refresh_token: 'fresh-refresh-token',
+				expires_in: 3600,
+				scope: 'invoke',
+			});
+			(credentials as any).helpers = { httpRequest };
+
+			const result = await (credentials as any).preAuthentication.call(credentials as any, {
+				apiKey: '',
+				serverAccessToken: 'expired-server-token',
+				serverRefreshToken: 'server-refresh-token',
+			});
+
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method: 'POST',
+					url: 'https://api.chutes.ai/idp/token',
+				}),
+			);
+			expect(result).toEqual(
+				expect.objectContaining({
+					sessionToken: 'fresh-session-token',
+					refreshToken: 'fresh-refresh-token',
+				}),
+			);
+		});
+
+		test('should fall back to serverAccessToken when no refreshToken or serverRefreshToken available', async () => {
 			const httpRequest = jest.fn();
 			(credentials as any).helpers = { httpRequest };
 
 			const result = await (credentials as any).preAuthentication.call(credentials as any, {
 				apiKey: '',
 				serverAccessToken: 'server-managed-token',
+				serverRefreshToken: '',
+				refreshToken: '',
 			});
 
 			expect(result).toEqual({});

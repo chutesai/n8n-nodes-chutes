@@ -193,6 +193,133 @@ describe('Load Options Methods', () => {
 			);
 			expect(result[0].value).toBe('model-x');
 		});
+
+		test('returns prompt when chuteUrl parameter read throws', async () => {
+			const mockFunctions = createMockLoadOptionsFunctions({
+				getCurrentNodeParameter: jest.fn(() => {
+					throw new Error('parameter unavailable');
+				}),
+			});
+
+			const result = await loadOptions.getModelsForSelectedChute.call(mockFunctions as any);
+			expect(result[0].name).toContain('Please select a chute first');
+		});
+
+		test('returns fixed-model default when models endpoint returns empty list', async () => {
+			const mockFunctions = createMockLoadOptionsFunctions({
+				getCurrentNodeParameter: jest.fn().mockReturnValue('https://llm.chutes.ai'),
+			});
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ data: [] });
+
+			const result = await loadOptions.getModelsForSelectedChute.call(mockFunctions as any);
+			expect(result[0].name).toContain('Default (chute has fixed model)');
+		});
+
+		test('maps model description fallback pricing chain for selected chute', async () => {
+			const mockFunctions = createMockLoadOptionsFunctions({
+				getCurrentNodeParameter: jest.fn().mockReturnValue('https://llm.chutes.ai'),
+			});
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({
+				data: [
+					{ id: 'a', pricing: { generation: '0.2' } },
+					{ id: 'b' },
+				],
+			});
+
+			const result = await loadOptions.getModelsForSelectedChute.call(mockFunctions as any);
+			expect(result[0].description).toContain('0.2');
+			expect(result[1].description).toContain('N/A');
+		});
+	});
+
+	describe('branch coverage hardening', () => {
+		test('getChutesTextModels supports array responses and all type predicates', async () => {
+			const mockFunctions = createMockLoadOptionsFunctions();
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue([
+				{ id: 'tNoType' },
+				{ id: 't0', type: '', pricing: { input: '1' } },
+				{ id: 't1', type: 'text' },
+				{ id: 't2', type: 'chat' },
+				{ id: 't3', type: 'llm' },
+				{ id: 't4', type: 'vision' },
+			]);
+
+			const result = await loadOptions.getChutesTextModels.call(mockFunctions);
+			expect(result.map((r) => r.value)).toEqual(['tNoType', 't0', 't1', 't2', 't3']);
+		});
+
+		test('getChutesTextModels recoverable errors use unauthenticated fallback', async () => {
+			const mockFunctions = createMockLoadOptionsFunctions();
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+				response: { status: 401 },
+				error: { detail: 'unauthorized' },
+			});
+			(mockFunctions.helpers.request as jest.Mock).mockResolvedValue([{ id: 'fallback', type: 'text' }]);
+
+			const result = await loadOptions.getChutesTextModels.call(mockFunctions);
+			expect(mockFunctions.helpers.request).toHaveBeenCalled();
+			expect(result[0].value).toBe('fallback');
+		});
+
+		test('getChutesTextModels handles non-array API payload via fallback list', async () => {
+			const mockFunctions = createMockLoadOptionsFunctions();
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ foo: 'bar' });
+
+			const result = await loadOptions.getChutesTextModels.call(mockFunctions);
+			expect(result).toEqual([]);
+		});
+
+		test('getChutesTextModels handles null payload and non-object recoverable check input', async () => {
+			const nullPayloadFns = createMockLoadOptionsFunctions();
+			(nullPayloadFns.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(null);
+			await expect(loadOptions.getChutesTextModels.call(nullPayloadFns)).resolves.toEqual([]);
+
+			const nonObjectErrFns = createMockLoadOptionsFunctions();
+			(nonObjectErrFns.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue('boom');
+			const result = await loadOptions.getChutesTextModels.call(nonObjectErrFns);
+			expect(result.some((m) => m.value === 'gpt-3.5-turbo')).toBe(true);
+		});
+
+		test('getChutesTextModels evaluates error.detail branch on non-401/403 errors', async () => {
+			const mockFunctions = createMockLoadOptionsFunctions();
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+				statusCode: 500,
+				error: { detail: 'upstream failure' },
+			});
+
+			const result = await loadOptions.getChutesTextModels.call(mockFunctions);
+			expect(result.some((m) => m.value === 'gpt-4')).toBe(true);
+		});
+
+		test('getChutesImageModels covers vision and dalle types', async () => {
+			const mockFunctions = createMockLoadOptionsFunctions();
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({
+				data: [
+					{ id: 'i0' },
+					{ id: 'i1', type: 'vision', pricing: { generation: '2' } },
+					{ id: 'i2', type: 'dalle' },
+					{ id: 'i3', type: 'text' },
+				],
+			});
+
+			const result = await loadOptions.getChutesImageModels.call(mockFunctions);
+			expect(result.map((r) => r.value)).toEqual(['i0', 'i1', 'i2']);
+		});
+
+		test('getChutesImageModels recoverable errors skip console error', async () => {
+			const mockFunctions = createMockLoadOptionsFunctions();
+			const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+			try {
+				(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+					status: 403,
+					error: { detail: 'forbidden' },
+				});
+				const result = await loadOptions.getChutesImageModels.call(mockFunctions);
+				expect(result[0].name).toContain('Default');
+			} finally {
+				consoleSpy.mockRestore();
+			}
+		});
 	});
 });
 

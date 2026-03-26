@@ -71,8 +71,10 @@ describe('Chutes Node', () => {
 
 	describe('OAuth Configured', () => {
 		let oauthNode: Chutes;
+		const savedServerToken = process.env.CHUTES_SERVER_ACCESS_TOKEN;
 
 		beforeEach(() => {
+			delete process.env.CHUTES_SERVER_ACCESS_TOKEN;
 			process.env.CHUTES_OAUTH_CLIENT_ID = 'test-client-id';
 			process.env.CHUTES_OAUTH_CLIENT_SECRET = 'test-client-secret';
 			oauthNode = new Chutes();
@@ -81,6 +83,9 @@ describe('Chutes Node', () => {
 		afterEach(() => {
 			delete process.env.CHUTES_OAUTH_CLIENT_ID;
 			delete process.env.CHUTES_OAUTH_CLIENT_SECRET;
+			if (savedServerToken !== undefined) {
+				process.env.CHUTES_SERVER_ACCESS_TOKEN = savedServerToken;
+			}
 		});
 
 		test('should include both credentials with displayOptions when OAuth is configured', () => {

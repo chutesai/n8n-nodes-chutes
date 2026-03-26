@@ -47,8 +47,10 @@ describe('ChutesChatModel Node', () => {
 
 	describe('OAuth Configured', () => {
 		let oauthChatNode: ChutesChatModel;
+		const savedServerToken = process.env.CHUTES_SERVER_ACCESS_TOKEN;
 
 		beforeEach(() => {
+			delete process.env.CHUTES_SERVER_ACCESS_TOKEN;
 			process.env.CHUTES_OAUTH_CLIENT_ID = 'test-client-id';
 			process.env.CHUTES_OAUTH_CLIENT_SECRET = 'test-client-secret';
 			oauthChatNode = new ChutesChatModel();
@@ -57,6 +59,9 @@ describe('ChutesChatModel Node', () => {
 		afterEach(() => {
 			delete process.env.CHUTES_OAUTH_CLIENT_ID;
 			delete process.env.CHUTES_OAUTH_CLIENT_SECRET;
+			if (savedServerToken !== undefined) {
+				process.env.CHUTES_SERVER_ACCESS_TOKEN = savedServerToken;
+			}
 		});
 
 		it('should include both credentials with displayOptions when OAuth is configured', () => {

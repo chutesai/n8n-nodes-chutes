@@ -9,8 +9,12 @@ export function isOAuthClientConfigured(): boolean {
 	return Boolean(clientId && clientSecret);
 }
 
+function isServerAccessTokenConfigured(): boolean {
+	return Boolean(process.env.CHUTES_SERVER_ACCESS_TOKEN?.trim());
+}
+
 export function getChutesAuthenticationProperty(): INodeProperties[] {
-	if (!isOAuthClientConfigured()) {
+	if (!isOAuthClientConfigured() || isServerAccessTokenConfigured()) {
 		return [];
 	}
 
@@ -36,7 +40,7 @@ export function getChutesAuthenticationProperty(): INodeProperties[] {
 }
 
 export function getChutesCredentials(): INodeCredentialDescription[] {
-	if (!isOAuthClientConfigured()) {
+	if (!isOAuthClientConfigured() || isServerAccessTokenConfigured()) {
 		return [
 			{
 				name: CHUTES_API_CREDENTIAL,

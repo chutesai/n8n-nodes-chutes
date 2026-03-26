@@ -15,6 +15,7 @@ describe('credentialConfig', () => {
 		process.env = { ...originalEnv };
 		delete process.env.CHUTES_OAUTH_CLIENT_ID;
 		delete process.env.CHUTES_OAUTH_CLIENT_SECRET;
+		delete process.env.CHUTES_SERVER_ACCESS_TOKEN;
 	});
 
 	afterAll(() => {
@@ -82,6 +83,13 @@ describe('credentialConfig', () => {
 			expect(options[0].value).toBe('apiKey');
 			expect(options[1].value).toBe('oAuth2');
 		});
+
+		test('should return empty array when OAuth is configured but server access token is set', () => {
+			process.env.CHUTES_OAUTH_CLIENT_ID = 'cid';
+			process.env.CHUTES_OAUTH_CLIENT_SECRET = 'csec';
+			process.env.CHUTES_SERVER_ACCESS_TOKEN = 'server-token';
+			expect(getChutesAuthenticationProperty()).toEqual([]);
+		});
 	});
 
 	describe('getChutesCredentials', () => {
@@ -106,6 +114,17 @@ describe('credentialConfig', () => {
 			expect(creds[1].displayOptions).toEqual({
 				show: { authentication: ['oAuth2'] },
 			});
+		});
+
+		test('should return only chutesApi when OAuth is configured but server access token is set', () => {
+			process.env.CHUTES_OAUTH_CLIENT_ID = 'cid';
+			process.env.CHUTES_OAUTH_CLIENT_SECRET = 'csec';
+			process.env.CHUTES_SERVER_ACCESS_TOKEN = 'server-token';
+			const creds = getChutesCredentials();
+			expect(creds).toHaveLength(1);
+			expect(creds[0].name).toBe('chutesApi');
+			expect(creds[0].required).toBe(true);
+			expect(creds[0].displayOptions).toBeUndefined();
 		});
 	});
 

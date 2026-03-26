@@ -22,7 +22,7 @@ describe('ChutesApi Credentials', () => {
 		});
 
 		test('should have documentation URL', () => {
-			expect(credentials.documentationUrl).toBe('https://chutes.ai/docs');
+			expect(credentials.documentationUrl).toBe('https://chutes.ai/app/api');
 		});
 
 		test('should use the Chutes logo icon', () => {

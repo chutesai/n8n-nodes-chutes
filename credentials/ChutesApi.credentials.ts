@@ -61,9 +61,63 @@ function isTokenExpiringSoon(tokenExpiresAt: string): boolean {
 
 export class ChutesApi implements ICredentialType {
 	name = 'chutesApi';
-	displayName = 'Chutes API';
+	displayName = 'Sign in With Chutes';
 	documentationUrl = 'https://docs.chutes.ai/api';
+	extends = ['oAuth2Api'];
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
+		{
+			displayName: 'Authorization URL',
+			name: 'authUrl',
+			type: 'hidden',
+			default:
+				'={{(($env.CHUTES_IDP_BASE_URL || "https://api.chutes.ai").replace(/\\/+$/, "")) + "/idp/authorize"}}',
+		},
+		{
+			displayName: 'Access Token URL',
+			name: 'accessTokenUrl',
+			type: 'hidden',
+			default:
+				'={{(($env.CHUTES_IDP_BASE_URL || "https://api.chutes.ai").replace(/\\/+$/, "")) + "/idp/token"}}',
+		},
+		{
+			displayName: 'Client ID',
+			name: 'clientId',
+			type: 'hidden',
+			default: '={{$env.CHUTES_OAUTH_CLIENT_ID || ""}}',
+		},
+		{
+			displayName: 'Client Secret',
+			name: 'clientSecret',
+			type: 'hidden',
+			typeOptions: {
+				password: true,
+			},
+			default: '={{$env.CHUTES_OAUTH_CLIENT_SECRET || ""}}',
+		},
+		{
+			displayName: 'Scope',
+			name: 'scope',
+			type: 'hidden',
+			default: 'openid profile chutes:invoke',
+		},
+		{
+			displayName: 'Auth URI Query Parameters',
+			name: 'authQueryParameters',
+			type: 'hidden',
+			default: '',
+		},
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'hidden',
+			default: 'body',
+		},
 		{
 			displayName: 'Auth Type',
 			name: 'authType',
@@ -71,7 +125,7 @@ export class ChutesApi implements ICredentialType {
 			default: 'apiKey',
 		},
 		{
-			displayName: 'API Key',
+			displayName: 'API Key (Optional)',
 			name: 'apiKey',
 			type: 'string',
 			typeOptions: {
@@ -80,8 +134,8 @@ export class ChutesApi implements ICredentialType {
 			default: '',
 			required: false,
 			description:
-				'API key from your Chutes.ai dashboard. Leave empty when this credential is managed by Sign in with Chutes.',
-			hint: 'If you sign in to n8n with Chutes, this credential can be managed automatically for you.',
+				'Optional API key from your Chutes.ai dashboard. Leave empty to use the Sign in With Chutes connect flow.',
+			hint: 'Use either Connect my account (OAuth) or an API key.',
 		},
 		{
 			displayName: 'Session Token',
@@ -158,7 +212,8 @@ export class ChutesApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: '={{"Bearer " + ($credentials.apiKey || $credentials.sessionToken)}}',
+				Authorization:
+					'={{"Bearer " + ($credentials.apiKey || $credentials.sessionToken || $credentials.accessToken)}}',
 				'X-Chutes-Client': 'n8n-integration',
 			},
 		},
@@ -178,6 +233,10 @@ export class ChutesApi implements ICredentialType {
 	): Promise<ICredentialDataDecryptedObject> {
 		const apiKey = String(credentials.apiKey ?? '').trim();
 		if (apiKey) {
+			return {};
+		}
+		const accessToken = String(credentials.accessToken ?? '').trim();
+		if (accessToken) {
 			return {};
 		}
 

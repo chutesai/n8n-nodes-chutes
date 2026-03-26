@@ -18,7 +18,7 @@ describe('ChutesApi Credentials', () => {
 		});
 
 		test('should have correct display name', () => {
-			expect(credentials.displayName).toBe('Chutes API');
+			expect(credentials.displayName).toBe('Sign in With Chutes');
 		});
 
 		test('should have documentation URL', () => {
@@ -27,11 +27,34 @@ describe('ChutesApi Credentials', () => {
 	});
 
 	describe('Credential Properties', () => {
+		test('should extend n8n base OAuth2 credential', () => {
+			expect(credentials.extends).toEqual(['oAuth2Api']);
+		});
+
+		test('should define hidden OAuth defaults', () => {
+			const expectedHiddenOAuthFields = [
+				'grantType',
+				'authUrl',
+				'accessTokenUrl',
+				'clientId',
+				'clientSecret',
+				'scope',
+				'authQueryParameters',
+				'authentication',
+			];
+
+			for (const fieldName of expectedHiddenOAuthFields) {
+				const field = credentials.properties.find((prop) => prop.name === fieldName);
+				expect(field).toBeDefined();
+				expect(field?.type).toBe('hidden');
+			}
+		});
+
 		test('should have API key property', () => {
 			const apiKeyProperty = credentials.properties.find((prop) => prop.name === 'apiKey');
 
 			expect(apiKeyProperty).toBeDefined();
-			expect(apiKeyProperty?.displayName).toBe('API Key');
+			expect(apiKeyProperty?.displayName).toBe('API Key (Optional)');
 			expect(apiKeyProperty?.type).toBe('string');
 			expect(apiKeyProperty?.required).toBe(false);
 		});
@@ -99,6 +122,7 @@ describe('ChutesApi Credentials', () => {
 			expect(headers).toHaveProperty('Authorization');
 			expect(headers.Authorization).toContain('Bearer');
 			expect(headers.Authorization).toContain('$credentials.sessionToken');
+			expect(headers.Authorization).toContain('$credentials.accessToken');
 		});
 
 		test('should include custom client header', () => {
@@ -130,6 +154,18 @@ describe('ChutesApi Credentials', () => {
 
 			const result = await (credentials as any).preAuthentication.call(credentials as any, {
 				apiKey: 'plain-api-key',
+			});
+
+			expect(result).toEqual({});
+			expect(httpRequest).not.toHaveBeenCalled();
+		});
+
+		test('should skip refresh when oauth accessToken exists', async () => {
+			const httpRequest = jest.fn();
+			(credentials as any).helpers = { httpRequest };
+
+			const result = await (credentials as any).preAuthentication.call(credentials as any, {
+				accessToken: 'oauth-access-token',
 			});
 
 			expect(result).toEqual({});

@@ -37,11 +37,7 @@ export class Chutes implements INodeType {
 		credentials: [
 			{
 				name: 'chutesApi',
-				required: false,
-			},
-			{
-				name: 'chutesOAuth2Api',
-				required: false,
+				required: true,
 			},
 		],
 		properties: [

@@ -33,33 +33,33 @@ npm install n8n-nodes-chutes
 
 ## Authentication (With Example)
 
-This package supports two authentication credential types. You can use either one:
+This package uses one credential type: **Sign in With Chutes**.
 
-### Option A: API Key (manual secret)
-
-1. Sign up at [chutes.ai](https://chutes.ai)
-2. Navigate to your [API Keys dashboard](https://chutes.ai/app/api)
-3. Create a new API key (you will only be shown it once)
-4. Add the key to your n8n credentials:
-   - Go to **Credentials** > **New**
-   - Select **Chutes API**
-   - Enter your API key
-   - Choose your environment (Production/Sandbox)
-   - Save
-
-![API Keys Example](examples/chutes_api_key_n8n2.gif)
-
-### Option B: Sign in With Chutes
+### Option A: One-click Sign in With Chutes (recommended)
 
 1. Go to **Credentials** > **New**
 2. Select **Sign in With Chutes**
 3. Click **Connect my account** and complete Chutes sign-in/consent
 4. Save the credential
 
+### Option B: API Key (manual secret, same credential)
+
+1. Sign up at [chutes.ai](https://chutes.ai)
+2. Navigate to your [API Keys dashboard](https://chutes.ai/app/api)
+3. Create a new API key (you will only be shown it once)
+4. Add the key to the same credential:
+   - Go to **Credentials** > **New**
+   - Select **Sign in With Chutes**
+   - Enter your API key in **API Key (Optional)**
+   - Choose your environment (Production/Sandbox)
+   - Save
+
+![API Keys Example](examples/chutes_api_key_n8n2.gif)
+
 ### Boundary: package OAuth vs server-managed SSO
 
 - **Package OAuth credential (`Sign in With Chutes`)**: end users click connect in credential UI and this node uses n8n's OAuth2 credential flow.
-- **Server-managed SSO provisioning (`Chutes API` generic credential fields)**: external platform code can still inject/manage `sessionToken`/`refreshToken` on the n8n server side.
+- **Server-managed SSO provisioning (`Sign in With Chutes` hidden fields)**: external platform code can still inject/manage `sessionToken`/`refreshToken` on the n8n server side.
 
 Both paths remain supported for backward compatibility.
 

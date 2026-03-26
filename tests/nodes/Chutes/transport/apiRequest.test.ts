@@ -353,15 +353,12 @@ describe('API Request Helper', () => {
 			);
 		});
 
-		test('should use OAuth credential when chutesApi is unavailable', async () => {
+		test('should use chutesApi with oauth access token metadata', async () => {
 			const context = {
-				getCredentials: jest
-					.fn()
-					.mockRejectedValueOnce(new Error('No data found for credential chutesApi'))
-					.mockResolvedValueOnce({
-						accessToken: 'oauth-access-token',
-						environment: 'production',
-					}),
+				getCredentials: jest.fn().mockResolvedValue({
+					accessToken: 'oauth-access-token',
+					environment: 'production',
+				}),
 				helpers: {
 					requestWithAuthentication: jest.fn().mockResolvedValue({ ok: true }),
 				},
@@ -377,7 +374,7 @@ describe('API Request Helper', () => {
 			await chutesApiRequest.call(context, 'GET', '/v1/models');
 
 			expect(context.helpers.requestWithAuthentication).toHaveBeenCalledWith(
-				'chutesOAuth2Api',
+				'chutesApi',
 				expect.objectContaining({
 					method: 'GET',
 					url: expect.stringContaining('/v1/models'),
@@ -385,12 +382,9 @@ describe('API Request Helper', () => {
 			);
 		});
 
-		test('should throw fallback credential error when neither credential exists', async () => {
+		test('should throw credential error when chutesApi lookup fails', async () => {
 			const context = {
-				getCredentials: jest
-					.fn()
-					.mockRejectedValueOnce(new Error('No data found for credential chutesApi'))
-					.mockRejectedValueOnce(new Error('No data found for credential chutesOAuth2Api')),
+				getCredentials: jest.fn().mockRejectedValue(new Error('No data found for credential chutesApi')),
 				helpers: {
 					requestWithAuthentication: jest.fn().mockResolvedValue({ ok: true }),
 				},
@@ -404,27 +398,7 @@ describe('API Request Helper', () => {
 			} as any;
 
 			await expect(chutesApiRequest.call(context, 'GET', '/v1/models')).rejects.toThrow(
-				'No data found for credential chutesOAuth2Api',
-			);
-		});
-
-		test('should normalize non-error credential lookup failures', async () => {
-			const context = {
-				getCredentials: jest.fn().mockRejectedValueOnce('bad credentials').mockRejectedValueOnce(null),
-				helpers: {
-					requestWithAuthentication: jest.fn().mockResolvedValue({ ok: true }),
-				},
-				getNode: jest.fn().mockReturnValue({
-					name: 'Test Node',
-					type: 'n8n-nodes-chutes.chutes',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				}),
-			} as any;
-
-			await expect(chutesApiRequest.call(context, 'GET', '/v1/models')).rejects.toThrow(
-				'No Chutes credential is configured.',
+				'No data found for credential chutesApi',
 			);
 		});
 	});
@@ -495,7 +469,7 @@ describe('API Request Helper', () => {
 			});
 
 			await expect(chutesApiRequestWithRetry.call(context, 'GET', '/v1/models')).rejects.toBeDefined();
-			expect(context.getCredentials).toHaveBeenCalledTimes(2);
+			expect(context.getCredentials).toHaveBeenCalledTimes(1);
 		});
 
 		test('throws when httpCode is non-numeric string', async () => {

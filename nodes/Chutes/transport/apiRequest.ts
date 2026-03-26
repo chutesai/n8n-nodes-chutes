@@ -10,29 +10,6 @@ import {
 } from 'n8n-workflow';
 
 const grantedScopeCache = new Map<string, string[]>();
-type ChutesCredentialName = 'chutesApi' | 'chutesOAuth2Api';
-const CHUTES_CREDENTIAL_CANDIDATES: ChutesCredentialName[] = ['chutesApi', 'chutesOAuth2Api'];
-
-type ChutesAuthContext = {
-	getCredentials(name: ChutesCredentialName): Promise<IDataObject>;
-};
-
-async function resolveChutesCredentials(
-	context: ChutesAuthContext,
-): Promise<{ name: ChutesCredentialName; credentials: IDataObject }> {
-	let lastError: unknown;
-
-	for (const credentialName of CHUTES_CREDENTIAL_CANDIDATES) {
-		try {
-			const credentials = await context.getCredentials(credentialName);
-			return { name: credentialName, credentials };
-		} catch (error) {
-			lastError = error;
-		}
-	}
-
-	throw lastError instanceof Error ? lastError : new Error('No Chutes credential is configured.');
-}
 
 function toTrimmedString(value: unknown): string {
 	if (value === undefined || value === null) {
@@ -206,9 +183,7 @@ export async function chutesApiRequest(
 	resourceType?: ChuteResourceType,
 	customChuteUrl?: string,
 ): Promise<any> {
-	const { name: credentialName, credentials } = await resolveChutesCredentials(
-		this as ChutesAuthContext,
-	);
+	const credentials = await this.getCredentials('chutesApi');
 	await ensureChutesInvokeScope(credentials);
 	const baseUrl = getChutesBaseUrl(credentials, resourceType, customChuteUrl);
 
@@ -235,11 +210,7 @@ export async function chutesApiRequest(
 	}
 
 	try {
-		const response = await this.helpers.requestWithAuthentication.call(
-			this,
-			credentialName,
-			options,
-		);
+		const response = await this.helpers.requestWithAuthentication.call(this, 'chutesApi', options);
 
 		return response;
 	} catch (error) {

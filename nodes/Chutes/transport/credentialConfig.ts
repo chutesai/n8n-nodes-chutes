@@ -65,6 +65,7 @@ export function getChutesCredentials(): INodeCredentialDescription[] {
 
 export function resolveCredentialType(context: {
 	getNodeParameter: (...args: any[]) => any;
+	getCurrentNodeParameter?: (name: string) => any;
 }): string {
 	try {
 		const auth = context.getNodeParameter('authentication', 0) as string;
@@ -72,7 +73,16 @@ export function resolveCredentialType(context: {
 			return CHUTES_OAUTH2_CREDENTIAL;
 		}
 	} catch {
-		// parameter doesn't exist (OAuth not configured) — fall through
+		if (typeof context.getCurrentNodeParameter === 'function') {
+			try {
+				const auth = context.getCurrentNodeParameter('authentication') as string;
+				if (auth === 'oAuth2') {
+					return CHUTES_OAUTH2_CREDENTIAL;
+				}
+			} catch {
+				// getCurrentNodeParameter also unavailable — fall through
+			}
+		}
 	}
 	return CHUTES_API_CREDENTIAL;
 }

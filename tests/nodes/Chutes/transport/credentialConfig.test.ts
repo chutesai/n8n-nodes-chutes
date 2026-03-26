@@ -132,5 +132,37 @@ describe('credentialConfig', () => {
 			} as any;
 			expect(resolveCredentialType(context)).toBe('chutesApi');
 		});
+
+		test('should use getCurrentNodeParameter when getNodeParameter throws (loadOptions context)', () => {
+			const context = {
+				getNodeParameter: jest.fn().mockImplementation(() => {
+					throw new Error('No item index in loadOptions');
+				}),
+				getCurrentNodeParameter: jest.fn().mockReturnValue('oAuth2'),
+			} as any;
+			expect(resolveCredentialType(context)).toBe('chutesOAuth2Api');
+		});
+
+		test('should return chutesApi via getCurrentNodeParameter when auth is apiKey in loadOptions', () => {
+			const context = {
+				getNodeParameter: jest.fn().mockImplementation(() => {
+					throw new Error('No item index in loadOptions');
+				}),
+				getCurrentNodeParameter: jest.fn().mockReturnValue('apiKey'),
+			} as any;
+			expect(resolveCredentialType(context)).toBe('chutesApi');
+		});
+
+		test('should return chutesApi when both getNodeParameter and getCurrentNodeParameter throw', () => {
+			const context = {
+				getNodeParameter: jest.fn().mockImplementation(() => {
+					throw new Error('No item index');
+				}),
+				getCurrentNodeParameter: jest.fn().mockImplementation(() => {
+					throw new Error('Parameter not available');
+				}),
+			} as any;
+			expect(resolveCredentialType(context)).toBe('chutesApi');
+		});
 	});
 });

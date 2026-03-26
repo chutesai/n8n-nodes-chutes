@@ -83,8 +83,10 @@ function isMissingCredentialError(error: unknown): boolean {
 
 	return (
 		details.includes('does not have any credentials set') ||
+		details.includes('does not have credentials of type') ||
 		details.includes('missing both an api key and a session token') ||
-		(details.includes('credential') && details.includes('missing'))
+		(details.includes('credential') && details.includes('missing')) ||
+		(details.includes('credential') && details.includes('not found'))
 	);
 }
 

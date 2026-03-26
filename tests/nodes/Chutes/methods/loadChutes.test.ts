@@ -315,6 +315,30 @@ describe('Load Chutes Methods', () => {
 			expect(mockContext.helpers.request).toHaveBeenCalled();
 		});
 
+		it('falls back on "Credentials not found" error from n8n', async () => {
+			const mockContext = createMockLoadOptionsFunctions();
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+				message: 'Credentials not found',
+			});
+			(mockContext.helpers.request as jest.Mock).mockResolvedValue({ items: [] });
+
+			await getChutes.call(mockContext);
+
+			expect(mockContext.helpers.request).toHaveBeenCalled();
+		});
+
+		it('falls back on "does not have credentials of type" error', async () => {
+			const mockContext = createMockLoadOptionsFunctions();
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+				message: 'Node does not have credentials of type chutesApi',
+			});
+			(mockContext.helpers.request as jest.Mock).mockResolvedValue({ items: [] });
+
+			await getChutes.call(mockContext);
+
+			expect(mockContext.helpers.request).toHaveBeenCalled();
+		});
+
 		it('does not fallback when includePublic is false', async () => {
 			const mockContext = createMockLoadOptionsFunctions();
 			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({

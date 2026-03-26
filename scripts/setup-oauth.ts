@@ -340,11 +340,18 @@ export async function main(): Promise<void> {
 				)) || DEFAULT_REDIRECT_URI;
 
 			const pkce = await generatePKCE();
+			const state = crypto.randomBytes(16).toString('hex');
+			const authUrl = buildAuthorizationUrl({
+				clientId: existingCreds.clientId,
+				redirectUri,
+				scopes: DEFAULT_SCOPES,
+				state,
+				codeChallenge: pkce.codeChallenge,
+			});
 
-			console.log('\nTo authorize, you will need to:');
-			console.log('1. Open the authorization URL in your browser');
-			console.log('2. Authorize the application');
-			console.log('3. Copy the authorization code from the callback URL\n');
+			console.log('\nOpen this URL in your browser to authorize:\n');
+			console.log(authUrl);
+			console.log('\nAfter authorizing, copy the "code" parameter from the callback URL.\n');
 
 			const authCode = await ask('Enter the authorization code: ');
 			if (!authCode) {
@@ -443,41 +450,15 @@ export async function main(): Promise<void> {
 				`Press Enter for default [${DEFAULT_REDIRECT_URI}]: `,
 		)) || DEFAULT_REDIRECT_URI;
 
-	let authCode: string | undefined;
-	let codeVerifier: string | undefined;
-
-	if (mode === 'single-account') {
-		console.log('\nFor single-account mode, we need to complete an OAuth authorization flow.');
-		const pkce = await generatePKCE();
-		codeVerifier = pkce.codeVerifier;
-		const state = crypto.randomBytes(16).toString('hex');
-
-		console.log('\nAfter registering the app, you will need to:');
-		console.log('1. Open the authorization URL in your browser');
-		console.log('2. Authorize the application');
-		console.log('3. Copy the authorization code from the callback URL\n');
-
-		authCode = await ask('Enter the authorization code: ');
-		if (!authCode) {
-			console.error('Authorization code is required for single-account mode.');
-			rl.close();
-			process.exit(1);
-		}
-
-		void state;
-	}
-
 	console.log('\nRegistering OAuth application...');
 
 	try {
 		const result = await runSetup({
 			apiKey,
-			mode,
+			mode: 'multi-user',
 			redirectUri,
 			envFilePath: '.env',
 			writeToFile: false,
-			authCode,
-			codeVerifier,
 		});
 
 		const envVars: Record<string, string> = {
@@ -485,11 +466,41 @@ export async function main(): Promise<void> {
 			CHUTES_OAUTH_CLIENT_SECRET: result.clientSecret,
 		};
 
-		if (result.accessToken) {
-			envVars.CHUTES_SERVER_ACCESS_TOKEN = result.accessToken;
-		}
-		if (result.refreshToken) {
-			envVars.CHUTES_SERVER_REFRESH_TOKEN = result.refreshToken;
+		if (mode === 'single-account') {
+			console.log('\nApp registered. Now we need to authorize your account.');
+			const pkce = await generatePKCE();
+			const state = crypto.randomBytes(16).toString('hex');
+			const authUrl = buildAuthorizationUrl({
+				clientId: result.clientId,
+				redirectUri,
+				scopes: DEFAULT_SCOPES,
+				state,
+				codeChallenge: pkce.codeChallenge,
+			});
+
+			console.log('\nOpen this URL in your browser to authorize:\n');
+			console.log(authUrl);
+			console.log('\nAfter authorizing, copy the "code" parameter from the callback URL.\n');
+
+			const authCode = await ask('Enter the authorization code: ');
+			if (!authCode) {
+				console.error('Authorization code is required for single-account mode.');
+				rl.close();
+				process.exit(1);
+			}
+
+			const tokens = await runUpgradeToSingleAccount({
+				clientId: result.clientId,
+				clientSecret: result.clientSecret,
+				redirectUri,
+				authCode,
+				codeVerifier: pkce.codeVerifier,
+				envFilePath: '.env',
+				writeToFile: false,
+			});
+
+			envVars.CHUTES_SERVER_ACCESS_TOKEN = tokens.accessToken;
+			envVars.CHUTES_SERVER_REFRESH_TOKEN = tokens.refreshToken;
 		}
 
 		console.log('\nSetup complete!\n');

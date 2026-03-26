@@ -943,9 +943,17 @@ describe('setup-oauth CLI', () => {
 				'',
 			]);
 
-			jest.spyOn(global, 'fetch').mockResolvedValueOnce({
-				ok: true,
-			} as Response);
+			jest.spyOn(global, 'fetch')
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						app_id: 'app_1',
+						client_id: 'cid_sa_empty',
+						client_secret: 'csc_sa_empty',
+					}),
+				} as Response);
 
 			await expect(main()).rejects.toThrow('process.exit called');
 			expect(errorSpy).toHaveBeenCalledWith(
@@ -1396,6 +1404,87 @@ describe('setup-oauth CLI', () => {
 				process.chdir(origCwd);
 				fs.rmSync(tmpDir, { recursive: true, force: true });
 			}
+		});
+
+		test('should display authorization URL during upgrade flow', async () => {
+			const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'main-upgrade-url-'));
+			const envPath = path.join(tmpDir, '.env');
+			fs.writeFileSync(
+				envPath,
+				'CHUTES_OAUTH_CLIENT_ID=cid_urltest\nCHUTES_OAUTH_CLIENT_SECRET=csc_urltest\n',
+			);
+			const origCwd = process.cwd();
+
+			mockReadline([
+				'y',
+				'',
+				'upgrade_auth_code',
+				'Y',
+				envPath,
+			]);
+
+			jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({
+					access_token: 'at_url',
+					refresh_token: 'rt_url',
+					token_type: 'Bearer',
+					expires_in: 3600,
+				}),
+			} as Response);
+
+			try {
+				process.chdir(tmpDir);
+				await main();
+
+				const allLogs = logSpy.mock.calls.map((c: any[]) => c.join(' '));
+				const hasAuthUrl = allLogs.some(
+					(l: string) => l.includes('idp/authorize') && l.includes('cid_urltest'),
+				);
+				expect(hasAuthUrl).toBe(true);
+			} finally {
+				process.chdir(origCwd);
+				fs.rmSync(tmpDir, { recursive: true, force: true });
+			}
+		});
+
+		test('should display authorization URL during fresh single-account flow', async () => {
+			mockReadline([
+				'cpat_valid',
+				'2',
+				'',
+				'fresh_auth_code',
+				'n',
+			]);
+
+			jest.spyOn(global, 'fetch')
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({ ok: true } as Response)
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						app_id: 'app_1',
+						client_id: 'cid_fresh_url',
+						client_secret: 'csc_fresh_url',
+					}),
+				} as Response)
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						access_token: 'at_fresh',
+						refresh_token: 'rt_fresh',
+						token_type: 'Bearer',
+						expires_in: 3600,
+					}),
+				} as Response);
+
+			await main();
+
+			const allLogs = logSpy.mock.calls.map((c: any[]) => c.join(' '));
+			const hasAuthUrl = allLogs.some(
+				(l: string) => l.includes('idp/authorize') && l.includes('cid_fresh_url'),
+			);
+			expect(hasAuthUrl).toBe(true);
 		});
 
 		test('should skip upgrade detection when no existing credentials found', async () => {

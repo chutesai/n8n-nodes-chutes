@@ -165,7 +165,7 @@ describe('ChutesAIAgent execute', () => {
 		const model = {
 			_call: jest
 				.fn()
-				.mockResolvedValueOnce({
+					.mockResolvedValueOnce({
 					tool_calls: [
 						{
 							function: {
@@ -207,7 +207,7 @@ describe('ChutesAIAgent execute', () => {
 		const model = {
 			_call: jest
 				.fn()
-				.mockResolvedValueOnce({
+					.mockResolvedValueOnce({
 					function_call: {
 						name: 'sum',
 						arguments: JSON.stringify({ a: 1, b: 2 }),
@@ -270,7 +270,7 @@ describe('ChutesAIAgent execute', () => {
 		const model = {
 			_call: jest
 				.fn()
-				.mockResolvedValueOnce({
+					.mockResolvedValueOnce({
 					tool_calls: [{ function: { name: 'missingTool', arguments: '{}' } }],
 				})
 				.mockResolvedValueOnce('finished'),

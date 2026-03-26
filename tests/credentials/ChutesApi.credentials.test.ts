@@ -36,8 +36,6 @@ describe('ChutesApi Credentials', () => {
 				'grantType',
 				'authUrl',
 				'accessTokenUrl',
-				'clientId',
-				'clientSecret',
 				'scope',
 				'authQueryParameters',
 				'authentication',
@@ -57,6 +55,19 @@ describe('ChutesApi Credentials', () => {
 			expect(apiKeyProperty?.displayName).toBe('API Key (Optional)');
 			expect(apiKeyProperty?.type).toBe('string');
 			expect(apiKeyProperty?.required).toBe(false);
+		});
+
+		test('should keep oauth client id and secret hidden and env-backed', () => {
+			const clientIdProperty = credentials.properties.find((prop) => prop.name === 'clientId');
+			const clientSecretProperty = credentials.properties.find((prop) => prop.name === 'clientSecret');
+
+			expect(clientIdProperty).toBeDefined();
+			expect(clientIdProperty?.type).toBe('hidden');
+			expect(clientIdProperty?.default).toContain('CHUTES_OAUTH_CLIENT_ID');
+			expect(clientSecretProperty).toBeDefined();
+			expect(clientSecretProperty?.type).toBe('hidden');
+			expect(clientSecretProperty?.default).toContain('CHUTES_OAUTH_CLIENT_SECRET');
+			expect(clientSecretProperty?.typeOptions?.password).toBe(true);
 		});
 
 		test('should have API key as password type', () => {
@@ -89,8 +100,20 @@ describe('ChutesApi Credentials', () => {
 			const customUrlProperty = credentials.properties.find((prop) => prop.name === 'customUrl');
 
 			expect(customUrlProperty).toBeDefined();
-			expect(customUrlProperty?.type).toBe('string');
-			expect(customUrlProperty?.required).toBe(false);
+			expect(customUrlProperty?.type).toBe('hidden');
+		});
+
+		test('should show oauth environment warning notice when env vars are missing', () => {
+			const warningProperty = credentials.properties.find((prop) => prop.name === 'oauthEnvWarning');
+			expect(warningProperty).toBeDefined();
+			expect(warningProperty?.type).toBe('notice');
+			expect(warningProperty?.displayName).toContain('Please contact your administrator');
+			expect(warningProperty?.displayName).toContain(
+				'https://github.com/chutesai/Sign-in-with-Chutes#quick-start-nextjs',
+			);
+			expect(warningProperty?.displayOptions?.show).toEqual({
+				oauthClientConfigured: ['false'],
+			});
 		});
 
 		test('should define hidden SSO credential fields', () => {

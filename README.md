@@ -35,12 +35,13 @@ npm install n8n-nodes-chutes
 
 This package uses one credential type: **Sign in With Chutes**.
 
-### Option A: One-click Sign in With Chutes (recommended)
+### Option A: Sign in With Chutes (OAuth)
 
 1. Go to **Credentials** > **New**
 2. Select **Sign in With Chutes**
-3. Click **Connect my account** and complete Chutes sign-in/consent
-4. Save the credential
+3. Ensure your n8n server administrator has set `CHUTES_OAUTH_CLIENT_ID` and `CHUTES_OAUTH_CLIENT_SECRET`
+4. Click **Connect my account** and complete Chutes sign-in/consent
+5. Save the credential
 
 ### Option B: API Key (manual secret, same credential)
 
@@ -58,7 +59,7 @@ This package uses one credential type: **Sign in With Chutes**.
 
 ### Boundary: package OAuth vs server-managed SSO
 
-- **Package OAuth credential (`Sign in With Chutes`)**: end users click connect in credential UI and this node uses n8n's OAuth2 credential flow.
+- **Package OAuth credential (`Sign in With Chutes`)**: OAuth app credentials are supplied by server environment variables, and users only click connect.
 - **Server-managed SSO provisioning (`Sign in With Chutes` hidden fields)**: external platform code can still inject/manage `sessionToken`/`refreshToken` on the n8n server side.
 
 Both paths remain supported for backward compatibility.

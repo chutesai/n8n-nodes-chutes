@@ -101,6 +101,13 @@ export class ChutesApi implements ICredentialType {
 			default: '={{$env.CHUTES_OAUTH_CLIENT_SECRET || ""}}',
 		},
 		{
+			displayName: 'OAuth Client Configured',
+			name: 'oauthClientConfigured',
+			type: 'hidden',
+			default:
+				'={{$env.CHUTES_OAUTH_CLIENT_ID && $env.CHUTES_OAUTH_CLIENT_SECRET ? "true" : "false"}}',
+		},
+		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
@@ -136,6 +143,18 @@ export class ChutesApi implements ICredentialType {
 			description:
 				'Optional API key from your Chutes.ai dashboard. Leave empty to use the Sign in With Chutes connect flow.',
 			hint: 'Use either Connect my account (OAuth) or an API key.',
+		},
+		{
+			displayName:
+				'Sign in With Chutes requires server OAuth app credentials (`CHUTES_OAUTH_CLIENT_ID` and `CHUTES_OAUTH_CLIENT_SECRET`). Please contact your administrator to register the app with Chutes.ai. Setup docs: https://github.com/chutesai/Sign-in-with-Chutes#quick-start-nextjs',
+			name: 'oauthEnvWarning',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					oauthClientConfigured: ['false'],
+				},
+			},
 		},
 		{
 			displayName: 'Session Token',
@@ -200,11 +219,8 @@ export class ChutesApi implements ICredentialType {
 		{
 			displayName: 'Custom API URL',
 			name: 'customUrl',
-			type: 'string',
+			type: 'hidden',
 			default: '',
-			required: false,
-			description: 'Optional custom Chutes.ai API endpoint URL',
-			placeholder: 'https://api.custom.chutes.ai',
 		},
 	];
 

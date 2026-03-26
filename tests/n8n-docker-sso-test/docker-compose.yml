@@ -8,6 +8,8 @@ services:
     container_name: n8n-chutes-test-sso
     ports:
       - "5679:5678"
+    env_file:
+      - ../../.env
     environment:
       # Basic Authentication
       - N8N_BASIC_AUTH_ACTIVE=true

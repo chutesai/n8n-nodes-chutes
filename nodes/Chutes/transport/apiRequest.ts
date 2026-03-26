@@ -206,7 +206,9 @@ export async function chutesApiRequest(
 	resourceType?: ChuteResourceType,
 	customChuteUrl?: string,
 ): Promise<any> {
-	const { name: credentialName, credentials } = await resolveChutesCredentials(this as ChutesAuthContext);
+	const { name: credentialName, credentials } = await resolveChutesCredentials(
+		this as ChutesAuthContext,
+	);
 	await ensureChutesInvokeScope(credentials);
 	const baseUrl = getChutesBaseUrl(credentials, resourceType, customChuteUrl);
 
@@ -233,7 +235,11 @@ export async function chutesApiRequest(
 	}
 
 	try {
-		const response = await this.helpers.requestWithAuthentication.call(this, credentialName, options);
+		const response = await this.helpers.requestWithAuthentication.call(
+			this,
+			credentialName,
+			options,
+		);
 
 		return response;
 	} catch (error) {

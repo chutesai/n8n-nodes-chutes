@@ -22,7 +22,9 @@ async function resolveCredential(
 }
 
 function buildFallbackHeaders(credentials: IDataObject, headers: IDataObject): IDataObject {
-	const bearerToken = String(credentials.apiKey || credentials.sessionToken || credentials.accessToken || '').trim();
+	const bearerToken = String(
+		credentials.apiKey || credentials.sessionToken || credentials.accessToken || '',
+	).trim();
 
 	if (!bearerToken) {
 		throw new Error('Chutes credential is missing both an API key and an OAuth access token.');

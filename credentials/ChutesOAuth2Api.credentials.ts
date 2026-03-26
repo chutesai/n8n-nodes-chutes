@@ -2,7 +2,7 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ChutesOAuth2Api implements ICredentialType {
 	name = 'chutesOAuth2Api';
-	displayName = 'Chutes OAuth2 API';
+	displayName = 'Sign in With Chutes';
 	documentationUrl = 'https://docs.chutes.ai/api';
 	extends = ['oAuth2Api'];
 

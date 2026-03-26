@@ -49,16 +49,16 @@ This package supports two authentication credential types. You can use either on
 
 ![API Keys Example](examples/chutes_api_key_n8n2.gif)
 
-### Option B: OAuth2 ("Connect with Chutes")
+### Option B: Sign in With Chutes
 
 1. Go to **Credentials** > **New**
-2. Select **Chutes OAuth2 API**
+2. Select **Sign in With Chutes**
 3. Click **Connect my account** and complete Chutes sign-in/consent
 4. Save the credential
 
 ### Boundary: package OAuth vs server-managed SSO
 
-- **Package OAuth credential (`Chutes OAuth2 API`)**: end users click connect in credential UI and this node uses n8n's OAuth2 credential flow.
+- **Package OAuth credential (`Sign in With Chutes`)**: end users click connect in credential UI and this node uses n8n's OAuth2 credential flow.
 - **Server-managed SSO provisioning (`Chutes API` generic credential fields)**: external platform code can still inject/manage `sessionToken`/`refreshToken` on the n8n server side.
 
 Both paths remain supported for backward compatibility.

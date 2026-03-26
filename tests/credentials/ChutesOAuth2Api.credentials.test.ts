@@ -9,7 +9,7 @@ describe('ChutesOAuth2Api Credentials', () => {
 
 	test('should have correct credential identity', () => {
 		expect(credentials.name).toBe('chutesOAuth2Api');
-		expect(credentials.displayName).toBe('Chutes OAuth2 API');
+		expect(credentials.displayName).toBe('Sign in With Chutes');
 	});
 
 	test('should extend n8n base OAuth2 credential', () => {

@@ -223,6 +223,62 @@ describe('ChutesChatModel Node', () => {
 			expect(model.temperature).toBe(0.7);
 			expect(model.maxTokens).toBe(1000);
 		});
+
+		it('rethrows when credentials cannot be loaded', async () => {
+			const mockContext = {
+				getNodeParameter: jest.fn((paramName: string, _itemIndex: number, defaultValue?: any) => {
+					const params: any = {
+						chuteUrl: 'https://llm.chutes.ai',
+						model: '',
+						temperature: 0.7,
+						options: {},
+					};
+					return params[paramName] ?? defaultValue;
+				}),
+				getCredentials: jest.fn().mockRejectedValue(new Error('credential failure')),
+				helpers: {
+					request: jest.fn(),
+					requestWithAuthentication: jest.fn(),
+				},
+			};
+
+			await expect(chatModelNode.supplyData.call(mockContext as any, 0)).rejects.toThrow(
+				'credential failure',
+			);
+		});
+
+		it('passes through authenticatedRequest callback from helpers', async () => {
+			const requestWithAuthentication = jest.fn().mockResolvedValue({
+				choices: [{ message: { content: 'ok' } }],
+			});
+			const mockContext = {
+				getNodeParameter: jest.fn((paramName: string, _itemIndex: number, defaultValue?: any) => {
+					const params: any = {
+						chuteUrl: 'https://llm.chutes.ai',
+						model: 'deepseek-ai/DeepSeek-V3',
+						temperature: 0.7,
+						options: {},
+					};
+					return params[paramName] ?? defaultValue;
+				}),
+				getCredentials: jest.fn().mockResolvedValue({
+					apiKey: 'test-api-key',
+				}),
+				helpers: {
+					request: jest.fn(),
+					requestWithAuthentication,
+				},
+			};
+
+			const result = await chatModelNode.supplyData.call(mockContext as any, 0);
+			const model = result.response as any;
+			await model.authenticatedRequest({ method: 'GET', url: 'https://x' });
+
+			expect(requestWithAuthentication).toHaveBeenCalledWith(
+				'chutesApi',
+				expect.objectContaining({ method: 'GET', url: 'https://x' }),
+			);
+		});
 	});
 });
 

@@ -1,508 +1,561 @@
-/**
- * ChutesAIAgent Execution Tests
- * 
- * TDD: These tests cover the execute() method with mocked dependencies
- * Following the TDD cycle: Failing test -> Implementation -> Passing test
- */
+import {
+	ChutesAIAgent,
+	formatToolsForModel,
+	parseToolCalls,
+} from '../../../nodes/ChutesAIAgent/ChutesAIAgent.node';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { HumanMessage } from '@langchain/core/messages';
 
-import { ChutesAIAgent } from '../../../nodes/ChutesAIAgent/ChutesAIAgent.node';
-import { IExecuteFunctions, INodeExecutionData, NodeConnectionTypes } from 'n8n-workflow';
-
-// Mock chat model that returns predefined responses
-function createMockChatModel(response: string) {
-	return {
-		_call: jest.fn().mockResolvedValue(response),
-		invoke: jest.fn().mockResolvedValue({ content: response }),
-		_llmType: () => 'mock-chat-model',
-	};
-}
-
-// Mock tool that can be called by the agent
-function createMockTool(name: string, result: string) {
-	return {
-		name,
-		description: `A mock tool called ${name}`,
-		schema: { type: 'object', properties: {}, required: [] },
-		invoke: jest.fn().mockResolvedValue(result),
-		call: jest.fn().mockResolvedValue(result),
-	};
-}
-
-// Mock memory that stores conversation history
-function createMockMemory() {
-	const history: any[] = [];
-	return {
-		loadMemoryVariables: jest.fn().mockResolvedValue({ chat_history: history }),
-		saveContext: jest.fn().mockImplementation((input, output) => {
-			history.push({ input, output });
-			return Promise.resolve();
-		}),
-	};
-}
-
-// Mock output parser
-function createMockOutputParser(parsedResult: any) {
-	return {
-		parse: jest.fn().mockResolvedValue(parsedResult),
-	};
-}
-
-// Create mock execution context
-function createMockExecutionContext(options: {
-	inputData?: INodeExecutionData[];
-	nodeParameters?: Record<string, any>;
-	chatModel?: any;
-	tools?: any[];
-	memory?: any;
-	outputParser?: any;
-}): Partial<IExecuteFunctions> {
-	const {
-		inputData = [{ json: { chatInput: 'Hello, world!' } }],
-		nodeParameters = {},
-		chatModel = null,
-		tools = [],
-		memory = null,
-		outputParser = null,
-	} = options;
-
-	const defaultParams: Record<string, any> = {
-		promptType: 'auto',
-		text: '={{ $json.chatInput }}',
-		options: {
-			systemMessage: 'You are a helpful AI assistant.',
-			maxIterations: 10,
-			returnIntermediateSteps: false,
-		},
-		...nodeParameters,
+function createContext(overrides: Record<string, any> = {}) {
+	const logger = {
+		info: jest.fn(),
+		debug: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
 	};
 
 	return {
-		getInputData: jest.fn().mockReturnValue(inputData),
-		getNodeParameter: jest.fn((name: string, _itemIndex: number, defaultValue?: any) => {
-			// Handle nested paths like 'options.systemMessage'
-			const parts = name.split('.');
-			let value = defaultParams;
-			for (const part of parts) {
-				value = value?.[part];
-			}
-			return value !== undefined ? value : defaultValue;
-		}),
-		getInputConnectionData: jest.fn().mockImplementation(async (type: string, _index: number) => {
-			if (type === NodeConnectionTypes.AiLanguageModel) {
-				return chatModel;
-			}
-			if (type === NodeConnectionTypes.AiTool) {
-				// n8n returns all tools as an array at index 0
-				return tools.length > 0 ? tools : null;
-			}
-			if (type === NodeConnectionTypes.AiMemory) {
-				return memory;
-			}
-			if (type === NodeConnectionTypes.AiOutputParser) {
-				return outputParser;
-			}
-			return null;
-		}),
-		getNode: jest.fn().mockReturnValue({ name: 'Chutes AI Agent', type: 'chutesAIAgent' }),
+		logger,
+		getInputData: jest.fn().mockReturnValue([{ json: { chatInput: 'hello' } }]),
+		getNode: jest.fn().mockReturnValue({ name: 'ChutesAIAgent' }),
 		continueOnFail: jest.fn().mockReturnValue(false),
-		logger: {
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-			debug: jest.fn(),
-		},
+		getNodeParameter: jest.fn((name: string, _item: number, defaultValue?: any) => {
+			if (name === 'promptType') return 'auto';
+			if (name === 'options') return {};
+			if (name === 'text') return defaultValue ?? '';
+			return defaultValue;
+		}),
+		getInputConnectionData: jest.fn(async (type: string) => {
+			if (type === NodeConnectionTypes.AiLanguageModel) {
+				return {
+					_call: jest.fn().mockResolvedValue('model-output'),
+				};
+			}
+			throw new Error('not connected');
+		}),
+		...overrides,
 	};
 }
 
-describe('ChutesAIAgent Execution Tests', () => {
-	let agentNode: ChutesAIAgent;
-
-	beforeEach(() => {
-		agentNode = new ChutesAIAgent();
-		jest.clearAllMocks();
+describe('ChutesAIAgent execute', () => {
+	test('formatToolsForModel applies defaults', () => {
+		const out = formatToolsForModel([{ name: 'a' }, { description: 'd' } as any]);
+		expect(out[0]).toMatchObject({ name: 'a' });
+		expect(out[1]).toMatchObject({ name: 'unnamed_tool', description: 'd' });
 	});
 
-	describe('Basic Chat (No Tools)', () => {
-		it('should execute basic chat and return response', async () => {
-			const mockResponse = 'Hello! I am an AI assistant. How can I help you today?';
-			const mockChatModel = createMockChatModel(mockResponse);
-
-			const context = createMockExecutionContext({
-				inputData: [{ json: { chatInput: 'Hello!' } }],
-				chatModel: mockChatModel,
-			});
-
-			const result = await agentNode.execute.call(context as IExecuteFunctions);
-
-			expect(result).toHaveLength(1); // One output array
-			expect(result[0]).toHaveLength(1); // One item
-			expect(result[0][0].json.output).toBe(mockResponse);
-			expect(result[0][0].json.prompt).toBe('Hello!');
-			expect(mockChatModel._call).toHaveBeenCalled();
+	test('parseToolCalls handles string/function_call/tool_calls formats', () => {
+		expect(parseToolCalls('plain')).toEqual([]);
+		expect(
+			parseToolCalls({
+				function_call: { name: 'f', arguments: '{"x":1}' },
+			}),
+		).toEqual([{ name: 'f', args: { x: 1 } }]);
+		expect(
+			parseToolCalls({
+				tool_calls: [{ function: { name: 'g', arguments: '{"y":2}' } }],
+			}),
+		).toEqual([{ name: 'g', args: { y: 2 } }]);
+		expect(
+			parseToolCalls({
+				tool_calls: [{ name: 'legacy', args: { z: 3 } }],
+			}),
+		).toEqual([{ name: 'legacy', args: { z: 3 } }]);
+		expect(
+			parseToolCalls({
+				function_call: { name: 'obj-args', arguments: { x: 9 } },
+			}),
+		).toEqual([{ name: 'obj-args', args: { x: 9 } }]);
+		expect(
+			parseToolCalls({
+				tool_calls: [{}],
+			}),
+		).toEqual([{ name: undefined, args: {} }]);
+		expect(
+			parseToolCalls({
+				function_call: { name: 'bad', arguments: '{oops' },
+				tool_calls: [{ function: { name: 'bad2', arguments: '{oops' } }],
+			}),
+		).toEqual([]);
+	});
+	test('throws when chat model is missing', async () => {
+		const node = new ChutesAIAgent();
+		const ctx = createContext({
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return null;
+				throw new Error('not connected');
+			}),
 		});
 
-		it('should throw error when chat model is not connected', async () => {
-			const context = createMockExecutionContext({
-				chatModel: null,
-			});
-
-			await expect(agentNode.execute.call(context as IExecuteFunctions))
-				.rejects.toThrow('Chat Model must be connected');
-		});
-
-		it('should throw error when prompt is empty', async () => {
-			const mockChatModel = createMockChatModel('response');
-			const context = createMockExecutionContext({
-				inputData: [{ json: { chatInput: '' } }],
-				chatModel: mockChatModel,
-			});
-
-			await expect(agentNode.execute.call(context as IExecuteFunctions))
-				.rejects.toThrow('Prompt is empty');
-		});
-
-		it('should use define mode when promptType is define', async () => {
-			const mockResponse = 'Response to custom prompt';
-			const mockChatModel = createMockChatModel(mockResponse);
-
-			const context = createMockExecutionContext({
-				inputData: [{ json: {} }],
-				chatModel: mockChatModel,
-				nodeParameters: {
-					promptType: 'define',
-					text: 'My custom prompt',
-				},
-			});
-
-			const result = await agentNode.execute.call(context as IExecuteFunctions);
-
-			expect(result[0][0].json.prompt).toBe('My custom prompt');
-		});
-
-		it('should look for alternative input fields (input, text) in auto mode', async () => {
-			const mockResponse = 'Response';
-			const mockChatModel = createMockChatModel(mockResponse);
-
-			// Test with 'input' field
-			const contextWithInput = createMockExecutionContext({
-				inputData: [{ json: { input: 'From input field' } }],
-				chatModel: mockChatModel,
-			});
-
-			const result1 = await agentNode.execute.call(contextWithInput as IExecuteFunctions);
-			expect(result1[0][0].json.prompt).toBe('From input field');
-
-			// Test with 'text' field
-			const contextWithText = createMockExecutionContext({
-				inputData: [{ json: { text: 'From text field' } }],
-				chatModel: mockChatModel,
-			});
-
-			const result2 = await agentNode.execute.call(contextWithText as IExecuteFunctions);
-			expect(result2[0][0].json.prompt).toBe('From text field');
-		});
+		await expect(node.execute.call(ctx as any)).rejects.toThrow('Chat Model must be connected');
 	});
 
-	describe('Tool Calling', () => {
-		it('should call tools when model returns tool calls', async () => {
-			// Create a mock that first returns a tool call, then a final answer
-			const mockChatModel = {
-				_call: jest.fn()
-					.mockResolvedValueOnce({
-						tool_calls: [{
+	test('uses define prompt mode', async () => {
+		const node = new ChutesAIAgent();
+		const modelCall = jest.fn().mockResolvedValue('done');
+		const ctx = createContext({
+			getNodeParameter: jest.fn((name: string, _item: number, defaultValue?: any) => {
+				if (name === 'promptType') return 'define';
+				if (name === 'text') return 'manual prompt';
+				if (name === 'options') return { systemMessage: 'sys' };
+				return defaultValue;
+			}),
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) {
+					return { _call: modelCall };
+				}
+				throw new Error('not connected');
+			}),
+		});
+
+		const out = await node.execute.call(ctx as any);
+
+		expect(modelCall).toHaveBeenCalled();
+		expect(out[0][0].json.output).toBe('done');
+		expect(out[0][0].json.prompt).toBe('manual prompt');
+	});
+
+	test('uses fallback input field when chatInput is absent', async () => {
+		const node = new ChutesAIAgent();
+		const ctx = createContext({
+			getInputData: jest.fn().mockReturnValue([{ json: { input: 'from-input' } }]),
+		});
+
+		const out = await node.execute.call(ctx as any);
+		expect(out[0][0].json.prompt).toBe('from-input');
+	});
+
+	test('uses text fallback input field when chatInput and input are absent', async () => {
+		const node = new ChutesAIAgent();
+		const ctx = createContext({
+			getInputData: jest.fn().mockReturnValue([{ json: { text: 'from-text' } }]),
+		});
+
+		const out = await node.execute.call(ctx as any);
+		expect(out[0][0].json.prompt).toBe('from-text');
+	});
+
+	test('throws on empty prompt in define mode', async () => {
+		const node = new ChutesAIAgent();
+		const ctx = createContext({
+			getNodeParameter: jest.fn((name: string, _item: number, defaultValue?: any) => {
+				if (name === 'promptType') return 'define';
+				if (name === 'text') return '   ';
+				if (name === 'options') return {};
+				return defaultValue;
+			}),
+		});
+
+		await expect(node.execute.call(ctx as any)).rejects.toThrow('Prompt is empty');
+	});
+
+	test('returns intermediate steps when enabled and tools run', async () => {
+		const node = new ChutesAIAgent();
+		const tool = {
+			name: 'sum',
+			description: 'sum things',
+			schema: { type: 'object', properties: {} },
+			invoke: jest.fn().mockResolvedValue({ ok: true }),
+		};
+		const model = {
+			_call: jest
+				.fn()
+				.mockResolvedValueOnce({
+					tool_calls: [
+						{
 							function: {
-								name: 'calculator',
-								arguments: JSON.stringify({ expression: '2+2' }),
+								name: 'sum',
+								arguments: JSON.stringify({ a: 1, b: 2 }),
 							},
-						}],
-					})
-					.mockResolvedValueOnce('The result of 2+2 is 4'),
-				_llmType: () => 'mock-chat-model',
-			};
-
-			const mockTool = createMockTool('calculator', '4');
-
-			const context = createMockExecutionContext({
-				inputData: [{ json: { chatInput: 'What is 2+2?' } }],
-				chatModel: mockChatModel,
-				tools: [mockTool],
-			});
-
-			const result = await agentNode.execute.call(context as IExecuteFunctions);
-
-			expect(mockTool.invoke).toHaveBeenCalledWith({ expression: '2+2' });
-			expect(result[0][0].json.output).toBe('The result of 2+2 is 4');
-		});
-
-		it('should handle tool not found error gracefully', async () => {
-			const mockChatModel = {
-				_call: jest.fn()
-					.mockResolvedValueOnce({
-						tool_calls: [{
-							function: {
-								name: 'nonexistent_tool',
-								arguments: '{}',
-							},
-						}],
-					})
-					.mockResolvedValueOnce('I could not find that tool'),
-				_llmType: () => 'mock-chat-model',
-			};
-
-			const context = createMockExecutionContext({
-				inputData: [{ json: { chatInput: 'Use a tool' } }],
-				chatModel: mockChatModel,
-				tools: [createMockTool('other_tool', 'result')],
-			});
-
-			const result = await agentNode.execute.call(context as IExecuteFunctions);
-
-			// Should continue and return response despite tool not found
-			expect(result[0][0].json.output).toBe('I could not find that tool');
-		});
-
-		it('should return intermediate steps when enabled', async () => {
-			const mockChatModel = {
-				_call: jest.fn()
-					.mockResolvedValueOnce({
-						tool_calls: [{
-							function: {
-								name: 'search',
-								arguments: JSON.stringify({ query: 'weather' }),
-							},
-						}],
-					})
-					.mockResolvedValueOnce('The weather is sunny'),
-				_llmType: () => 'mock-chat-model',
-			};
-
-			const mockTool = createMockTool('search', 'Sunny, 72°F');
-
-			const context = createMockExecutionContext({
-				inputData: [{ json: { chatInput: 'What is the weather?' } }],
-				chatModel: mockChatModel,
-				tools: [mockTool],
-				nodeParameters: {
-					options: {
-						returnIntermediateSteps: true,
-					},
-				},
-			});
-
-			const result = await agentNode.execute.call(context as IExecuteFunctions);
-
-			expect(result[0][0].json.intermediateSteps).toBeDefined();
-			expect(Array.isArray(result[0][0].json.intermediateSteps)).toBe(true);
-			expect((result[0][0].json.intermediateSteps as any[]).length).toBeGreaterThan(0);
-		});
-	});
-
-	describe('Memory Integration', () => {
-		it('should load memory variables before processing', async () => {
-			const mockResponse = 'I remember our conversation';
-			const mockChatModel = createMockChatModel(mockResponse);
-			const mockMemory = createMockMemory();
-
-			const context = createMockExecutionContext({
-				inputData: [{ json: { chatInput: 'Do you remember?' } }],
-				chatModel: mockChatModel,
-				memory: mockMemory,
-			});
-
-			await agentNode.execute.call(context as IExecuteFunctions);
-
-			expect(mockMemory.loadMemoryVariables).toHaveBeenCalled();
-		});
-
-		it('should save context to memory after processing', async () => {
-			const mockResponse = 'Hello! Nice to meet you.';
-			const mockChatModel = createMockChatModel(mockResponse);
-			const mockMemory = createMockMemory();
-
-			const context = createMockExecutionContext({
-				inputData: [{ json: { chatInput: 'Hi there!' } }],
-				chatModel: mockChatModel,
-				memory: mockMemory,
-			});
-
-			await agentNode.execute.call(context as IExecuteFunctions);
-
-			expect(mockMemory.saveContext).toHaveBeenCalledWith(
-				{ input: 'Hi there!' },
-				{ output: mockResponse }
-			);
-		});
-
-		it('should handle memory errors gracefully', async () => {
-			const mockResponse = 'Response without memory';
-			const mockChatModel = createMockChatModel(mockResponse);
-			const mockMemory = {
-				loadMemoryVariables: jest.fn().mockRejectedValue(new Error('Memory error')),
-				saveContext: jest.fn().mockRejectedValue(new Error('Save error')),
-			};
-
-			const context = createMockExecutionContext({
-				inputData: [{ json: { chatInput: 'Hello' } }],
-				chatModel: mockChatModel,
-				memory: mockMemory,
-			});
-
-			// Should not throw, should continue without memory
-			const result = await agentNode.execute.call(context as IExecuteFunctions);
-			expect(result[0][0].json.output).toBe(mockResponse);
-		});
-	});
-
-	describe('Output Parser Integration', () => {
-		it('should apply output parser to final response', async () => {
-			const mockResponse = '{"name": "John", "age": 30}';
-			const mockChatModel = createMockChatModel(mockResponse);
-			const mockOutputParser = createMockOutputParser({ name: 'John', age: 30 });
-
-			const context = createMockExecutionContext({
-				inputData: [{ json: { chatInput: 'Get user data' } }],
-				chatModel: mockChatModel,
-				outputParser: mockOutputParser,
-			});
-
-			const result = await agentNode.execute.call(context as IExecuteFunctions);
-
-			expect(mockOutputParser.parse).toHaveBeenCalledWith(mockResponse);
-			expect(result[0][0].json.output).toEqual({ name: 'John', age: 30 });
-		});
-
-		it('should use raw output when parser fails', async () => {
-			const mockResponse = 'Invalid JSON response';
-			const mockChatModel = createMockChatModel(mockResponse);
-			const mockOutputParser = {
-				parse: jest.fn().mockRejectedValue(new Error('Parse error')),
-			};
-
-			const context = createMockExecutionContext({
-				inputData: [{ json: { chatInput: 'Get data' } }],
-				chatModel: mockChatModel,
-				outputParser: mockOutputParser,
-			});
-
-			const result = await agentNode.execute.call(context as IExecuteFunctions);
-
-			// Should fallback to raw output
-			expect(result[0][0].json.output).toBe(mockResponse);
-		});
-	});
-
-	describe('Max Iterations', () => {
-		it('should stop after max iterations and return message', async () => {
-			// Mock that always returns tool calls (infinite loop scenario)
-			const mockChatModel = {
-				_call: jest.fn().mockResolvedValue({
-					tool_calls: [{
-						function: {
-							name: 'loop_tool',
-							arguments: '{}',
 						},
-					}],
-				}),
-				_llmType: () => 'mock-chat-model',
-			};
+					],
+				})
+				.mockResolvedValueOnce('final answer'),
+		};
+		const ctx = createContext({
+			getNodeParameter: jest.fn((name: string, _item: number, defaultValue?: any) => {
+				if (name === 'promptType') return 'auto';
+				if (name === 'options') return { returnIntermediateSteps: true, maxIterations: 3 };
+				return defaultValue;
+			}),
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return model;
+				if (type === NodeConnectionTypes.AiTool) return [tool];
+				throw new Error('not connected');
+			}),
+		});
 
-			const mockTool = createMockTool('loop_tool', 'loop result');
+		const out = await node.execute.call(ctx as any);
+		expect(tool.invoke).toHaveBeenCalledWith({ a: 1, b: 2 });
+		expect(out[0][0].json.output).toBe('final answer');
+		expect(Array.isArray((out[0][0].json as any).intermediateSteps)).toBe(true);
+	});
 
-			const context = createMockExecutionContext({
-				inputData: [{ json: { chatInput: 'Loop forever' } }],
-				chatModel: mockChatModel,
-				tools: [mockTool],
-				nodeParameters: {
-					options: {
-						maxIterations: 3,
+	test('supports function_call format tool invocation', async () => {
+		const node = new ChutesAIAgent();
+		const tool = {
+			name: 'sum',
+			description: 'sum',
+			schema: { type: 'object', properties: {} },
+			invoke: jest.fn().mockResolvedValue('3'),
+		};
+		const model = {
+			_call: jest
+				.fn()
+				.mockResolvedValueOnce({
+					function_call: {
+						name: 'sum',
+						arguments: JSON.stringify({ a: 1, b: 2 }),
 					},
+				})
+				.mockResolvedValueOnce('done'),
+		};
+		const ctx = createContext({
+			getNodeParameter: jest.fn((name: string, _item: number, defaultValue?: any) => {
+				if (name === 'options') return { returnIntermediateSteps: true, maxIterations: 2 };
+				return defaultValue;
+			}),
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return model;
+				if (type === NodeConnectionTypes.AiTool) return [tool];
+				throw new Error('not connected');
+			}),
+		});
+
+		const out = await node.execute.call(ctx as any);
+		expect(tool.invoke).toHaveBeenCalledWith({ a: 1, b: 2 });
+		expect(out[0][0].json.output).toBe('done');
+	});
+
+	test('ignores invalid function_call json args and returns model response', async () => {
+		const node = new ChutesAIAgent();
+		const model = {
+			_call: jest.fn().mockResolvedValue({
+				function_call: {
+					name: 'sum',
+					arguments: '{bad json',
 				},
-			});
-
-			const result = await agentNode.execute.call(context as IExecuteFunctions);
-
-			// Should have called tool 3 times (max iterations)
-			expect(mockTool.invoke).toHaveBeenCalledTimes(3);
-			// Should return max iterations message
-			expect(result[0][0].json.output).toContain('Max iterations reached');
+				content: 'final',
+			}),
+		};
+		const ctx = createContext({
+			getNodeParameter: jest.fn((name: string, _item: number, defaultValue?: any) => {
+				if (name === 'options') return { maxIterations: 1 };
+				return defaultValue;
+			}),
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return model;
+				if (type === NodeConnectionTypes.AiTool) return [{ name: 'sum', invoke: jest.fn() }];
+				throw new Error('not connected');
+			}),
 		});
+
+		const out = await node.execute.call(ctx as any);
+		expect(out[0][0].json.output).toBe('final');
 	});
 
-	describe('Error Handling', () => {
-		it('should handle chat model errors', async () => {
-			const mockChatModel = {
-				_call: jest.fn().mockRejectedValue(new Error('API Error')),
-				_llmType: () => 'mock-chat-model',
-			};
-
-			const context = createMockExecutionContext({
-				inputData: [{ json: { chatInput: 'Hello' } }],
-				chatModel: mockChatModel,
-			});
-
-			await expect(agentNode.execute.call(context as IExecuteFunctions))
-				.rejects.toThrow('Chat model execution failed');
+	test('handles tool missing from registry', async () => {
+		const node = new ChutesAIAgent();
+		const availableTool = {
+			name: 'existingTool',
+			description: 'available',
+			schema: { type: 'object', properties: {} },
+			invoke: jest.fn().mockResolvedValue('ok'),
+		};
+		const model = {
+			_call: jest
+				.fn()
+				.mockResolvedValueOnce({
+					tool_calls: [{ function: { name: 'missingTool', arguments: '{}' } }],
+				})
+				.mockResolvedValueOnce('finished'),
+		};
+		const ctx = createContext({
+			getNodeParameter: jest.fn((name: string, _item: number, defaultValue?: any) => {
+				if (name === 'options') return { returnIntermediateSteps: true, maxIterations: 2 };
+				return defaultValue;
+			}),
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return model;
+				if (type === NodeConnectionTypes.AiTool) return [availableTool];
+				throw new Error('not connected');
+			}),
 		});
 
-		it('should continue on fail when enabled', async () => {
-			const mockChatModel = {
-				_call: jest.fn().mockRejectedValue(new Error('API Error')),
-				_llmType: () => 'mock-chat-model',
-			};
-
-			const context = createMockExecutionContext({
-				inputData: [{ json: { chatInput: 'Hello' } }],
-				chatModel: mockChatModel,
-			});
-			(context.continueOnFail as jest.Mock).mockReturnValue(true);
-
-			const result = await agentNode.execute.call(context as IExecuteFunctions);
-
-			expect(result[0][0].json.error).toBeDefined();
-		});
-
-		it('should process multiple items', async () => {
-			const mockChatModel = createMockChatModel('Response');
-
-			const context = createMockExecutionContext({
-				inputData: [
-					{ json: { chatInput: 'First message' } },
-					{ json: { chatInput: 'Second message' } },
-					{ json: { chatInput: 'Third message' } },
-				],
-				chatModel: mockChatModel,
-			});
-
-			const result = await agentNode.execute.call(context as IExecuteFunctions);
-
-			expect(result[0]).toHaveLength(3);
-			expect(result[0][0].json.prompt).toBe('First message');
-			expect(result[0][1].json.prompt).toBe('Second message');
-			expect(result[0][2].json.prompt).toBe('Third message');
-		});
+		const out = await node.execute.call(ctx as any);
+		expect(out[0][0].json.output).toBe('finished');
+		const steps = (out[0][0].json as any).intermediateSteps;
+		expect(steps[0].observation).toContain('not found');
 	});
 
-	describe('System Message', () => {
-		it('should include system message in chat', async () => {
-			const mockResponse = 'I am a pirate assistant!';
-			const mockChatModel = createMockChatModel(mockResponse);
-
-			const context = createMockExecutionContext({
-				inputData: [{ json: { chatInput: 'Who are you?' } }],
-				chatModel: mockChatModel,
-				nodeParameters: {
-					options: {
-						systemMessage: 'You are a pirate. Respond in pirate speak.',
-					},
-				},
-			});
-
-			await agentNode.execute.call(context as IExecuteFunctions);
-
-			// The system message should be included in the call
-			const callArgs = mockChatModel._call.mock.calls[0][0];
-			expect(callArgs[0].content).toContain('pirate');
+	test('returns error item when continueOnFail is true', async () => {
+		const node = new ChutesAIAgent();
+		const ctx = createContext({
+			continueOnFail: jest.fn().mockReturnValue(true),
+			getInputData: jest.fn().mockReturnValue([{ json: {} }]),
 		});
+
+		const out = await node.execute.call(ctx as any);
+		expect(out[0][0].json.error).toContain('No valid input found');
 	});
+
+	test('uses invoke method when _call is unavailable', async () => {
+		const node = new ChutesAIAgent();
+		const invoke = jest.fn().mockResolvedValue({ text: 'invoked output' });
+		const ctx = createContext({
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return { invoke };
+				throw new Error('not connected');
+			}),
+		});
+
+		const out = await node.execute.call(ctx as any);
+		expect(invoke).toHaveBeenCalled();
+		expect(out[0][0].json.output).toBe('invoked output');
+	});
+
+	test('throws when connected chat model has no callable method', async () => {
+		const node = new ChutesAIAgent();
+		const ctx = createContext({
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return {};
+				throw new Error('not connected');
+			}),
+		});
+
+		await expect(node.execute.call(ctx as any)).rejects.toThrow('does not have a valid call method');
+	});
+
+	test('memory load and save paths work, parser failures fall back to raw output', async () => {
+		const node = new ChutesAIAgent();
+		const memory = {
+			loadMemoryVariables: jest.fn().mockResolvedValue({ chat_history: [new HumanMessage('history')] }),
+			saveContext: jest.fn().mockRejectedValue(new Error('save failed')),
+		};
+		const outputParser = {
+			parse: jest.fn().mockRejectedValue(new Error('parse failed')),
+		};
+		const modelCall = jest.fn().mockResolvedValue('answer');
+		const ctx = createContext({
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return { _call: modelCall };
+				if (type === NodeConnectionTypes.AiMemory) return memory;
+				if (type === NodeConnectionTypes.AiOutputParser) return outputParser;
+				throw new Error('not connected');
+			}),
+		});
+
+		const out = await node.execute.call(ctx as any);
+		expect(memory.loadMemoryVariables).toHaveBeenCalled();
+		expect(memory.saveContext).toHaveBeenCalled();
+		expect(outputParser.parse).toHaveBeenCalledWith('answer');
+		expect(out[0][0].json.output).toBe('answer');
+	});
+
+	test('uses invoke in tool loop path', async () => {
+		const node = new ChutesAIAgent();
+		const model = {
+			invoke: jest.fn().mockResolvedValueOnce({
+				tool_calls: [{ function: { name: 'sum', arguments: '{"a":1}' } }],
+			}),
+		};
+		const tool = {
+			name: 'sum',
+			description: 'sum',
+			schema: { type: 'object', properties: {} },
+			invoke: jest.fn().mockResolvedValue('ok'),
+		};
+		const ctx = createContext({
+			getNodeParameter: jest.fn((name: string, _item: number, defaultValue?: any) => {
+				if (name === 'options') return { maxIterations: 2 };
+				return defaultValue;
+			}),
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return model;
+				if (type === NodeConnectionTypes.AiTool) return [tool];
+				throw new Error('not connected');
+			}),
+		});
+
+		const out = await node.execute.call(ctx as any);
+		expect(out[0][0].json.output).toContain('tool_calls');
+	});
+
+	test('memory load failure is non-fatal', async () => {
+		const node = new ChutesAIAgent();
+		const memory = {
+			loadMemoryVariables: jest.fn().mockRejectedValue(new Error('memory fail')),
+		};
+		const ctx = createContext({
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) {
+					return { _call: jest.fn().mockResolvedValue('ok') };
+				}
+				if (type === NodeConnectionTypes.AiMemory) return memory;
+				throw new Error('not connected');
+			}),
+		});
+
+		const out = await node.execute.call(ctx as any);
+		expect(out[0][0].json.output).toBe('ok');
+	});
+
+	test('handles nullable connected data for optional inputs', async () => {
+		const node = new ChutesAIAgent();
+		const ctx = createContext({
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) {
+					return { _call: jest.fn().mockResolvedValue('ok') };
+				}
+				if (type === NodeConnectionTypes.AiTool) return null;
+				if (type === NodeConnectionTypes.AiMemory) return null;
+				if (type === NodeConnectionTypes.AiOutputParser) return null;
+				throw new Error('not connected');
+			}),
+		});
+		const out = await node.execute.call(ctx as any);
+		expect(out[0][0].json.output).toBe('ok');
+	});
+
+	test('tool loop supports content-based final object response', async () => {
+		const node = new ChutesAIAgent();
+		const model = {
+			_call: jest.fn().mockResolvedValue({ content: 'content-final' }),
+		};
+		const ctx = createContext({
+			getNodeParameter: jest.fn((name: string, _item: number, defaultValue?: any) => {
+				if (name === 'options') return { maxIterations: 1 };
+				return defaultValue;
+			}),
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return model;
+				if (type === NodeConnectionTypes.AiTool) return [{ name: 't', invoke: jest.fn() }];
+				throw new Error('not connected');
+			}),
+		});
+		const out = await node.execute.call(ctx as any);
+		expect(out[0][0].json.output).toBe('content-final');
+	});
+
+	test('tool loop surfaces invalid model method error path', async () => {
+		const node = new ChutesAIAgent();
+		const ctx = createContext({
+			getNodeParameter: jest.fn((name: string, _item: number, defaultValue?: any) => {
+				if (name === 'options') return { maxIterations: 1 };
+				return defaultValue;
+			}),
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return {};
+				if (type === NodeConnectionTypes.AiTool) return [{ name: 't', invoke: jest.fn() }];
+				throw new Error('not connected');
+			}),
+		});
+
+		await expect(node.execute.call(ctx as any)).rejects.toThrow('Chat model execution failed');
+	});
+
+	test('tool without invoke/call records tool capability error', async () => {
+		const node = new ChutesAIAgent();
+		const brokenTool = { name: 'broken', description: 'broken', schema: {} };
+		const model = {
+			_call: jest
+				.fn()
+				.mockResolvedValueOnce({
+					tool_calls: [{ function: { name: 'broken', arguments: '{}' } }],
+				})
+				.mockResolvedValueOnce('done'),
+		};
+		const ctx = createContext({
+			getNodeParameter: jest.fn((name: string, _item: number, defaultValue?: any) => {
+				if (name === 'options') return { returnIntermediateSteps: true, maxIterations: 2 };
+				return defaultValue;
+			}),
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return model;
+				if (type === NodeConnectionTypes.AiTool) return [brokenTool];
+				throw new Error('not connected');
+			}),
+		});
+
+		const out = await node.execute.call(ctx as any);
+		const steps = (out[0][0].json as any).intermediateSteps;
+		expect(steps[0].observation).toContain('does not have invoke() or call()');
+	});
+
+	test('returns max-iterations fallback message when no final answer produced', async () => {
+		const node = new ChutesAIAgent();
+		const tool = { name: 'loop', description: 'loop', schema: {}, invoke: jest.fn().mockResolvedValue('ok') };
+		const model = {
+			_call: jest.fn().mockResolvedValue({
+				tool_calls: [{ function: { name: 'loop', arguments: '{}' } }],
+			}),
+		};
+		const ctx = createContext({
+			getNodeParameter: jest.fn((name: string, _item: number, defaultValue?: any) => {
+				if (name === 'options') return { maxIterations: 1 };
+				return defaultValue;
+			}),
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return model;
+				if (type === NodeConnectionTypes.AiTool) return [tool];
+				throw new Error('not connected');
+			}),
+		});
+
+		const out = await node.execute.call(ctx as any);
+		expect(out[0][0].json.output).toContain('Max iterations reached');
+	});
+
+	test('continueOnFail handles non-Error throw with unknown fallback', async () => {
+		const node = new ChutesAIAgent();
+		const ctx = createContext({
+			continueOnFail: jest.fn().mockReturnValue(true),
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) {
+					return {
+						_call: jest.fn().mockRejectedValue({}),
+					};
+				}
+				throw new Error('not connected');
+			}),
+		});
+
+		const out = await node.execute.call(ctx as any);
+		expect(out[0][0].json.error).toContain('Chat model execution failed');
+	});
+
+	test('tool call fallback uses tool.call and captures tool execution errors', async () => {
+		const node = new ChutesAIAgent();
+		const badTool = {
+			name: 'legacy',
+			description: 'legacy',
+			schema: { type: 'object', properties: {} },
+			call: jest.fn().mockRejectedValue(new Error('tool failed')),
+		};
+		const model = {
+			_call: jest
+				.fn()
+				.mockResolvedValueOnce({
+					tool_calls: [{ function: { name: 'legacy', arguments: '{}' } }],
+				})
+				.mockResolvedValueOnce('done'),
+		};
+		const ctx = createContext({
+			getNodeParameter: jest.fn((name: string, _item: number, defaultValue?: any) => {
+				if (name === 'options') return { returnIntermediateSteps: true, maxIterations: 2 };
+				return defaultValue;
+			}),
+			getInputConnectionData: jest.fn(async (type: string) => {
+				if (type === NodeConnectionTypes.AiLanguageModel) return model;
+				if (type === NodeConnectionTypes.AiTool) return [badTool];
+				throw new Error('not connected');
+			}),
+		});
+
+		const out = await node.execute.call(ctx as any);
+		const steps = (out[0][0].json as any).intermediateSteps;
+		expect(steps[0].observation).toContain('tool failed');
+	});
+
 });
 

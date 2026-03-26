@@ -282,7 +282,7 @@ export class Chutes implements INodeType {
  * @param resource The resource name for error messages
  * @returns The promise result or throws timeout error
  */
-async function withTimeout<T>(
+export async function withTimeout<T>(
 	promise: Promise<T>,
 	timeoutSeconds: number | undefined,
 	context: IExecuteFunctions,
@@ -333,7 +333,7 @@ async function withTimeout<T>(
 	]);
 }
 
-async function handleTextGeneration(
+export async function handleTextGeneration(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<IDataObject> {
@@ -435,7 +435,7 @@ async function handleTextGeneration(
 	return response;
 }
 
-async function handleImageGeneration(
+export async function handleImageGeneration(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<
@@ -888,7 +888,7 @@ async function handleImageGeneration(
 	);
 }
 
-async function handleTextToSpeech(
+export async function handleTextToSpeech(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<IDataObject | { binaryData: Buffer; mimeType: string; fileName: string }> {
@@ -972,7 +972,7 @@ async function handleTextToSpeech(
 	);
 }
 
-async function handleSpeechToText(
+export async function handleSpeechToText(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<IDataObject> {
@@ -1128,7 +1128,10 @@ async function handleSpeechToText(
 	);
 }
 
-async function handleInference(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
+export async function handleInference(
+	this: IExecuteFunctions,
+	itemIndex: number,
+): Promise<IDataObject> {
 	const operation = this.getNodeParameter('operation', itemIndex) as string;
 	const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex, '') as string;
 	const additionalOptions = this.getNodeParameter(
@@ -1237,7 +1240,7 @@ async function handleInference(this: IExecuteFunctions, itemIndex: number): Prom
  * Handle Music Generation
  * Generates music from text prompts using music generation chutes
  */
-async function handleMusicGeneration(
+export async function handleMusicGeneration(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<{ binaryData: Buffer; mimeType: string; fileName: string }> {
@@ -1342,7 +1345,10 @@ async function handleMusicGeneration(
  * Handle Embeddings
  * Generates text embeddings for semantic search
  */
-async function handleEmbeddings(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
+export async function handleEmbeddings(
+	this: IExecuteFunctions,
+	itemIndex: number,
+): Promise<IDataObject> {
 	const operation = this.getNodeParameter('operation', itemIndex) as string;
 	const chuteUrl = this.getNodeParameter(
 		'chuteUrl',
@@ -1406,7 +1412,7 @@ async function handleEmbeddings(this: IExecuteFunctions, itemIndex: number): Pro
  * Analyzes content for moderation (text or images)
  * Supports both nsfw-classifier and hate-speech-detector chutes
  */
-async function handleContentModeration(
+export async function handleContentModeration(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<IDataObject> {
@@ -1580,7 +1586,7 @@ async function handleContentModeration(
 	);
 }
 
-async function handleVideoGeneration(
+export async function handleVideoGeneration(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<IDataObject | { binaryData: Buffer; mimeType: string; fileName: string }> {

@@ -12,7 +12,7 @@ import { SystemMessage, HumanMessage } from '@langchain/core/messages';
 /**
  * Format tools for the model (function calling format)
  */
-function formatToolsForModel(tools: any[]): any[] {
+export function formatToolsForModel(tools: any[]): any[] {
 	return tools.map((tool: any) => ({
 		name: tool.name || 'unnamed_tool',
 		description: tool.description || 'No description provided',
@@ -27,7 +27,7 @@ function formatToolsForModel(tools: any[]): any[] {
 /**
  * Parse tool calls from model response
  */
-function parseToolCalls(response: any): Array<{ name: string; args: any }> {
+export function parseToolCalls(response: any): Array<{ name: string; args: any }> {
 	const toolCalls: Array<{ name: string; args: any }> = [];
 
 	// If response is a string, no tool calls

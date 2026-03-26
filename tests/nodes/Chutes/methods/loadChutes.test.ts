@@ -283,6 +283,113 @@ describe('Load Chutes Methods', () => {
 			expect(mockContext.helpers.request).toHaveBeenCalled();
 			expect(result).toHaveLength(1);
 		});
+
+		it('falls back to unauthenticated public catalog on 401 invalid token', async () => {
+			const mockContext = createMockLoadOptionsFunctions();
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+				statusCode: 401,
+				message: 'invalid token',
+			});
+			(mockContext.helpers.request as jest.Mock).mockResolvedValue({ items: [] });
+
+			await getChutes.call(mockContext);
+
+			expect(mockContext.helpers.request).toHaveBeenCalled();
+		});
+
+		it('falls back on missing credential error text', async () => {
+			const mockContext = createMockLoadOptionsFunctions();
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+				message: 'missing both an api key and a session token',
+			});
+			(mockContext.helpers.request as jest.Mock).mockResolvedValue({ items: [] });
+
+			await getChutes.call(mockContext);
+
+			expect(mockContext.helpers.request).toHaveBeenCalled();
+		});
+
+		it('does not fallback when includePublic is false', async () => {
+			const mockContext = createMockLoadOptionsFunctions();
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+				statusCode: 403,
+				message: 'forbidden',
+			});
+
+			const result = await getChutes.call(mockContext, false, 5);
+
+			expect(mockContext.helpers.request).not.toHaveBeenCalled();
+			expect(result).toEqual([]);
+		});
+
+		it('returns empty list for unknown selected resource', async () => {
+			const mockContext = createMockLoadOptionsFunctions({
+				getCurrentNodeParameter: jest.fn().mockReturnValue('unknown-resource'),
+			} as any);
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+				new Error('boom'),
+			);
+
+			const result = await getChutesForSelectedResource.call(mockContext);
+			expect(Array.isArray(result)).toBe(true);
+		});
+
+		it('defaults to text generation when resource lookup throws', async () => {
+			const mockContext = createMockLoadOptionsFunctions({
+				getCurrentNodeParameter: jest.fn(() => {
+					throw new Error('parameter unavailable');
+				}),
+			} as any);
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ items: [] });
+
+			const result = await getChutesForSelectedResource.call(mockContext);
+			expect(Array.isArray(result)).toBe(true);
+		});
+
+		it('routes all supported resources through getChutesForSelectedResource', async () => {
+			const resources = [
+				'textGeneration',
+				'imageGeneration',
+				'videoGeneration',
+				'textToSpeech',
+				'speechToText',
+				'musicGeneration',
+				'embeddings',
+				'contentModeration',
+				'inference',
+			];
+			for (const resource of resources) {
+				const mockContext = createMockLoadOptionsFunctions({
+					getCurrentNodeParameter: jest.fn().mockReturnValue(resource),
+				} as any);
+				(mockContext.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ items: [] });
+				const result = await getChutesForSelectedResource.call(mockContext);
+				expect(Array.isArray(result)).toBe(true);
+			}
+		});
+
+		it('falls back for 403 without permission keywords to empty', async () => {
+			const mockContext = createMockLoadOptionsFunctions();
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+				statusCode: 403,
+				message: 'some other failure',
+			});
+
+			const result = await getChutes.call(mockContext);
+			expect(result).toEqual([]);
+			expect(mockContext.helpers.request).not.toHaveBeenCalled();
+		});
+
+		it('falls back for missing-credential phrase variant', async () => {
+			const mockContext = createMockLoadOptionsFunctions();
+			(mockContext.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue({
+				description: 'credential missing',
+			});
+			(mockContext.helpers.request as jest.Mock).mockResolvedValue({ items: [] });
+
+			await getChutes.call(mockContext);
+			expect(mockContext.helpers.request).toHaveBeenCalled();
+		});
 	});
 });
 

@@ -104,6 +104,10 @@ describe('setup-oauth CLI', () => {
 			expect(typeof mod.readExistingOAuthCredentials).toBe('function');
 		});
 
+		test('should export extractCodeFromInput function', () => {
+			expect(typeof mod.extractCodeFromInput).toBe('function');
+		});
+
 		test('should export runUpgradeToSingleAccount function', () => {
 			expect(typeof mod.runUpgradeToSingleAccount).toBe('function');
 		});
@@ -590,6 +594,44 @@ describe('setup-oauth CLI', () => {
 					codeVerifier: 'verifier_value',
 				}),
 			).rejects.toThrow('Token revoked');
+		});
+	});
+
+	describe('extractCodeFromInput', () => {
+		const { extractCodeFromInput } = require('../../scripts/setup-oauth');
+
+		test('should extract code from a full callback URL', () => {
+			const url =
+				'http://localhost:5678/rest/oauth2-credential/callback?code=PKSW4ttABC123&state=xyz';
+			expect(extractCodeFromInput(url)).toBe('PKSW4ttABC123');
+		});
+
+		test('should extract code from URL with code as only parameter', () => {
+			const url = 'http://localhost/callback?code=myCode';
+			expect(extractCodeFromInput(url)).toBe('myCode');
+		});
+
+		test('should extract code from URL with code in the middle of params', () => {
+			const url = 'http://example.com/cb?state=abc&code=theCode&session=def';
+			expect(extractCodeFromInput(url)).toBe('theCode');
+		});
+
+		test('should return plain string input as-is when no URL detected', () => {
+			expect(extractCodeFromInput('PKSW4ttABC123')).toBe('PKSW4ttABC123');
+		});
+
+		test('should return empty string as-is', () => {
+			expect(extractCodeFromInput('')).toBe('');
+		});
+
+		test('should handle URL-encoded code values', () => {
+			const url = 'http://localhost/cb?code=abc%20def';
+			expect(extractCodeFromInput(url)).toBe('abc def');
+		});
+
+		test('should return raw input if URL has no code parameter', () => {
+			const url = 'http://localhost/cb?state=abc&error=access_denied';
+			expect(extractCodeFromInput(url)).toBe(url);
 		});
 	});
 

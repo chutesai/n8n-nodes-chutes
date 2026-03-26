@@ -104,6 +104,14 @@ export function writeEnvFile(
 	return { written, skipped };
 }
 
+export function extractCodeFromInput(input: string): string {
+	const match = input.match(/[?&]code=([^&]+)/);
+	if (match) {
+		return decodeURIComponent(match[1]);
+	}
+	return input;
+}
+
 export function readExistingOAuthCredentials(
 	filePath: string,
 ): { clientId: string; clientSecret: string } | null {
@@ -351,9 +359,11 @@ export async function main(): Promise<void> {
 
 			console.log('\nOpen this URL in your browser to authorize:\n');
 			console.log(authUrl);
-			console.log('\nAfter authorizing, copy the "code" parameter from the callback URL.\n');
 
-			const authCode = await ask('Enter the authorization code: ');
+			const rawInput = await ask(
+				'\nPaste the URL you were redirected to (or just the code): ',
+			);
+			const authCode = extractCodeFromInput(rawInput);
 			if (!authCode) {
 				console.error('Authorization code is required.');
 				rl.close();
@@ -480,9 +490,11 @@ export async function main(): Promise<void> {
 
 			console.log('\nOpen this URL in your browser to authorize:\n');
 			console.log(authUrl);
-			console.log('\nAfter authorizing, copy the "code" parameter from the callback URL.\n');
 
-			const authCode = await ask('Enter the authorization code: ');
+			const rawInput = await ask(
+				'\nPaste the URL you were redirected to (or just the code): ',
+			);
+			const authCode = extractCodeFromInput(rawInput);
 			if (!authCode) {
 				console.error('Authorization code is required for single-account mode.');
 				rl.close();

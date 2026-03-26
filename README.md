@@ -51,7 +51,7 @@ This package uses one credential type: **Sign in With Chutes**.
 4. Add the key to the same credential:
    - Go to **Credentials** > **New**
    - Select **Sign in With Chutes**
-   - Enter your API key in **API Key (Optional)**
+   - Enter your API key in **Chutes API Key**
    - Choose your environment (Production/Sandbox)
    - Save
 

@@ -22,7 +22,11 @@ describe('ChutesApi Credentials', () => {
 		});
 
 		test('should have documentation URL', () => {
-			expect(credentials.documentationUrl).toBe('https://docs.chutes.ai/api');
+			expect(credentials.documentationUrl).toBe('https://chutes.ai/docs');
+		});
+
+		test('should use the Chutes logo icon', () => {
+			expect((credentials as any).icon).toBe('file:../nodes/Chutes/chutes.png');
 		});
 	});
 
@@ -52,9 +56,19 @@ describe('ChutesApi Credentials', () => {
 			const apiKeyProperty = credentials.properties.find((prop) => prop.name === 'apiKey');
 
 			expect(apiKeyProperty).toBeDefined();
-			expect(apiKeyProperty?.displayName).toBe('API Key (Optional)');
+			expect(apiKeyProperty?.displayName).toBe('Chutes API Key');
 			expect(apiKeyProperty?.type).toBe('string');
 			expect(apiKeyProperty?.required).toBe(false);
+		});
+
+		test('should include a notice explaining oauth redirect url requires no user input', () => {
+			const redirectHelpProperty = credentials.properties.find(
+				(prop) => prop.name === 'oauthRedirectHelp',
+			);
+			expect(redirectHelpProperty).toBeDefined();
+			expect(redirectHelpProperty?.type).toBe('notice');
+			expect(redirectHelpProperty?.displayName).toContain('OAuth Redirect URL is auto-generated');
+			expect(redirectHelpProperty?.displayName).toContain('do not need to enter anything');
 		});
 
 		test('should keep oauth client id and secret hidden and env-backed', () => {
@@ -107,14 +121,24 @@ describe('ChutesApi Credentials', () => {
 			const warningProperty = credentials.properties.find((prop) => prop.name === 'oauthEnvWarning');
 			expect(warningProperty).toBeDefined();
 			expect(warningProperty?.type).toBe('notice');
+			expect(warningProperty?.displayName).toContain('Please contact your administrator');
 			expect(warningProperty?.displayName).toContain(
-				'Please contact your n8n instance administrator',
-			);
-			expect(warningProperty?.displayName).toContain(
-				'https://github.com/chutesai/Sign-in-with-Chutes#quick-start-nextjs',
+				'https://github.com/chutesai/Sign-in-with-Chutes',
 			);
 			expect(warningProperty?.displayOptions?.show).toEqual({
 				oauthClientConfigured: ['false'],
+			});
+		});
+
+		test('should show oauth connect guidance notice when env vars are set', () => {
+			const connectHelpProperty = credentials.properties.find((prop) => prop.name === 'oauthConnectHelp');
+			expect(connectHelpProperty).toBeDefined();
+			expect(connectHelpProperty?.type).toBe('notice');
+			expect(connectHelpProperty?.displayName).toBe(
+				"Click the 'Connect my account' button below to Sign in With Chutes.",
+			);
+			expect(connectHelpProperty?.displayOptions?.show).toEqual({
+				oauthClientConfigured: ['true'],
 			});
 		});
 

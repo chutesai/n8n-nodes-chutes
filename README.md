@@ -3,7 +3,7 @@
 ![Chutes.ai](https://img.shields.io/badge/Chutes.ai-Integration-blue)
 ![n8n](https://img.shields.io/badge/n8n-Community%20Node-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Tests](https://img.shields.io/badge/tests-779%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-996%20passing-brightgreen)
 ![Node](https://img.shields.io/badge/node-20%2B-blue)
 
 This is an n8n community node that provides complete access to Chutes.ai's AI services, replicating all features available in the Chutes.ai playground including text generation, image generation, and custom inference.
@@ -100,6 +100,8 @@ curl -X POST "https://api.chutes.ai/idp/apps" \
 |---|---|---|
 | `CHUTES_OAUTH_CLIENT_ID` | OAuth client ID from Chutes | _(none -- OAuth disabled)_ |
 | `CHUTES_OAUTH_CLIENT_SECRET` | OAuth client secret from Chutes | _(none -- OAuth disabled)_ |
+| `CHUTES_SERVER_ACCESS_TOKEN` | Access token for single-account mode (one account pays for all users) | _(none)_ |
+| `CHUTES_SERVER_REFRESH_TOKEN` | Refresh token for single-account mode (auto-refreshes the access token) | _(none)_ |
 | `CHUTES_IDP_BASE_URL` | Override the identity provider base URL | `https://api.chutes.ai` |
 | `CHUTES_CREDENTIAL_TEST_BASE_URL` | Override the credential test endpoint | _(auto-detected from environment)_ |
 
@@ -760,8 +762,14 @@ See [tests/README.md](tests/README.md) for detailed testing documentation.
 - **CLI setup wizard** (`npx n8n-nodes-chutes-setup-oauth`) -- interactive tool to register an OAuth app with Chutes and write credentials to `.env`
   - Multi-user mode: each user connects their own Chutes account
   - Single-account mode (Advanced): one account pays for all inference
+  - Upgrade flow: detects existing OAuth credentials in `.env` and offers single-account upgrade
 - **Dynamic credential routing** -- transport layer resolves the correct credential type at runtime based on user selection
-- **100% test coverage** maintained across all credential and node files
+
+#### Single-Account Server Mode
+- **Server-managed authentication** via `CHUTES_SERVER_ACCESS_TOKEN` and `CHUTES_SERVER_REFRESH_TOKEN` environment variables -- one Chutes account pays for all n8n users
+- **Automatic token refresh** -- expired server tokens are refreshed transparently using the server refresh token
+- **Simplified credential UX** -- when a server account is configured, the API key field shows "Do Not Use" with instructions to simply save the credential; the OAuth dropdown is hidden
+- **996 tests passing** with 100% coverage across all credential, node, and script files
 
 ### [0.1.0] - 2026-02-15 Official Release
 #### Tool Calling Support (AI Agent)

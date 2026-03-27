@@ -110,16 +110,16 @@ describe('Workflow Integration Tests', () => {
 				getInputData: jest.fn().mockReturnValue([{ json: {} }, { json: {} }, { json: {} }]),
 			});
 
-		let callCount = 0;
-		(mockFunctions.getNodeParameter as jest.Mock).mockImplementation(() => {
-			const responses = [
-				'textGeneration', // resource (from execute)
-				'complete', // operation (from handleTextGeneration)
-				'https://llm.chutes.ai', // chuteUrl (from handleTextGeneration)
-				{}, // additionalOptions (from handleTextGeneration)
-				'Test prompt', // prompt (from complete operation)
-			];
-			return responses[callCount++ % responses.length];
+		(mockFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+			const params: Record<string, any> = {
+				resource: 'textGeneration',
+				operation: 'complete',
+				chuteUrl: 'https://llm.chutes.ai',
+				additionalOptions: {},
+				prompt: 'Test prompt',
+				authentication: 'apiKey',
+			};
+			return params[paramName];
 		});
 
 		(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
@@ -142,16 +142,16 @@ describe('Workflow Integration Tests', () => {
 				getInputData: jest.fn().mockReturnValue([{ json: {} }, { json: {} }]),
 			});
 
-			let callCount = 0;
-			(mockFunctions.getNodeParameter as jest.Mock).mockImplementation(() => {
-			const responses = [
-				'textGeneration', // resource (from execute)
-				'complete', // operation (from handleTextGeneration)
-				'https://llm.chutes.ai', // chuteUrl (from handleTextGeneration)
-				{}, // additionalOptions (from handleTextGeneration)
-				'Test prompt', // prompt (from complete operation)
-			];
-			return responses[callCount++ % responses.length];
+			(mockFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+			const params: Record<string, any> = {
+				resource: 'textGeneration',
+				operation: 'complete',
+				chuteUrl: 'https://llm.chutes.ai',
+				additionalOptions: {},
+				prompt: 'Test prompt',
+				authentication: 'apiKey',
+			};
+			return params[paramName];
 		});
 
 		(mockFunctions.helpers.requestWithAuthentication as jest.Mock)

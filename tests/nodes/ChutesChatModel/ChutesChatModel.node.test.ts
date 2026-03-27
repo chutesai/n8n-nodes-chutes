@@ -3,9 +3,22 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 describe('ChutesChatModel Node', () => {
 	let chatModelNode: ChutesChatModel;
+	const savedOAuthClientId = process.env.CHUTES_OAUTH_CLIENT_ID;
+	const savedOAuthClientSecret = process.env.CHUTES_OAUTH_CLIENT_SECRET;
 
 	beforeEach(() => {
+		delete process.env.CHUTES_OAUTH_CLIENT_ID;
+		delete process.env.CHUTES_OAUTH_CLIENT_SECRET;
 		chatModelNode = new ChutesChatModel();
+	});
+
+	afterEach(() => {
+		if (savedOAuthClientId !== undefined) {
+			process.env.CHUTES_OAUTH_CLIENT_ID = savedOAuthClientId;
+		}
+		if (savedOAuthClientSecret !== undefined) {
+			process.env.CHUTES_OAUTH_CLIENT_SECRET = savedOAuthClientSecret;
+		}
 	});
 
 	describe('Node Description', () => {
@@ -19,13 +32,55 @@ describe('ChutesChatModel Node', () => {
 			expect(chatModelNode.description.icon).toBe('file:chutes.png');
 		});
 
-		it('should require chutesApi credentials', () => {
-			expect(chatModelNode.description.credentials).toEqual([
-				{
-					name: 'chutesApi',
-					required: true,
-				},
-			]);
+		it('should require chutesApi credentials when OAuth is not configured', () => {
+			expect(chatModelNode.description.credentials).toHaveLength(1);
+			expect(chatModelNode.description.credentials?.[0].name).toBe('chutesApi');
+			expect(chatModelNode.description.credentials?.[0].required).toBe(true);
+			expect(chatModelNode.description.credentials?.[0].displayOptions).toBeUndefined();
+		});
+
+		it('should not have authentication property when OAuth is not configured', () => {
+			const authProp = chatModelNode.description.properties.find((p) => p.name === 'authentication');
+			expect(authProp).toBeUndefined();
+		});
+	});
+
+	describe('OAuth Configured', () => {
+		let oauthChatNode: ChutesChatModel;
+		const savedServerToken = process.env.CHUTES_SERVER_ACCESS_TOKEN;
+
+		beforeEach(() => {
+			delete process.env.CHUTES_SERVER_ACCESS_TOKEN;
+			process.env.CHUTES_OAUTH_CLIENT_ID = 'test-client-id';
+			process.env.CHUTES_OAUTH_CLIENT_SECRET = 'test-client-secret';
+			oauthChatNode = new ChutesChatModel();
+		});
+
+		afterEach(() => {
+			delete process.env.CHUTES_OAUTH_CLIENT_ID;
+			delete process.env.CHUTES_OAUTH_CLIENT_SECRET;
+			if (savedServerToken !== undefined) {
+				process.env.CHUTES_SERVER_ACCESS_TOKEN = savedServerToken;
+			}
+		});
+
+		it('should include both credentials with displayOptions when OAuth is configured', () => {
+			const creds = oauthChatNode.description.credentials;
+			expect(creds).toHaveLength(2);
+			expect(creds?.[0].name).toBe('chutesApi');
+			expect(creds?.[0].displayOptions).toEqual({
+				show: { authentication: ['apiKey'] },
+			});
+			expect(creds?.[1].name).toBe('chutesOAuth2Api');
+			expect(creds?.[1].displayOptions).toEqual({
+				show: { authentication: ['oAuth2'] },
+			});
+		});
+
+		it('should have authentication dropdown when OAuth is configured', () => {
+			const authProp = oauthChatNode.description.properties.find((p) => p.name === 'authentication');
+			expect(authProp).toBeDefined();
+			expect(authProp?.type).toBe('options');
 		});
 
 		it('should have no inputs', () => {
@@ -52,7 +107,12 @@ describe('ChutesChatModel Node', () => {
 			expect(chuteUrlProp).toBeDefined();
 			expect(chuteUrlProp?.type).toBe('options');
 			expect(chuteUrlProp?.required).toBe(true);
-			expect(chuteUrlProp?.default).toBe('https://llm.chutes.ai');
+			expect(chuteUrlProp?.default).toBe('');
+		});
+
+		it('model options should depend on selected chute', () => {
+			const modelProp = chatModelNode.description.properties.find(p => p.name === 'model') as any;
+			expect(modelProp.typeOptions?.loadOptionsDependsOn).toEqual(['chuteUrl']);
 		});
 
 		it('should have model property', () => {
@@ -143,6 +203,7 @@ describe('ChutesChatModel Node', () => {
 				}),
 				helpers: {
 					request: jest.fn(),
+					requestWithAuthentication: jest.fn(),
 				},
 			};
 
@@ -174,6 +235,7 @@ describe('ChutesChatModel Node', () => {
 				}),
 				helpers: {
 					request: jest.fn(),
+					requestWithAuthentication: jest.fn(),
 				},
 			};
 
@@ -187,6 +249,7 @@ describe('ChutesChatModel Node', () => {
 			expect(model.topP).toBe(0.95);
 			expect(model.frequencyPenalty).toBe(0.5);
 			expect(model.presencePenalty).toBe(0.3);
+			expect(typeof model.authenticatedRequest).toBe('function');
 		});
 
 		it('should handle default values correctly', async () => {
@@ -205,6 +268,7 @@ describe('ChutesChatModel Node', () => {
 				}),
 				helpers: {
 					request: jest.fn(),
+					requestWithAuthentication: jest.fn(),
 				},
 			};
 
@@ -213,6 +277,125 @@ describe('ChutesChatModel Node', () => {
 
 			expect(model.temperature).toBe(0.7);
 			expect(model.maxTokens).toBe(1000);
+		});
+
+		it('rethrows when credentials cannot be loaded', async () => {
+			const mockContext = {
+				getNodeParameter: jest.fn((paramName: string, _itemIndex: number, defaultValue?: any) => {
+					const params: any = {
+						chuteUrl: 'https://llm.chutes.ai',
+						model: '',
+						temperature: 0.7,
+						options: {},
+					};
+					return params[paramName] ?? defaultValue;
+				}),
+				getCredentials: jest.fn().mockRejectedValue(new Error('credential failure')),
+				helpers: {
+					request: jest.fn(),
+					requestWithAuthentication: jest.fn(),
+				},
+			};
+
+			await expect(chatModelNode.supplyData.call(mockContext as any, 0)).rejects.toThrow(
+				'credential failure',
+			);
+		});
+
+		it('passes through authenticatedRequest callback from helpers', async () => {
+			const requestWithAuthentication = jest.fn().mockResolvedValue({
+				choices: [{ message: { content: 'ok' } }],
+			});
+			const mockContext = {
+				getNodeParameter: jest.fn((paramName: string, _itemIndex: number, defaultValue?: any) => {
+					const params: any = {
+						chuteUrl: 'https://llm.chutes.ai',
+						model: 'deepseek-ai/DeepSeek-V3',
+						temperature: 0.7,
+						options: {},
+					};
+					return params[paramName] ?? defaultValue;
+				}),
+				getCredentials: jest.fn().mockResolvedValue({
+					apiKey: 'test-api-key',
+				}),
+				helpers: {
+					request: jest.fn(),
+					requestWithAuthentication,
+				},
+			};
+
+			const result = await chatModelNode.supplyData.call(mockContext as any, 0);
+			const model = result.response as any;
+			await model.authenticatedRequest({ method: 'GET', url: 'https://x' });
+
+			expect(requestWithAuthentication).toHaveBeenCalledWith(
+				'chutesApi',
+				expect.objectContaining({ method: 'GET', url: 'https://x' }),
+			);
+		});
+
+		it('should use chutesOAuth2Api credential when authentication is oAuth2', async () => {
+			const requestWithAuthentication = jest.fn().mockResolvedValue({
+				choices: [{ message: { content: 'ok' } }],
+			});
+			const mockContext = {
+				getNodeParameter: jest.fn((paramName: string, _itemIndex: number, defaultValue?: any) => {
+					const params: any = {
+						authentication: 'oAuth2',
+						chuteUrl: 'https://llm.chutes.ai',
+						model: 'deepseek-ai/DeepSeek-V3',
+						temperature: 0.7,
+						options: {},
+					};
+					return params[paramName] ?? defaultValue;
+				}),
+				getCredentials: jest.fn().mockResolvedValue({
+					accessToken: 'oauth-access-token',
+				}),
+				helpers: {
+					request: jest.fn(),
+					requestWithAuthentication,
+				},
+			};
+
+			const result = await chatModelNode.supplyData.call(mockContext as any, 0);
+
+			expect(mockContext.getCredentials).toHaveBeenCalledWith('chutesOAuth2Api');
+
+			const model = result.response as any;
+			await model.authenticatedRequest({ method: 'GET', url: 'https://x' });
+
+			expect(requestWithAuthentication).toHaveBeenCalledWith(
+				'chutesOAuth2Api',
+				expect.objectContaining({ method: 'GET', url: 'https://x' }),
+			);
+		});
+
+		it('should use chutesApi credential when authentication is apiKey (OAuth enabled)', async () => {
+			const mockContext = {
+				getNodeParameter: jest.fn((paramName: string, _itemIndex: number, defaultValue?: any) => {
+					const params: any = {
+						authentication: 'apiKey',
+						chuteUrl: 'https://llm.chutes.ai',
+						model: 'test-model',
+						temperature: 0.7,
+						options: {},
+					};
+					return params[paramName] ?? defaultValue;
+				}),
+				getCredentials: jest.fn().mockResolvedValue({
+					apiKey: 'my-api-key',
+				}),
+				helpers: {
+					request: jest.fn(),
+					requestWithAuthentication: jest.fn(),
+				},
+			};
+
+			await chatModelNode.supplyData.call(mockContext as any, 0);
+
+			expect(mockContext.getCredentials).toHaveBeenCalledWith('chutesApi');
 		});
 	});
 });

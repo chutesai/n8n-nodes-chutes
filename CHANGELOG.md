@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.1.1] (2026-03-26)
+
+### Added
+
+#### Sign in With Chutes (OAuth)
+- **New credential type: Sign in With Chutes** (`ChutesOAuth2Api`) -- OAuth 2.0 with PKCE support for Chutes account authentication
+- **Conditional authentication dropdown** in Chutes nodes -- shows "API Key" and "Sign in With Chutes" options when OAuth is configured
+- **Server-side OAuth configuration** via `CHUTES_OAUTH_CLIENT_ID` and `CHUTES_OAUTH_CLIENT_SECRET` environment variables
+- **CLI setup wizard** (`npx n8n-nodes-chutes-setup-oauth`) for interactive OAuth app registration
+  - Multi-user mode: each user connects their own Chutes account for billing
+  - Single-account mode: one account pays for all inference
+  - Upgrade flow: detects existing OAuth credentials in `.env` and offers single-account upgrade
+  - Accepts full callback URL or raw authorization code during setup
+  - Writes credentials to `.env` or prints to screen
+- **Dynamic credential routing** in transport layer (`credentialConfig.ts`) to resolve credential type at runtime
+- **`ChutesApi` credential** simplified to pure API key authentication (no longer extends `oAuth2Api`)
+- Official docs: [Sign in With Chutes](https://chutes.ai/docs/sign-in-with-chutes/overview)
+
+#### Single-Account Server Mode
+- **Server-managed authentication** via `CHUTES_SERVER_ACCESS_TOKEN` and `CHUTES_SERVER_REFRESH_TOKEN` environment variables
+- **Automatic token refresh** -- expired server access tokens are refreshed transparently using the server refresh token; refreshed tokens are persisted to the credential so normal refresh logic takes over
+- **Simplified credential UX** -- when a server account is configured:
+  - A notice tells the user to save the credential with no further input
+  - The API key field is relabeled "Do Not Use — Server Account Is Already Set"
+  - The "Sign in With Chutes" OAuth dropdown is hidden (server token takes precedence)
+- **Fallback chain** -- authentication prioritizes API key, then per-user session token, then server access token
+- **Regression protection** -- source code scanning test prevents hardcoded credential strings in any node file
+
 # [0.1.0](https://github.com/chutesai/n8n-nodes-chutes/compare/v0.0.10...v0.1.0) (2026-02-18)
 
 

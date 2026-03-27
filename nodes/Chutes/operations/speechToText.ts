@@ -35,7 +35,8 @@ export const speechToTextOperations: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Leave empty to use binary audio from previous node, or provide an audio URL or base64 string',
+		description:
+			'Leave empty to use binary audio from previous node, or provide an audio URL or base64 string',
 		placeholder: 'https://example.com/audio.mp3 (or leave empty for binary data)',
 		hint: '💡 Tip: Binary data from previous nodes (HTTP Request, Read Binary File, etc.) is automatically detected. Only fill this field if you want to override with a URL or base64 string.',
 	},
@@ -65,18 +66,19 @@ export const speechToTextOperations: INodeProperties[] = [
 				name: 'includeChunks',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to include timestamped chunks in the output. When enabled, returns both continuous text and individual chunks with timestamps. Useful for subtitles, word timing, or segment analysis.',
+				description:
+					'Whether to include timestamped chunks in the output. When enabled, returns both continuous text and individual chunks with timestamps. Useful for subtitles, word timing, or segment analysis.',
 			},
 			{
 				displayName: 'Maximum Timeout (seconds)',
 				name: 'timeout',
 				type: 'number',
 				default: undefined,
-				description: 'Maximum time to wait for transcription (in seconds). Leave empty for no timeout. If exceeded, the node will error and can trigger n8n\'s retry flow.',
+				description:
+					"Maximum time to wait for transcription (in seconds). Leave empty for no timeout. If exceeded, the node will error and can trigger n8n's retry flow.",
 				placeholder: '180',
 				hint: 'Recommended: 180 seconds (3 minutes) for long audio files. Leave empty if transcription needs more time.',
 			},
 		],
 	},
 ];
-

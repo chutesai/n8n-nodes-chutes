@@ -126,6 +126,19 @@ describe('Chutes Node - Execute Method Response Handling', () => {
 	});
 
 	describe('Chutes Node Properties', () => {
+		const savedClientId = process.env.CHUTES_OAUTH_CLIENT_ID;
+		const savedClientSecret = process.env.CHUTES_OAUTH_CLIENT_SECRET;
+
+		beforeEach(() => {
+			delete process.env.CHUTES_OAUTH_CLIENT_ID;
+			delete process.env.CHUTES_OAUTH_CLIENT_SECRET;
+		});
+
+		afterEach(() => {
+			if (savedClientId !== undefined) process.env.CHUTES_OAUTH_CLIENT_ID = savedClientId;
+			if (savedClientSecret !== undefined) process.env.CHUTES_OAUTH_CLIENT_SECRET = savedClientSecret;
+		});
+
 		test('should have correct node type name', () => {
 			const node = new Chutes();
 			expect(node.description.name).toBe('chutes');

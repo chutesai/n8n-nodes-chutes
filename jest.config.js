@@ -17,6 +17,7 @@ module.exports = {
 	collectCoverageFrom: [
 		'credentials/**/*.ts',
 		'nodes/**/*.ts',
+		'scripts/**/*.ts',
 		'!**/*.d.ts',
 		'!**/node_modules/**',
 		'!dist/**',

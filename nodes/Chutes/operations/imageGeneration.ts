@@ -12,20 +12,20 @@ export const imageGenerationOperations: INodeProperties[] = [
 				resource: ['imageGeneration'],
 			},
 		},
-	options: [
-		{
-			name: 'Generate',
-			value: 'generate',
-			description: 'Generate images from text prompts',
-			action: 'Generate images',
-		},
-		{
-			name: 'Edit',
-			value: 'edit',
-			description: 'Edit an existing image with a text prompt',
-			action: 'Edit image',
-		},
-	],
+		options: [
+			{
+				name: 'Generate',
+				value: 'generate',
+				description: 'Generate images from text prompts',
+				action: 'Generate images',
+			},
+			{
+				name: 'Edit',
+				value: 'edit',
+				description: 'Edit an existing image with a text prompt',
+				action: 'Edit image',
+			},
+		],
 		default: 'generate',
 	},
 
@@ -214,11 +214,11 @@ export const imageGenerationOperations: INodeProperties[] = [
 				name: 'timeout',
 				type: 'number',
 				default: undefined,
-				description: 'Maximum time to wait for image generation (in seconds). Leave empty for no timeout. If exceeded, the node will error and can trigger n8n\'s retry flow.',
+				description:
+					"Maximum time to wait for image generation (in seconds). Leave empty for no timeout. If exceeded, the node will error and can trigger n8n's retry flow.",
 				placeholder: '300',
 				hint: 'Recommended: 300 seconds (5 minutes) for complex images. Leave empty if generation needs more time.',
 			},
 		],
 	},
 ];
-

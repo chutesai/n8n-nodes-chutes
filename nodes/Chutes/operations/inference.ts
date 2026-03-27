@@ -121,7 +121,8 @@ export const inferenceOperations: INodeProperties[] = [
 				name: 'timeout',
 				type: 'number',
 				default: undefined,
-				description: 'Maximum time to wait for inference (in seconds). Leave empty for no timeout. If exceeded, the node will error and can trigger n8n\'s retry flow.',
+				description:
+					"Maximum time to wait for inference (in seconds). Leave empty for no timeout. If exceeded, the node will error and can trigger n8n's retry flow.",
 				placeholder: '60',
 				hint: 'Recommended: 60 seconds (1 minute) for inference. Leave empty if inference needs more time.',
 			},
@@ -159,4 +160,3 @@ export const inferenceOperations: INodeProperties[] = [
 		],
 	},
 ];
-

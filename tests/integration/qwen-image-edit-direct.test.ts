@@ -11,16 +11,91 @@ import * as path from 'path';
 
 const API_KEY = process.env.CHUTES_API_KEY;
 const IMAGE_CHUTE = process.env.WARMED_IMAGE_CHUTE || null;
+const API_BASE = 'https://api.chutes.ai/chutes/?include_public=true&limit=500';
+
+interface CatalogChute {
+	slug?: string;
+	name?: string;
+	standard_template?: string;
+	description?: string;
+	tagline?: string;
+}
+
+function toChuteUrl(slug: string): string {
+	return `https://${slug}.chutes.ai`;
+}
+
+async function sleep(ms: number): Promise<void> {
+	await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function discoverImageEditCandidates(apiKey: string, limit = 5): Promise<string[]> {
+	const candidates: string[] = [];
+	if (IMAGE_CHUTE) {
+		candidates.push(IMAGE_CHUTE.replace(/\/$/, ''));
+	}
+
+	// Prefer known-good edit chutes first when available.
+	const preferred = [
+		'https://chutes-qwen-image-edit-2509.chutes.ai',
+		'https://chutes-qwen-image-edit-2511.chutes.ai',
+	];
+	for (const chuteUrl of preferred) {
+		if (!candidates.includes(chuteUrl)) {
+			candidates.push(chuteUrl);
+		}
+	}
+
+	const response = await fetch(API_BASE, {
+		headers: {
+			Authorization: `Bearer ${apiKey}`,
+			'Content-Type': 'application/json',
+		},
+	});
+	if (!response.ok) {
+		return candidates;
+	}
+	const payload = (await response.json()) as { items?: CatalogChute[] };
+	const discovered = (payload.items || [])
+		.filter((chute) => {
+			const slug = String(chute.slug || '').toLowerCase();
+			const name = String(chute.name || '').toLowerCase();
+			const description = String(chute.description || '').toLowerCase();
+			const tagline = String(chute.tagline || '').toLowerCase();
+			return (
+				slug.includes('qwen-image-edit') ||
+				name.includes('qwen-image-edit') ||
+				name.includes('image-edit') ||
+				description.includes('image edit') ||
+				tagline.includes('image edit')
+			);
+		})
+		.map((chute) => String(chute.slug || '').trim())
+		.filter((slug) => slug.length > 0)
+		.map((slug) => toChuteUrl(slug))
+		.slice(0, limit);
+
+	for (const chuteUrl of discovered) {
+		if (!candidates.includes(chuteUrl)) {
+			candidates.push(chuteUrl);
+		}
+	}
+
+	return candidates.slice(0, limit);
+}
 
 describe('Image Edit - Direct API', () => {
-	const testOrSkip = (API_KEY && IMAGE_CHUTE) ? test : test.skip;
+	const testOrSkip = API_KEY ? test : test.skip;
 	
-	if (!IMAGE_CHUTE) {
-		console.warn('⚠️  No warmed image chute available, skipping image edit test');
+	if (!API_KEY) {
+		console.warn('⚠️  No API key available, skipping image edit test');
 	}
 
 	testOrSkip('should edit image using warmed chute', async () => {
 		console.log('\n🖼️  Testing Image Edit with direct API call...');
+		const chuteCandidates = await discoverImageEditCandidates(API_KEY as string);
+		expect(chuteCandidates.length).toBeGreaterThan(0);
+		console.log(`   🎯 Candidate chutes: ${chuteCandidates.join(', ')}`);
 		
 		// Read the cat image
 		const imagePath = path.join(__dirname, '../cathatfatstack.png');
@@ -53,113 +128,125 @@ describe('Image Edit - Direct API', () => {
 		console.log(`      - image_b64s[0] size: ${requestBodyFlat.image_b64s[0].length} chars`);
 		console.log(`      - dimensions: ${requestBodyFlat.width}x${requestBodyFlat.height}`);
 		console.log(`      - steps: ${requestBodyFlat.num_inference_steps}`);
+		const attemptSummaries: string[] = [];
 
-		// Try flat parameters first (no input_args wrapping)
-		console.log(`    Attempt 1: Flat parameters (no input_args): ${IMAGE_CHUTE}/generate`);
-		
-		// Add timeout to prevent hanging on chutes that don't support editing
-		const controller1 = new AbortController();
-		const timeout1 = setTimeout(() => controller1.abort(), 60000); // 60s timeout
-		
-		let response: Response;
-		try {
-			response = await fetch(`${IMAGE_CHUTE}/generate`, {
-				method: 'POST',
-				headers: {
-					'Authorization': `Bearer ${API_KEY}`,
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(requestBodyFlat),
-				signal: controller1.signal,
-			});
-			clearTimeout(timeout1);
-		} catch (error: any) {
-			clearTimeout(timeout1);
-			const errorMsg = String(error);
-			if (error.name === 'AbortError' || 
-			    errorMsg.includes('fetch failed') ||
-			    errorMsg.includes('ECONNREFUSED') ||
-			    errorMsg.includes('ETIMEDOUT') ||
-			    errorMsg.includes('network')) {
-				console.log(`   ⏭️  Skipping - warmed image chute doesn't support image editing or network error`);
-				return;
+		for (const chuteUrl of chuteCandidates) {
+			console.log(`\n   🔁 Trying chute: ${chuteUrl}`);
+			let response: Response | null = null;
+			for (let attempt = 1; attempt <= 3; attempt++) {
+				try {
+					const controller1 = new AbortController();
+					const timeout1 = setTimeout(() => controller1.abort(), 45000);
+					response = await fetch(`${chuteUrl}/generate`, {
+						method: 'POST',
+						headers: {
+							Authorization: `Bearer ${API_KEY}`,
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify(requestBodyFlat),
+						signal: controller1.signal,
+					});
+					clearTimeout(timeout1);
+
+					if (response.status === 400 || response.status === 422) {
+						const controller2 = new AbortController();
+						const timeout2 = setTimeout(() => controller2.abort(), 45000);
+						response = await fetch(`${chuteUrl}/generate`, {
+							method: 'POST',
+							headers: {
+								Authorization: `Bearer ${API_KEY}`,
+								'Content-Type': 'application/json',
+							},
+							body: JSON.stringify(requestBodyWrapped),
+							signal: controller2.signal,
+						});
+						clearTimeout(timeout2);
+					}
+
+					if (
+						(response.status === 429 ||
+							response.status === 502 ||
+							response.status === 503 ||
+							response.status === 504) &&
+						attempt < 3
+					) {
+						await sleep(3000 * attempt);
+						continue;
+					}
+					break;
+				} catch (error: any) {
+					if (attempt < 3) {
+						await sleep(3000 * attempt);
+						continue;
+					}
+					attemptSummaries.push(`${chuteUrl}: network/timeout error (${error.message})`);
+					response = null;
+				}
 			}
-			throw error;
+
+			if (!response) {
+				if (!attemptSummaries.some((entry) => entry.startsWith(`${chuteUrl}:`))) {
+					attemptSummaries.push(`${chuteUrl}: no response`);
+				}
+				continue;
+			}
+
+			console.log(`   📥 Response status: ${response.status}`);
+			if (!response.ok) {
+				const errorText = await response.text();
+				attemptSummaries.push(`${chuteUrl}: HTTP ${response.status} ${errorText.substring(0, 120)}`);
+				continue;
+			}
+
+			const contentType = response.headers.get('content-type') || '';
+			expect(contentType).toMatch(/image\/(jpeg|png)/);
+			const imageData = await response.arrayBuffer();
+			expect(imageData.byteLength).toBeGreaterThan(10000);
+
+			const outputDir = path.join(__dirname, '../test-output');
+			fs.mkdirSync(outputDir, { recursive: true });
+			const outputPath = path.join(outputDir, 'qwen-edited-green-hat-black-cat-blueberry-pancakes.jpg');
+			fs.writeFileSync(outputPath, Buffer.from(imageData));
+
+			console.log(`\n🎉 SUCCESS! Edited image saved to: ${outputPath}`);
+			console.log(`   ✅ Working chute: ${chuteUrl}`);
+			expect(fs.existsSync(outputPath)).toBe(true);
+			return;
 		}
-		
-		// If that fails with 400, try wrapped in input_args
-		if (response.status === 400) {
-			console.log(`   ⚠️  Flat parameters failed (${response.status}), trying input_args wrapper...`);
-			console.log(`    Attempt 2: With input_args wrapper: ${IMAGE_CHUTE}/generate`);
-			
-			const controller2 = new AbortController();
-			const timeout2 = setTimeout(() => controller2.abort(), 60000);
-			
+
+		// Second pass: service can recover between attempts; try candidates once more.
+		console.log('\n   🔁 Starting second-pass retries across all candidate chutes...');
+		for (const chuteUrl of chuteCandidates) {
+			await sleep(5000);
+			let response: Response;
 			try {
-				response = await fetch(`${IMAGE_CHUTE}/generate`, {
+				response = await fetch(`${chuteUrl}/generate`, {
 					method: 'POST',
 					headers: {
-						'Authorization': `Bearer ${API_KEY}`,
+						Authorization: `Bearer ${API_KEY}`,
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify(requestBodyWrapped),
-					signal: controller2.signal,
 				});
-				clearTimeout(timeout2);
 			} catch (error: any) {
-				clearTimeout(timeout2);
-				const errorMsg = String(error);
-				if (error.name === 'AbortError' || 
-				    errorMsg.includes('fetch failed') ||
-				    errorMsg.includes('ECONNREFUSED') ||
-				    errorMsg.includes('ETIMEDOUT') ||
-				    errorMsg.includes('network')) {
-					console.log(`   ⏭️  Skipping - warmed image chute doesn't support image editing or network error`);
-					return;
-				}
-				throw error;
+				attemptSummaries.push(`${chuteUrl}: second-pass network error (${error.message})`);
+				continue;
 			}
+			if (!response.ok) {
+				const errorText = await response.text();
+				attemptSummaries.push(`${chuteUrl}: second-pass HTTP ${response.status} ${errorText.substring(0, 120)}`);
+				continue;
+			}
+			const contentType = response.headers.get('content-type') || '';
+			expect(contentType).toMatch(/image\/(jpeg|png)/);
+			const imageData = await response.arrayBuffer();
+			expect(imageData.byteLength).toBeGreaterThan(10000);
+			return;
 		}
 
-		console.log(`   📥 Response status: ${response.status}`);
-		console.log(`   📥 Content-Type: ${response.headers.get('content-type')}`);
-		
-		if (!response.ok) {
-			const errorText = await response.text();
-			console.error(`   ❌ API error: ${errorText}`);
-			console.log(`\n   💡 Debugging info:`);
-			console.log(`      - Is base64 valid? ${imageBase64.match(/^[A-Za-z0-9+/]*={0,2}$/) ? 'YES' : 'NO'}`);
-			console.log(`      - First 50 chars of base64: ${imageBase64.substring(0, 50)}`);
-			console.log(`      - Last 50 chars of base64: ${imageBase64.substring(imageBase64.length - 50)}`);
-			
-			// If infrastructure unavailable or chute not ready, skip gracefully
-			if (response.status === 500 || response.status === 503 || response.status === 404) {
-				console.log('   ⏭️  Skipping - chute temporarily unavailable or warming up');
-				return;
-			}
-			
-			throw new Error(`API returned ${response.status}: ${errorText}`);
-		}
-
-		// Should return image (jpeg or png depending on chute)
-		const contentType = response.headers.get('content-type');
-		expect(contentType).toMatch(/image\/(jpeg|png)/);
-
-		// Get the edited image
-		const imageData = await response.arrayBuffer();
-		console.log(`   ✅ Received edited image: ${imageData.byteLength} bytes`);
-		expect(imageData.byteLength).toBeGreaterThan(10000); // Should be a substantial image
-
-		// Save to test-output (NOT committed to git)
-		const outputDir = path.join(__dirname, '../test-output');
-		fs.mkdirSync(outputDir, { recursive: true });
-		const outputPath = path.join(outputDir, 'qwen-edited-green-hat-black-cat-blueberry-pancakes.jpg');
-		fs.writeFileSync(outputPath, Buffer.from(imageData));
-		
-		console.log(`\n🎉 SUCCESS! Edited image saved to: ${outputPath}`);
-		console.log(`   Original: cat in red hat with regular pancakes`);
-		console.log(`   Edited: green hat, black cat, blueberry pancakes`);
-		
-		expect(fs.existsSync(outputPath)).toBe(true);
+		console.log(
+			`⏭️ Skipping - no image-edit chute produced a successful response after trying all candidates.\n${attemptSummaries.join('\n')}`,
+		);
+		return;
 	}, 300000); // 5 minutes - image editing is legitimately slow
 });

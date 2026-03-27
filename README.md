@@ -3,7 +3,7 @@
 ![Chutes.ai](https://img.shields.io/badge/Chutes.ai-Integration-blue)
 ![n8n](https://img.shields.io/badge/n8n-Community%20Node-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Tests](https://img.shields.io/badge/tests-779%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-996%20passing-brightgreen)
 ![Node](https://img.shields.io/badge/node-20%2B-blue)
 
 This is an n8n community node that provides complete access to Chutes.ai's AI services, replicating all features available in the Chutes.ai playground including text generation, image generation, and custom inference.
@@ -31,21 +31,79 @@ cd ~/.n8n
 npm install n8n-nodes-chutes
 ```
 
-## Authentication (With Example)
+## Authentication
 
-To use this node, you'll need an API key from Chutes.ai:
+This package supports two authentication methods. By default, only **API Key** authentication is shown. When the n8n server administrator enables **Sign in With Chutes**, users see an additional OAuth option.
+
+### Option A: API Key
 
 1. Sign up at [chutes.ai](https://chutes.ai)
 2. Navigate to your [API Keys dashboard](https://chutes.ai/app/api)
 3. Create a new API key (you will only be shown it once)
-4. Add the key to your n8n credentials:
-   - Go to **Credentials** > **New**
-   - Select **Chutes API**
-   - Enter your API key
-   - Choose your environment (Production/Sandbox)
-   - Save
+4. In n8n, go to **Credentials** > **New** > select **Chutes API**
+5. Enter your API key, choose your environment (Production/Sandbox), and save
 
 ![API Keys Example](examples/chutes_api_key_n8n2.gif)
+
+### Option B: Sign in With Chutes (OAuth)
+
+When enabled by a server administrator, users can authenticate with their own Chutes account. Each user's API usage is billed to their own account.
+
+**What end users see:** An "Authentication" dropdown in each Chutes node with the option "Sign in With Chutes". Selecting it shows an OAuth credential with a **Connect my account** button. One click opens the Chutes login/consent screen.
+
+**What server admins need to do:** Set two environment variables on the n8n server:
+
+```
+CHUTES_OAUTH_CLIENT_ID=cid_xxx
+CHUTES_OAUTH_CLIENT_SECRET=csc_xxx
+```
+
+Without these, the OAuth option is hidden and only API Key authentication is available.
+
+#### Setting Up OAuth Credentials (CLI Wizard)
+
+The easiest way to register an OAuth app with Chutes and get your credentials is the built-in setup wizard:
+
+```bash
+npx n8n-nodes-chutes-setup-oauth
+```
+
+The wizard will:
+1. Ask for your [Chutes API key](https://chutes.ai/app/api)
+2. Let you choose between two modes:
+   - **Sign in With Chutes** -- each user connects their own Chutes account
+   - **Single account (Advanced)** -- your account pays for all inference
+3. Ask for your n8n callback URL (default: `http://localhost:5678/rest/oauth2-credential/callback`)
+4. Register the OAuth app with Chutes
+5. Write the credentials to your `.env` file (or print them to the screen)
+
+For more details on Sign in With Chutes, see the [official documentation](https://chutes.ai/docs/sign-in-with-chutes/overview).
+
+#### Manual OAuth App Registration
+
+You can also register an OAuth app directly via the Chutes API:
+
+```bash
+curl -X POST "https://api.chutes.ai/idp/apps" \
+  -H "Authorization: Bearer $CHUTES_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My n8n Instance",
+    "redirect_uris": ["https://<n8n-host>/rest/oauth2-credential/callback"],
+    "allowed_scopes": ["openid", "profile", "chutes:invoke"]
+  }'
+```
+
+#### Optional Environment Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `CHUTES_OAUTH_CLIENT_ID` | OAuth client ID from Chutes | _(none -- OAuth disabled)_ |
+| `CHUTES_OAUTH_CLIENT_SECRET` | OAuth client secret from Chutes | _(none -- OAuth disabled)_ |
+| `CHUTES_SERVER_ACCESS_TOKEN` | Access token for single-account mode (one account pays for all users) | _(none)_ |
+| `CHUTES_SERVER_REFRESH_TOKEN` | Refresh token for single-account mode (auto-refreshes the access token) | _(none)_ |
+| `CHUTES_IDP_BASE_URL` | Override the identity provider base URL | `https://api.chutes.ai` |
+| `CHUTES_CREDENTIAL_TEST_BASE_URL` | Override the credential test endpoint | _(auto-detected from environment)_ |
 
 ## Features
 
@@ -601,7 +659,7 @@ The node dynamically loads available chutes from the Chutes.ai Management API:
 
 ## Resources
 
-- [Chutes.ai Documentation](https://docs.chutes.ai)
+- [Chutes.ai Documentation](https://chutes.ai/docs)
 - [API Reference](https://chutes.ai/docs/api-reference/overview)
 - [Playground](https://chutes.ai/app)
 - [n8n Community Forum](https://community.n8n.io)
@@ -695,6 +753,23 @@ See [tests/README.md](tests/README.md) for detailed testing documentation.
 - **Chutes.ai API**: v1
 
 ## Changelog
+
+### [0.1.1] - 2026-03-26
+#### Sign in With Chutes (OAuth)
+- **New credential type: Sign in With Chutes** (`ChutesOAuth2Api`) -- users can authenticate with their Chutes account via OAuth 2.0 with PKCE
+- **Conditional authentication dropdown** -- Chutes nodes show an "Authentication" selector (API Key / Sign in With Chutes) when OAuth is configured on the server
+- **Server-side OAuth configuration** -- client credentials are set via environment variables (`CHUTES_OAUTH_CLIENT_ID`, `CHUTES_OAUTH_CLIENT_SECRET`), never exposed to end users
+- **CLI setup wizard** (`npx n8n-nodes-chutes-setup-oauth`) -- interactive tool to register an OAuth app with Chutes and write credentials to `.env`
+  - Multi-user mode: each user connects their own Chutes account
+  - Single-account mode (Advanced): one account pays for all inference
+  - Upgrade flow: detects existing OAuth credentials in `.env` and offers single-account upgrade
+- **Dynamic credential routing** -- transport layer resolves the correct credential type at runtime based on user selection
+
+#### Single-Account Server Mode
+- **Server-managed authentication** via `CHUTES_SERVER_ACCESS_TOKEN` and `CHUTES_SERVER_REFRESH_TOKEN` environment variables -- one Chutes account pays for all n8n users
+- **Automatic token refresh** -- expired server tokens are refreshed transparently using the server refresh token
+- **Simplified credential UX** -- when a server account is configured, the API key field shows "Do Not Use" with instructions to simply save the credential; the OAuth dropdown is hidden
+- **996 tests passing** with 100% coverage across all credential, node, and script files
 
 ### [0.1.0] - 2026-02-15 Official Release
 #### Tool Calling Support (AI Agent)

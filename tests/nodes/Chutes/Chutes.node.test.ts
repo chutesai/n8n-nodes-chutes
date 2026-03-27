@@ -6,12 +6,26 @@
 import { Chutes } from '../../../nodes/Chutes/Chutes.node';
 import { createMockExecuteFunctions } from '../../helpers/mocks';
 import { mockTextCompletionResponse } from '../../helpers/fixtures';
+import * as openApiDiscovery from '../../../nodes/Chutes/transport/openApiDiscovery';
 
 describe('Chutes Node', () => {
 	let node: Chutes;
+	const savedOAuthClientId = process.env.CHUTES_OAUTH_CLIENT_ID;
+	const savedOAuthClientSecret = process.env.CHUTES_OAUTH_CLIENT_SECRET;
 
 	beforeEach(() => {
+		delete process.env.CHUTES_OAUTH_CLIENT_ID;
+		delete process.env.CHUTES_OAUTH_CLIENT_SECRET;
 		node = new Chutes();
+	});
+
+	afterEach(() => {
+		if (savedOAuthClientId !== undefined) {
+			process.env.CHUTES_OAUTH_CLIENT_ID = savedOAuthClientId;
+		}
+		if (savedOAuthClientSecret !== undefined) {
+			process.env.CHUTES_OAUTH_CLIENT_SECRET = savedOAuthClientSecret;
+		}
 	});
 
 	describe('Node Properties', () => {
@@ -40,11 +54,58 @@ describe('Chutes Node', () => {
 			expect(node.description.outputs).toContain('main');
 		});
 
-		test('should require chutesApi credentials', () => {
+		test('should require chutesApi credentials when OAuth is not configured', () => {
 			const creds = node.description.credentials;
 			expect(creds).toBeDefined();
+			expect(creds).toHaveLength(1);
 			expect(creds?.[0].name).toBe('chutesApi');
 			expect(creds?.[0].required).toBe(true);
+			expect(creds?.[0].displayOptions).toBeUndefined();
+		});
+
+		test('should not have authentication property when OAuth is not configured', () => {
+			const authProp = node.description.properties.find((p) => p.name === 'authentication');
+			expect(authProp).toBeUndefined();
+		});
+	});
+
+	describe('OAuth Configured', () => {
+		let oauthNode: Chutes;
+		const savedServerToken = process.env.CHUTES_SERVER_ACCESS_TOKEN;
+
+		beforeEach(() => {
+			delete process.env.CHUTES_SERVER_ACCESS_TOKEN;
+			process.env.CHUTES_OAUTH_CLIENT_ID = 'test-client-id';
+			process.env.CHUTES_OAUTH_CLIENT_SECRET = 'test-client-secret';
+			oauthNode = new Chutes();
+		});
+
+		afterEach(() => {
+			delete process.env.CHUTES_OAUTH_CLIENT_ID;
+			delete process.env.CHUTES_OAUTH_CLIENT_SECRET;
+			if (savedServerToken !== undefined) {
+				process.env.CHUTES_SERVER_ACCESS_TOKEN = savedServerToken;
+			}
+		});
+
+		test('should include both credentials with displayOptions when OAuth is configured', () => {
+			const creds = oauthNode.description.credentials;
+			expect(creds).toBeDefined();
+			expect(creds).toHaveLength(2);
+			expect(creds?.[0].name).toBe('chutesApi');
+			expect(creds?.[0].displayOptions).toEqual({
+				show: { authentication: ['apiKey'] },
+			});
+			expect(creds?.[1].name).toBe('chutesOAuth2Api');
+			expect(creds?.[1].displayOptions).toEqual({
+				show: { authentication: ['oAuth2'] },
+			});
+		});
+
+		test('should have authentication dropdown when OAuth is configured', () => {
+			const authProp = oauthNode.description.properties.find((p) => p.name === 'authentication');
+			expect(authProp).toBeDefined();
+			expect(authProp?.type).toBe('options');
 		});
 	});
 
@@ -91,6 +152,11 @@ describe('Chutes Node', () => {
 
 		test('should have getChutesImageModels method', () => {
 			expect(node.methods?.loadOptions?.getChutesImageModels).toBeDefined();
+		});
+
+		test('should have empty default chuteUrl for inference compatibility', () => {
+			const chuteParam = node.description.properties.find((prop) => prop.name === 'chuteUrl');
+			expect(chuteParam?.default).toBe('');
 		});
 	});
 
@@ -168,6 +234,129 @@ describe('Chutes Node', () => {
 			);
 
 			await expect(node.execute.call(mockFunctions)).rejects.toThrow();
+		});
+
+		test('should use requestWithAuthentication for speech-to-text requests', async () => {
+			const mockFunctions = createMockExecuteFunctions({
+				getInputData: jest.fn().mockReturnValue([{ json: {}, binary: undefined }]),
+			});
+			(mockFunctions.getNodeParameter as jest.Mock)
+				.mockReturnValueOnce('speechToText') // resource
+				.mockReturnValueOnce('transcribe') // operation
+				.mockReturnValueOnce('https://stt.chutes.ai') // chuteUrl
+				.mockReturnValueOnce('base64audio') // audio
+				.mockReturnValueOnce({}); // additionalOptions
+
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue([
+				{ text: 'hello ', start: 0, end: 1 },
+				{ text: 'world', start: 1, end: 2 },
+			]);
+
+			const result = await node.execute.call(mockFunctions);
+
+			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalled();
+			expect(result[0][0].json.text).toBe('hello world');
+		});
+
+		test('should pass authenticated loader callback to OpenAPI discovery', async () => {
+			const discoverSpy = jest
+				.spyOn(openApiDiscovery, 'discoverChuteCapabilities')
+				.mockResolvedValue({
+					endpoints: [{ path: '/edit', method: 'POST', parameters: [] }],
+					supportsTextToVideo: false,
+					supportsImageToVideo: false,
+					supportsImageEdit: true,
+					imageEditPath: '/edit',
+					supportsVideoToVideo: false,
+					supportsKeyframeInterp: false,
+				});
+			const buildSpy = jest.spyOn(openApiDiscovery, 'buildRequestBody').mockReturnValue({
+				endpoint: '/edit',
+				body: { prompt: 'edit this', image: 'base64image' },
+			});
+
+			const mockFunctions = createMockExecuteFunctions({
+				getInputData: jest.fn().mockReturnValue([{ json: {}, binary: undefined }]),
+			});
+			(mockFunctions.getNodeParameter as jest.Mock)
+				.mockReturnValueOnce('imageGeneration') // resource
+				.mockReturnValueOnce('edit') // operation
+				.mockReturnValueOnce('https://image.chutes.ai') // chuteUrl
+				.mockReturnValueOnce('edit this') // prompt
+				.mockReturnValueOnce('1024x1024') // size
+				.mockReturnValueOnce(1) // n
+				.mockReturnValueOnce({}) // additionalOptions
+				.mockReturnValueOnce('base64image'); // image
+
+			(mockFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				Buffer.from('fake-image'),
+			);
+			(mockFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue({
+				data: 'binary',
+			});
+
+			await node.execute.call(mockFunctions);
+
+			expect(discoverSpy).toHaveBeenCalled();
+			const secondArg = discoverSpy.mock.calls[0][1];
+			expect(typeof secondArg).toBe('function');
+			expect(buildSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('credential type safety — no hardcoded credential strings in requestWithAuthentication', () => {
+		const fs = require('fs');
+		const path = require('path');
+
+		function findNodeSourceFiles(): string[] {
+			const nodesDir = path.resolve(__dirname, '../../../nodes');
+			const files: string[] = [];
+			const walk = (dir: string) => {
+				for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+					const full = path.join(dir, entry.name);
+					if (entry.isDirectory()) {
+						walk(full);
+					} else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts') && !entry.name.endsWith('.d.ts')) {
+						files.push(full);
+					}
+				}
+			};
+			walk(nodesDir);
+			return files;
+		}
+
+		test('no node source file should call requestWithAuthentication with a hardcoded credential string', () => {
+			const files = findNodeSourceFiles();
+			expect(files.length).toBeGreaterThan(0);
+
+			const violations: { file: string; line: number; text: string }[] = [];
+			const pattern = /requestWithAuthentication\s*\.?\s*(?:call\s*\()?\s*(?:this\s*,\s*)?['"](?:chutesApi|chutesOAuth2Api)['"]/;
+
+			for (const filePath of files) {
+				const content = fs.readFileSync(filePath, 'utf-8');
+				const lines = content.split('\n');
+				for (let i = 0; i < lines.length; i++) {
+					if (pattern.test(lines[i])) {
+						violations.push({
+							file: path.relative(path.resolve(__dirname, '../../..'), filePath),
+							line: i + 1,
+							text: lines[i].trim(),
+						});
+					}
+				}
+			}
+
+			if (violations.length > 0) {
+				const report = violations
+					.map((v) => `  ${v.file}:${v.line} → ${v.text}`)
+					.join('\n');
+				throw new Error(
+					`Found ${violations.length} hardcoded credential string(s) in requestWithAuthentication calls.\n` +
+						`All calls must use resolveCredentialType() instead of literal 'chutesApi' or 'chutesOAuth2Api'.\n\n` +
+						report,
+				);
+			}
+			expect(violations).toHaveLength(0);
 		});
 	});
 });

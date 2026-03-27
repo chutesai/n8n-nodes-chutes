@@ -6,7 +6,7 @@ Get started with the Chutes.ai n8n node in 5 minutes!
 
 - ✅ Node.js 20.12.0 or higher installed
 - ✅ n8n instance (local or cloud)
-- ✅ Chutes.ai API key ([Get one here](https://chutes.ai/dashboard/api-keys))
+- ✅ Chutes.ai API key ([Get one here](https://chutes.ai/app/api))
 
 ---
 
@@ -226,7 +226,7 @@ docker-compose up -d
 - **Documentation:** [README.md](README.md)
 - **Examples:** [examples/](examples/)
 - **Issues:** [GitHub Issues](https://github.com/chutesai/n8n-nodes-chutes/issues)
-- **Chutes.ai Docs:** https://docs.chutes.ai
+- **Chutes.ai Docs:** https://chutes.ai/docs
 
 ---
 

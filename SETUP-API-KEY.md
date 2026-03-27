@@ -96,7 +96,7 @@ The test configuration system:
 
 After configuring your API key:
 
-1. **Review API documentation** at https://docs.chutes.ai/api
+1. **Review API documentation** at https://chutes.ai/docs/api
 2. **Run discovery tests** to verify endpoints
 3. **Update implementation** based on actual API structure
 4. **Enable real API tests** by removing `.skip` from test functions

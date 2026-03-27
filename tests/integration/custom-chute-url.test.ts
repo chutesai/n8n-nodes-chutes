@@ -24,11 +24,9 @@ describe('Custom Chute URL Input', () => {
 	});
 
 	it('should allow chuteUrl to accept string expressions', () => {
-		// Find the chuteUrl property for textGeneration
+		// Shared chuteUrl field (single field for all resources)
 		const chuteUrlProp = nodeDescription.find(
-			(prop: INodeProperties) => 
-				prop.name === 'chuteUrl' && 
-				prop.displayOptions?.show?.resource?.includes('textGeneration')
+			(prop: INodeProperties) => prop.name === 'chuteUrl',
 		) as INodeProperties;
 
 		expect(chuteUrlProp).toBeDefined();
@@ -39,49 +37,25 @@ describe('Custom Chute URL Input', () => {
 	});
 
 	it('should have loadOptionsMethod for autocomplete dropdown', () => {
-		// Find the chuteUrl property for textGeneration
 		const chuteUrlProp = nodeDescription.find(
-			(prop: INodeProperties) => 
-				prop.name === 'chuteUrl' && 
-				prop.displayOptions?.show?.resource?.includes('textGeneration')
+			(prop: INodeProperties) => prop.name === 'chuteUrl',
 		) as INodeProperties;
 
 		expect(chuteUrlProp).toBeDefined();
 		
 		// Should have loadOptionsMethod for autocomplete suggestions
 		// This gives users the dropdown while still allowing custom input
-		expect(chuteUrlProp.typeOptions?.loadOptionsMethod).toBeDefined();
+		expect(chuteUrlProp.typeOptions?.loadOptionsMethod).toBe('getChutesForSelectedResource');
 	});
 
-	it('should allow all resource chuteUrl fields to accept expressions', () => {
-		const resources = [
-			'textGeneration',
-			'imageGeneration',
-			'videoGeneration',
-			'textToSpeech',
-			'speechToText',
-			'musicGeneration',
-			'embeddings',
-			'contentModeration',
-		];
-
-		resources.forEach(resource => {
-			const chuteUrlProp = nodeDescription.find(
-				(prop: INodeProperties) => 
-					prop.name === 'chuteUrl' && 
-					prop.displayOptions?.show?.resource?.includes(resource)
-			) as INodeProperties;
-
-			// All resources should have chuteUrl field
-			expect(chuteUrlProp).toBeDefined();
-			
-			// All should be type 'options' for dropdown + noDataExpression: false for expressions
-			expect(chuteUrlProp?.type).toBe('options');
-			expect(chuteUrlProp?.noDataExpression).toBe(false);
-			
-			// All should have loadOptionsMethod for dropdown
-			expect(chuteUrlProp?.typeOptions?.loadOptionsMethod).toBeDefined();
-		});
+	it('should define one shared chuteUrl field for all resources', () => {
+		const chuteUrlFields = nodeDescription.filter(
+			(prop: INodeProperties) => prop.name === 'chuteUrl',
+		);
+		expect(chuteUrlFields).toHaveLength(1);
+		expect(chuteUrlFields[0].type).toBe('options');
+		expect(chuteUrlFields[0].noDataExpression).toBe(false);
+		expect(chuteUrlFields[0].typeOptions?.loadOptionsDependsOn).toEqual(['resource']);
 	});
 });
 

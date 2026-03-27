@@ -9,6 +9,11 @@ import {
 import { GenericChutesChatModel } from './GenericChutesChatModel';
 import * as loadChutes from '../Chutes/methods/loadChutes';
 import * as loadOptions from '../Chutes/methods/loadOptions';
+import {
+	getChutesCredentials,
+	getChutesAuthenticationProperty,
+	resolveCredentialType,
+} from '../Chutes/transport/credentialConfig';
 
 export class ChutesChatModel implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,12 +26,7 @@ export class ChutesChatModel implements INodeType {
 		defaults: {
 			name: 'Chutes Chat Model',
 		},
-		credentials: [
-			{
-				name: 'chutesApi',
-				required: true,
-			},
-		],
+		credentials: getChutesCredentials(),
 		codex: {
 			categories: ['AI'],
 			subcategories: {
@@ -44,6 +44,7 @@ export class ChutesChatModel implements INodeType {
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		properties: [
+			...getChutesAuthenticationProperty(),
 			{
 				displayName: 'Chute',
 				name: 'chuteUrl',
@@ -52,7 +53,7 @@ export class ChutesChatModel implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getLLMChutes',
 				},
-				default: 'https://llm.chutes.ai',
+				default: '',
 				description: 'Select a Chutes.ai LLM chute to use',
 				hint: 'Browse available chutes at <a href="https://chutes.ai/app/playground" target="_blank">Chutes.ai Playground</a>',
 			},
@@ -63,9 +64,10 @@ export class ChutesChatModel implements INodeType {
 				required: false,
 				typeOptions: {
 					loadOptionsMethod: 'getModelsForSelectedChute',
+					loadOptionsDependsOn: ['chuteUrl'],
 				},
 				default: '',
-				description: 'Model to use (leave empty to use chute\'s default model)',
+				description: "Model to use (leave empty to use chute's default model)",
 				hint: 'Available models for the selected chute. Leave as "Default" to let the chute choose.',
 			},
 			{
@@ -78,7 +80,8 @@ export class ChutesChatModel implements INodeType {
 					numberPrecision: 2,
 				},
 				default: 0.7,
-				description: 'Controls randomness in responses. Lower = more focused, higher = more creative.',
+				description:
+					'Controls randomness in responses. Lower = more focused, higher = more creative.',
 				hint: 'Range: 0.0 to 2.0. Default: 0.7',
 			},
 			{
@@ -153,14 +156,14 @@ export class ChutesChatModel implements INodeType {
 	 */
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		console.log('[ChutesChatModel] supplyData called, itemIndex:', itemIndex);
-		
+
 		try {
 			const chuteUrl = this.getNodeParameter('chuteUrl', itemIndex) as string;
 			console.log('[ChutesChatModel] chuteUrl:', chuteUrl);
-			
+
 			const model = this.getNodeParameter('model', itemIndex, '') as string;
 			console.log('[ChutesChatModel] model:', model);
-			
+
 			const temperature = this.getNodeParameter('temperature', itemIndex, 0.7) as number;
 			const options = this.getNodeParameter('options', itemIndex, {}) as {
 				maxTokens?: number;
@@ -169,12 +172,11 @@ export class ChutesChatModel implements INodeType {
 				presencePenalty?: number;
 			};
 
-			// Get credentials
 			console.log('[ChutesChatModel] Getting credentials...');
-			const credentials = await this.getCredentials('chutesApi');
+			const credentialType = resolveCredentialType(this);
+			const credentials = await this.getCredentials(credentialType);
 			console.log('[ChutesChatModel] Credentials obtained');
 
-			// Create and configure the chat model
 			console.log('[ChutesChatModel] Creating GenericChutesChatModel...');
 			const chatModel = new GenericChutesChatModel({
 				chuteUrl,
@@ -185,7 +187,9 @@ export class ChutesChatModel implements INodeType {
 				frequencyPenalty: options.frequencyPenalty,
 				presencePenalty: options.presencePenalty,
 				credentials,
-				requestHelper: this.helpers, // Pass n8n request helper to the model
+				requestHelper: this.helpers,
+				authenticatedRequest: async (requestOptions) =>
+					await this.helpers.requestWithAuthentication.call(this, credentialType, requestOptions),
 			});
 			console.log('[ChutesChatModel] Chat model created successfully');
 
@@ -198,4 +202,3 @@ export class ChutesChatModel implements INodeType {
 		}
 	}
 }
-

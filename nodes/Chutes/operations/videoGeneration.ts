@@ -73,7 +73,8 @@ export const videoGenerationOperations: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Input image for animation. Can be a URL, data URL, base64 string, or use binary data from previous node.',
+		description:
+			'Input image for animation. Can be a URL, data URL, base64 string, or use binary data from previous node.',
 		placeholder: 'https://example.com/image.jpg or leave empty to use binary data',
 		hint: 'Connect a node with binary image data (HTTP Request, Read Binary File, etc.) or provide an image URL',
 	},
@@ -91,7 +92,8 @@ export const videoGenerationOperations: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Input video for transformation. Can be a URL, data URL, base64 string, or use binary data from previous node.',
+		description:
+			'Input video for transformation. Can be a URL, data URL, base64 string, or use binary data from previous node.',
 		placeholder: 'https://example.com/video.mp4 or leave empty to use binary data',
 		hint: 'Connect a node with binary video data (HTTP Request, Read Binary File, etc.) or provide a video URL',
 	},
@@ -184,7 +186,8 @@ export const videoGenerationOperations: INodeProperties[] = [
 				name: 'duration',
 				type: 'number',
 				default: 5,
-				description: 'Video duration in seconds. Will be converted to frames based on FPS (duration × fps = frames)',
+				description:
+					'Video duration in seconds. Will be converted to frames based on FPS (duration × fps = frames)',
 				placeholder: '5',
 				hint: 'Example: 5 seconds at 24 fps = 120 frames',
 			},
@@ -193,7 +196,8 @@ export const videoGenerationOperations: INodeProperties[] = [
 				name: 'fps',
 				type: 'number',
 				default: 24,
-				description: 'Frame rate for the output video. Higher values create smoother motion but require more processing.',
+				description:
+					'Frame rate for the output video. Higher values create smoother motion but require more processing.',
 				placeholder: '24',
 				hint: 'Common values: 24 (cinematic), 30 (standard), 60 (smooth)',
 			},
@@ -223,7 +227,8 @@ export const videoGenerationOperations: INodeProperties[] = [
 				name: 'image_strength',
 				type: 'number',
 				default: 1.0,
-				description: 'How much the input image influences the output (0.0 to 1.0). Higher = more faithful to input image. Only used for Image-to-Video operation.',
+				description:
+					'How much the input image influences the output (0.0 to 1.0). Higher = more faithful to input image. Only used for Image-to-Video operation.',
 				placeholder: '1.0',
 				typeOptions: {
 					minValue: 0,
@@ -236,7 +241,8 @@ export const videoGenerationOperations: INodeProperties[] = [
 				name: 'image_frame_index',
 				type: 'number',
 				default: 0,
-				description: 'Frame position for the input image in the output video (0 = first frame). Only used for Image-to-Video operation.',
+				description:
+					'Frame position for the input image in the output video (0 = first frame). Only used for Image-to-Video operation.',
 				placeholder: '0',
 				typeOptions: {
 					minValue: 0,
@@ -306,7 +312,8 @@ export const videoGenerationOperations: INodeProperties[] = [
 						},
 					],
 				},
-				description: 'LoRA adapters for style transfer and effects (LTX-2). At least one LoRA is required for Video-to-Video operation.',
+				description:
+					'LoRA adapters for style transfer and effects (LTX-2). At least one LoRA is required for Video-to-Video operation.',
 				options: [
 					{
 						name: 'loraItems',
@@ -397,11 +404,11 @@ export const videoGenerationOperations: INodeProperties[] = [
 				name: 'timeout',
 				type: 'number',
 				default: undefined,
-				description: 'Maximum time to wait for video generation (in seconds). Leave empty for no timeout. If exceeded, the node will error and can trigger n8n\'s retry flow.',
+				description:
+					"Maximum time to wait for video generation (in seconds). Leave empty for no timeout. If exceeded, the node will error and can trigger n8n's retry flow.",
 				placeholder: '600',
 				hint: 'Recommended: 600 seconds (10 minutes) for video generation. Leave empty if generation needs more time.',
 			},
 		],
 	},
 ];
-

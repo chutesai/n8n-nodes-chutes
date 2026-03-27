@@ -58,8 +58,10 @@ export const musicGenerationOperations: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Song lyrics in LRC format with timestamps ([MM:SS.ms]lyric text). Some models like DiffRhythm REQUIRE LRC timestamps for lyrics to appear. Leave empty for instrumental music.',
-		placeholder: '[00:00.00]Verse 1: First line of lyrics\n[00:05.50]Second line continues\n[00:10.00]Chorus: Main hook here',
+		description:
+			'Song lyrics in LRC format with timestamps ([MM:SS.ms]lyric text). Some models like DiffRhythm REQUIRE LRC timestamps for lyrics to appear. Leave empty for instrumental music.',
+		placeholder:
+			'[00:00.00]Verse 1: First line of lyrics\n[00:05.50]Second line continues\n[00:10.00]Chorus: Main hook here',
 		hint: '⚠️ LRC timestamp format REQUIRED: [MM:SS.ms]Lyric text. Learn format: https://en.wikipedia.org/wiki/LRC_(file_format) 💡 TIP: Use an LLM node (like Deepseek/Qwen) before this node to automatically add timestamps to plain lyrics. Ensure total lyrics duration matches your chosen song length.',
 	},
 
@@ -89,7 +91,8 @@ export const musicGenerationOperations: INodeProperties[] = [
 				name: 'cfg_strength',
 				type: 'number',
 				default: 7.0,
-				description: 'How closely to follow the style prompt (1-20). Higher = more faithful to prompt.',
+				description:
+					'How closely to follow the style prompt (1-20). Higher = more faithful to prompt.',
 				hint: 'Recommended: 7.0 for balanced results. Lower for more creativity, higher for strict adherence.',
 			},
 			{
@@ -113,7 +116,8 @@ export const musicGenerationOperations: INodeProperties[] = [
 				name: 'audio_b64',
 				type: 'string',
 				default: '',
-				description: 'Base64-encoded reference audio to match the style. Either provide a Style Prompt OR Reference Audio.',
+				description:
+					'Base64-encoded reference audio to match the style. Either provide a Style Prompt OR Reference Audio.',
 				placeholder: 'data:audio/wav;base64,...',
 			},
 			{
@@ -121,11 +125,11 @@ export const musicGenerationOperations: INodeProperties[] = [
 				name: 'timeout',
 				type: 'number',
 				default: undefined,
-				description: 'Maximum time to wait for music generation (in seconds). Leave empty for no timeout. If exceeded, the node will error and can trigger n8n\'s retry flow.',
+				description:
+					"Maximum time to wait for music generation (in seconds). Leave empty for no timeout. If exceeded, the node will error and can trigger n8n's retry flow.",
 				placeholder: '300',
 				hint: 'Recommended: 300 seconds (5 minutes) for music generation. Leave empty if generation needs more time.',
 			},
 		],
 	},
 ];
-

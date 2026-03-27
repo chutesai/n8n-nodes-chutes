@@ -53,11 +53,15 @@ export const textToSpeechOperations: INodeProperties[] = [
 			},
 		},
 		options: [
-			{ name: 'Default', value: '', description: 'Use the chute\'s default voice' },
+			{ name: 'Default', value: '', description: "Use the chute's default voice" },
 			{ name: 'Custom...', value: 'custom', description: 'Enter a custom voice name' },
-			
+
 			// 🇺🇸 American English: 11F 9M
-			{ name: '─── 🇺🇸 American English (Female) ───', value: '_separator_af', description: 'American English female voices (11)' },
+			{
+				name: '─── 🇺🇸 American English (Female) ───',
+				value: '_separator_af',
+				description: 'American English female voices (11)',
+			},
 			{ name: 'af_alloy', value: 'af_alloy' },
 			{ name: 'af_aoede', value: 'af_aoede' },
 			{ name: 'af_bella', value: 'af_bella' },
@@ -69,8 +73,12 @@ export const textToSpeechOperations: INodeProperties[] = [
 			{ name: 'af_river', value: 'af_river' },
 			{ name: 'af_sarah', value: 'af_sarah' },
 			{ name: 'af_sky', value: 'af_sky' },
-			
-			{ name: '─── 🇺🇸 American English (Male) ───', value: '_separator_am', description: 'American English male voices (9)' },
+
+			{
+				name: '─── 🇺🇸 American English (Male) ───',
+				value: '_separator_am',
+				description: 'American English male voices (9)',
+			},
 			{ name: 'am_adam', value: 'am_adam' },
 			{ name: 'am_echo', value: 'am_echo' },
 			{ name: 'am_eric', value: 'am_eric' },
@@ -80,74 +88,134 @@ export const textToSpeechOperations: INodeProperties[] = [
 			{ name: 'am_onyx', value: 'am_onyx' },
 			{ name: 'am_puck', value: 'am_puck' },
 			{ name: 'am_santa', value: 'am_santa' },
-			
+
 			// 🇬🇧 British English: 4F 4M
-			{ name: '─── 🇬🇧 British English (Female) ───', value: '_separator_bf', description: 'British English female voices (4)' },
+			{
+				name: '─── 🇬🇧 British English (Female) ───',
+				value: '_separator_bf',
+				description: 'British English female voices (4)',
+			},
 			{ name: 'bf_alice', value: 'bf_alice' },
 			{ name: 'bf_emma', value: 'bf_emma' },
 			{ name: 'bf_isabella', value: 'bf_isabella' },
 			{ name: 'bf_lily', value: 'bf_lily' },
-			
-			{ name: '─── 🇬🇧 British English (Male) ───', value: '_separator_bm', description: 'British English male voices (4)' },
+
+			{
+				name: '─── 🇬🇧 British English (Male) ───',
+				value: '_separator_bm',
+				description: 'British English male voices (4)',
+			},
 			{ name: 'bm_daniel', value: 'bm_daniel' },
 			{ name: 'bm_fable', value: 'bm_fable' },
 			{ name: 'bm_george', value: 'bm_george' },
 			{ name: 'bm_lewis', value: 'bm_lewis' },
-			
+
 			// 🇪🇸 Spanish: 1F 2M
-			{ name: '─── 🇪🇸 Spanish (Female) ───', value: '_separator_ef', description: 'Spanish female voices (1)' },
+			{
+				name: '─── 🇪🇸 Spanish (Female) ───',
+				value: '_separator_ef',
+				description: 'Spanish female voices (1)',
+			},
 			{ name: 'ef_dora', value: 'ef_dora' },
-			
-			{ name: '─── 🇪🇸 Spanish (Male) ───', value: '_separator_em', description: 'Spanish male voices (2)' },
+
+			{
+				name: '─── 🇪🇸 Spanish (Male) ───',
+				value: '_separator_em',
+				description: 'Spanish male voices (2)',
+			},
 			{ name: 'em_alex', value: 'em_alex' },
 			{ name: 'em_santa', value: 'em_santa' },
-			
+
 			// 🇫🇷 French: 1F
-			{ name: '─── 🇫🇷 French (Female) ───', value: '_separator_ff', description: 'French female voices (1)' },
+			{
+				name: '─── 🇫🇷 French (Female) ───',
+				value: '_separator_ff',
+				description: 'French female voices (1)',
+			},
 			{ name: 'ff_siwis', value: 'ff_siwis' },
-			
+
 			// 🇮🇳 Hindi: 2F 2M
-			{ name: '─── 🇮🇳 Hindi (Female) ───', value: '_separator_hf', description: 'Hindi female voices (2)' },
+			{
+				name: '─── 🇮🇳 Hindi (Female) ───',
+				value: '_separator_hf',
+				description: 'Hindi female voices (2)',
+			},
 			{ name: 'hf_alpha', value: 'hf_alpha' },
 			{ name: 'hf_beta', value: 'hf_beta' },
-			
-			{ name: '─── 🇮🇳 Hindi (Male) ───', value: '_separator_hm', description: 'Hindi male voices (2)' },
+
+			{
+				name: '─── 🇮🇳 Hindi (Male) ───',
+				value: '_separator_hm',
+				description: 'Hindi male voices (2)',
+			},
 			{ name: 'hm_omega', value: 'hm_omega' },
 			{ name: 'hm_psi', value: 'hm_psi' },
-			
+
 			// 🇮🇹 Italian: 1F 1M
-			{ name: '─── 🇮🇹 Italian (Female) ───', value: '_separator_if', description: 'Italian female voices (1)' },
+			{
+				name: '─── 🇮🇹 Italian (Female) ───',
+				value: '_separator_if',
+				description: 'Italian female voices (1)',
+			},
 			{ name: 'if_sara', value: 'if_sara' },
-			
-			{ name: '─── 🇮🇹 Italian (Male) ───', value: '_separator_im', description: 'Italian male voices (1)' },
+
+			{
+				name: '─── 🇮🇹 Italian (Male) ───',
+				value: '_separator_im',
+				description: 'Italian male voices (1)',
+			},
 			{ name: 'im_nicola', value: 'im_nicola' },
-			
+
 			// 🇯🇵 Japanese: 4F 1M
-			{ name: '─── 🇯🇵 Japanese (Female) ───', value: '_separator_jf', description: 'Japanese female voices (4)' },
+			{
+				name: '─── 🇯🇵 Japanese (Female) ───',
+				value: '_separator_jf',
+				description: 'Japanese female voices (4)',
+			},
 			{ name: 'jf_alpha', value: 'jf_alpha' },
 			{ name: 'jf_gongitsune', value: 'jf_gongitsune' },
 			{ name: 'jf_nezumi', value: 'jf_nezumi' },
 			{ name: 'jf_tebukuro', value: 'jf_tebukuro' },
-			
-			{ name: '─── 🇯🇵 Japanese (Male) ───', value: '_separator_jm', description: 'Japanese male voices (1)' },
+
+			{
+				name: '─── 🇯🇵 Japanese (Male) ───',
+				value: '_separator_jm',
+				description: 'Japanese male voices (1)',
+			},
 			{ name: 'jm_kumo', value: 'jm_kumo' },
-			
+
 			// 🇧🇷 Brazilian Portuguese: 1F 2M
-			{ name: '─── 🇧🇷 Brazilian Portuguese (Female) ───', value: '_separator_pf', description: 'Brazilian Portuguese female voices (1)' },
+			{
+				name: '─── 🇧🇷 Brazilian Portuguese (Female) ───',
+				value: '_separator_pf',
+				description: 'Brazilian Portuguese female voices (1)',
+			},
 			{ name: 'pf_dora', value: 'pf_dora' },
-			
-			{ name: '─── 🇧🇷 Brazilian Portuguese (Male) ───', value: '_separator_pm', description: 'Brazilian Portuguese male voices (2)' },
+
+			{
+				name: '─── 🇧🇷 Brazilian Portuguese (Male) ───',
+				value: '_separator_pm',
+				description: 'Brazilian Portuguese male voices (2)',
+			},
 			{ name: 'pm_alex', value: 'pm_alex' },
 			{ name: 'pm_santa', value: 'pm_santa' },
-			
+
 			// 🇨🇳 Mandarin Chinese: 4F 4M
-			{ name: '─── 🇨🇳 Mandarin Chinese (Female) ───', value: '_separator_zf', description: 'Mandarin Chinese female voices (4)' },
+			{
+				name: '─── 🇨🇳 Mandarin Chinese (Female) ───',
+				value: '_separator_zf',
+				description: 'Mandarin Chinese female voices (4)',
+			},
 			{ name: 'zf_xiaobei', value: 'zf_xiaobei' },
 			{ name: 'zf_xiaoni', value: 'zf_xiaoni' },
 			{ name: 'zf_xiaoxiao', value: 'zf_xiaoxiao' },
 			{ name: 'zf_xiaoyi', value: 'zf_xiaoyi' },
-			
-			{ name: '─── 🇨🇳 Mandarin Chinese (Male) ───', value: '_separator_zm', description: 'Mandarin Chinese male voices (4)' },
+
+			{
+				name: '─── 🇨🇳 Mandarin Chinese (Male) ───',
+				value: '_separator_zm',
+				description: 'Mandarin Chinese male voices (4)',
+			},
 			{ name: 'zm_yunjian', value: 'zm_yunjian' },
 			{ name: 'zm_yunxi', value: 'zm_yunxi' },
 			{ name: 'zm_yunxia', value: 'zm_yunxia' },
@@ -201,11 +269,11 @@ export const textToSpeechOperations: INodeProperties[] = [
 				name: 'timeout',
 				type: 'number',
 				default: undefined,
-				description: 'Maximum time to wait for audio generation (in seconds). Leave empty for no timeout. If exceeded, the node will error and can trigger n8n\'s retry flow.',
+				description:
+					"Maximum time to wait for audio generation (in seconds). Leave empty for no timeout. If exceeded, the node will error and can trigger n8n's retry flow.",
 				placeholder: '180',
 				hint: 'Recommended: 180 seconds (3 minutes) for long text. Leave empty if generation needs more time.',
 			},
 		],
 	},
 ];
-

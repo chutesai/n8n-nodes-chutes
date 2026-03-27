@@ -1,22 +1,132 @@
 import {
 	IExecuteFunctions,
-	ILoadOptionsFunctions,
-	IHookFunctions,
-	IWebhookFunctions,
-	NodeApiError,
 	IDataObject,
+	IHookFunctions,
+	ILoadOptionsFunctions,
 	IHttpRequestMethods,
 	IRequestOptions,
+	IWebhookFunctions,
+	NodeApiError,
 } from 'n8n-workflow';
+import { resolveCredentialType } from './credentialConfig';
+
+const grantedScopeCache = new Map<string, string[]>();
+
+function toTrimmedString(value: unknown): string {
+	if (value === undefined || value === null) {
+		return '';
+	}
+	return String(value).trim();
+}
+
+export function parseGrantedScopes(grantedScopes: unknown): string[] {
+	if (Array.isArray(grantedScopes)) {
+		return grantedScopes.map((value) => String(value).trim()).filter(Boolean);
+	}
+
+	if (typeof grantedScopes === 'string') {
+		return grantedScopes
+			.split(/\s+/)
+			.map((value) => value.trim())
+			.filter(Boolean);
+	}
+
+	return [];
+}
+
+async function introspectGrantedScopes(sessionToken: string): Promise<string[]> {
+	if (!sessionToken) {
+		return [];
+	}
+
+	const cachedScopes = grantedScopeCache.get(sessionToken);
+	if (cachedScopes) {
+		return cachedScopes;
+	}
+
+	const clientId = toTrimmedString(process.env.CHUTES_OAUTH_CLIENT_ID);
+	const clientSecret = toTrimmedString(process.env.CHUTES_OAUTH_CLIENT_SECRET);
+	if (!clientId || !clientSecret) {
+		return [];
+	}
+
+	const configuredIdpBaseUrl = toTrimmedString(process.env.CHUTES_IDP_BASE_URL);
+	const idpBaseUrl = (configuredIdpBaseUrl || 'https://api.chutes.ai').replace(/\/+$/, '');
+
+	const response = await fetch(`${idpBaseUrl}/idp/token/introspect`, {
+		method: 'POST',
+		headers: {
+			Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
+			'Content-Type': 'application/x-www-form-urlencoded',
+			Accept: 'application/json',
+		},
+		body: new URLSearchParams({
+			token: sessionToken,
+		}),
+	});
+
+	if (!response.ok) {
+		return [];
+	}
+
+	const data = (await response.json()) as { scope?: string | string[] };
+	const scopes = parseGrantedScopes(data.scope);
+	grantedScopeCache.set(sessionToken, scopes);
+	return scopes;
+}
+
+async function ensureChutesInvokeScope(credentials: IDataObject): Promise<void> {
+	if (toTrimmedString(credentials.apiKey)) {
+		return;
+	}
+
+	if (toTrimmedString(credentials.authType) !== 'sso') {
+		return;
+	}
+
+	let grantedScopes = parseGrantedScopes(credentials.grantedScopes);
+	const sessionToken = toTrimmedString(credentials.sessionToken);
+
+	if (grantedScopes.length === 0) {
+		grantedScopes = await introspectGrantedScopes(sessionToken);
+	}
+
+	if (grantedScopes.length === 0) {
+		return;
+	}
+
+	if (
+		grantedScopes.includes('admin') ||
+		grantedScopes.includes('invoke') ||
+		grantedScopes.includes('chutes:invoke')
+	) {
+		return;
+	}
+
+	const grantedList = grantedScopes.join(' ');
+	throw new Error(
+		`This Chutes SSO credential cannot invoke models because it was granted only: ${grantedList}. Continue with Chutes again, and if you already approved this app once, revoke the existing n8n authorization in your Chutes account settings before retrying so the credential is reauthorized with chutes:invoke.`,
+	);
+}
 
 /**
  * Resource types map to chute subdomains
  */
-export type ChuteResourceType = 'textGeneration' | 'imageGeneration' | 'videoGeneration' | 'audioGeneration' | 'textToSpeech' | 'speechToText' | 'inference' | 'embeddings' | 'musicGeneration' | 'contentModeration';
+export type ChuteResourceType =
+	| 'textGeneration'
+	| 'imageGeneration'
+	| 'videoGeneration'
+	| 'audioGeneration'
+	| 'textToSpeech'
+	| 'speechToText'
+	| 'inference'
+	| 'embeddings'
+	| 'musicGeneration'
+	| 'contentModeration';
 
 /**
  * Get the appropriate Chutes.ai base URL for a given resource type
- * 
+ *
  * @param credentials - Chutes.ai credentials
  * @param resourceType - Type of resource (textGeneration, imageGeneration, etc.)
  * @param customChuteUrl - Custom chute URL selected by user in node parameter
@@ -73,14 +183,16 @@ export async function chutesApiRequest(
 	resourceType?: ChuteResourceType,
 	customChuteUrl?: string,
 ): Promise<any> {
-	const credentials = await this.getCredentials('chutesApi');
+	const credentialType = resolveCredentialType(this);
+	const credentials = await this.getCredentials(credentialType);
+	await ensureChutesInvokeScope(credentials);
 	const baseUrl = getChutesBaseUrl(credentials, resourceType, customChuteUrl);
 
 	const options: IRequestOptions = {
 		method,
 		headers: {
 			'Content-Type': 'application/json',
-			'Accept': 'application/json',
+			Accept: 'application/json',
 			'User-Agent': 'n8n-ChutesAI/0.0.9',
 			'X-Chutes-Source': 'n8n-integration',
 			...headers,
@@ -89,11 +201,10 @@ export async function chutesApiRequest(
 		qs,
 		body,
 		json: true,
-		encoding: 'utf8', // Explicitly set encoding to prevent BOM issues
+		encoding: 'utf8',
 		...option,
 	};
 
-	// Remove body for GET requests
 	if (method === 'GET' && options.body !== undefined) {
 		delete options.body;
 	}
@@ -101,7 +212,7 @@ export async function chutesApiRequest(
 	try {
 		const response = await this.helpers.requestWithAuthentication.call(
 			this,
-			'chutesApi',
+			credentialType,
 			options,
 		);
 
@@ -109,7 +220,9 @@ export async function chutesApiRequest(
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as any, {
 			message: `Chutes.ai API error: ${(error as any).message}`,
-			description: `Error from Chutes.ai: ${(error as any).description || 'Check your API key and parameters'}`,
+			description: `Error from Chutes.ai: ${
+				(error as any).description || 'Check your API key and parameters'
+			}`,
 		});
 	}
 }
@@ -127,6 +240,16 @@ export async function chutesApiRequestWithRetry(
 ): Promise<any> {
 	const maxRetries = 3;
 	const baseDelay = 1000;
+	const getStatusCode = (error: { httpCode?: number | string }): number | undefined => {
+		if (typeof error.httpCode === 'number') {
+			return error.httpCode;
+		}
+		if (typeof error.httpCode === 'string' && error.httpCode.trim()) {
+			const parsedStatusCode = Number.parseInt(error.httpCode, 10);
+			return Number.isNaN(parsedStatusCode) ? undefined : parsedStatusCode;
+		}
+		return undefined;
+	};
 
 	for (let attempt = 0; attempt <= maxRetries; attempt++) {
 		try {
@@ -152,7 +275,7 @@ export async function chutesApiRequestWithRetry(
 
 			return response;
 		} catch (error: any) {
-			if (error.statusCode === 429 && attempt < maxRetries) {
+			if (getStatusCode(error) === 429 && attempt < maxRetries) {
 				const delay = baseDelay * Math.pow(2, attempt);
 				await new Promise((resolve) => setTimeout(resolve, delay));
 				continue;
@@ -161,4 +284,3 @@ export async function chutesApiRequestWithRetry(
 		}
 	}
 }
-

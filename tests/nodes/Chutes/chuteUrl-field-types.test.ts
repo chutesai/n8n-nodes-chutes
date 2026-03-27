@@ -18,44 +18,23 @@ describe('ChuteUrl Field Types - Expression Support', () => {
 		nodeInstance = new Chutes();
 	});
 
-	const resourcesWithChuteUrl = [
-		'textGeneration',
-		'imageGeneration',
-		'videoGeneration',
-		'textToSpeech',
-		'speechToText',
-		'musicGeneration',
-		'embeddings',
-		'contentModeration',
-		'inference',
-	];
-
-	test.each(resourcesWithChuteUrl)(
-		'%s chuteUrl field should be type "options" with expression support',
-		(resourceName) => {
-			const properties = nodeInstance.description.properties;
-			
-			// Find the chuteUrl field for this resource
-			const chuteUrlField = properties.find(
-				(prop: any) =>
-					prop.name === 'chuteUrl' &&
-					prop.displayOptions?.show?.resource?.includes(resourceName)
-			);
-
-			expect(chuteUrlField).toBeDefined();
-			expect(chuteUrlField?.type).toBe('options'); // Must be 'options' for dropdown
-			expect(chuteUrlField?.noDataExpression).toBe(false); // Must be false for expressions like {{ $json.chuteUrl }}
-		}
-	);
-
-	test('all chuteUrl fields should have loadOptionsMethod', () => {
+	test('should have exactly one shared chuteUrl field', () => {
 		const properties = nodeInstance.description.properties;
 		const chuteUrlFields = properties.filter((prop: any) => prop.name === 'chuteUrl');
 
-		chuteUrlFields.forEach((field: any) => {
-			expect(field.typeOptions?.loadOptionsMethod).toBeDefined();
-			expect(typeof field.typeOptions?.loadOptionsMethod).toBe('string');
-		});
+		expect(chuteUrlFields).toHaveLength(1);
+	});
+
+	test('shared chuteUrl field should support expressions and resource-aware loading', () => {
+		const properties = nodeInstance.description.properties;
+		const chuteUrlField = properties.find((prop: any) => prop.name === 'chuteUrl');
+
+		expect(chuteUrlField).toBeDefined();
+		expect(chuteUrlField?.type).toBe('options');
+		expect(chuteUrlField?.noDataExpression).toBe(false);
+		expect(chuteUrlField?.typeOptions?.loadOptionsMethod).toBe('getChutesForSelectedResource');
+		expect(chuteUrlField?.typeOptions?.loadOptionsDependsOn).toEqual(['resource']);
+		expect(chuteUrlField?.default).toBe('');
 	});
 });
 

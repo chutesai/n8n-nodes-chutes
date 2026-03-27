@@ -212,11 +212,11 @@ export const textGenerationOperations: INodeProperties[] = [
 				name: 'timeout',
 				type: 'number',
 				default: undefined,
-				description: 'Maximum time to wait for response (in seconds). Leave empty for no timeout. If exceeded, the node will error and can trigger n8n\'s retry flow.',
+				description:
+					"Maximum time to wait for response (in seconds). Leave empty for no timeout. If exceeded, the node will error and can trigger n8n's retry flow.",
 				placeholder: '300',
 				hint: 'Recommended: 300 seconds (5 minutes) for long generations. Leave empty if chute needs more time.',
 			},
 		],
 	},
 ];
-

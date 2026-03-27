@@ -23,7 +23,10 @@ describe('🔍 Chute Metadata Discovery', () => {
 			},
 		});
 
+		expect(response.ok).toBe(true);
 		const data = await response.json() as any;
+		expect(Array.isArray(data.items)).toBe(true);
+		expect(data.items.length).toBeGreaterThan(0);
 		console.log('\n📊 List API Response Structure:');
 		console.log('Total chutes:', data.total);
 		console.log('Sample chute keys:', Object.keys(data.items[0]));
@@ -59,7 +62,10 @@ describe('🔍 Chute Metadata Discovery', () => {
 			},
 		});
 
+		expect(listResponse.ok).toBe(true);
 		const listData = await listResponse.json() as any;
+		expect(Array.isArray(listData.items)).toBe(true);
+		expect(listData.items.length).toBeGreaterThan(0);
 		const imageChute = listData.items.find((c: any) => c.standard_template === 'diffusion' && c.public);
 		
 		if (!imageChute) {
@@ -103,7 +109,10 @@ describe('🔍 Chute Metadata Discovery', () => {
 			},
 		});
 
+		expect(listResponse.ok).toBe(true);
 		const listData = await listResponse.json() as any;
+		expect(Array.isArray(listData.items)).toBe(true);
+		expect(listData.items.length).toBeGreaterThan(0);
 		const imageChute = listData.items.find((c: any) => c.standard_template === 'diffusion' && c.public);
 		
 		if (!imageChute) {

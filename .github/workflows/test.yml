@@ -58,13 +58,68 @@ jobs:
             coverage/
             test-results/
 
+  critical-auth-surface:
+    name: Critical Auth Surface
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: unit-tests
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run critical auth tests
+        run: npm run test:critical-auth
+
+      - name: Enforce critical auth coverage
+        run: npm run test:critical-auth:coverage
+
+  runtime-surface-coverage:
+    name: Runtime Surface Coverage (100%)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: unit-tests
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Enforce runtime surface coverage
+        env:
+          CHUTES_API_KEY: ${{ secrets.CHUTES_API_KEY }}
+        run: npm run test:runtime-surface:coverage
+
   # Integration tests - runs on PRs and pushes to beta-* (NOT on DEV pushes)
   # Tests use dynamic chute discovery with warmup validation - they skip gracefully when chutes unavailable
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: unit-tests
+    needs: [critical-auth-surface, runtime-surface-coverage]
     # Run on PRs (if not from a fork) and on pushes to beta-* branches (but NOT DEV)
     if: |
       (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) ||
@@ -107,7 +162,7 @@ jobs:
     name: Slow Tests (Video, Embeddings, etc.)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: unit-tests
+    needs: [critical-auth-surface, runtime-surface-coverage]
     # Run on PRs (if not from a fork) and on pushes to beta-* branches (but NOT DEV)
     if: |
       (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) ||
@@ -148,7 +203,7 @@ jobs:
     name: Build Verification
     runs-on: ubuntu-latest
     timeout-minutes: 7
-    needs: unit-tests
+    needs: [critical-auth-surface, runtime-surface-coverage]
     
     steps:
       - name: Checkout repository

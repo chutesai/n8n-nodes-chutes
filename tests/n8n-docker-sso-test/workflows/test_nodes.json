@@ -1,0 +1,1005 @@
+{
+  "name": "test_nodes",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1220,
+        1300
+      ],
+      "id": "b9caaa0c-f81e-4a97-9a9a-3906dcf40e76",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "numberInputs": 10
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1180,
+        620
+      ],
+      "id": "27635904-a077-4d5e-b34c-02c1118542be",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "chuteUrl": "https://chutes-qwen-qwen3-14b.chutes.ai",
+        "prompt": "please tell me a story about a cat with a hat that sat on a fat stack of pancakes",
+        "additionalOptions": {
+          "seed": "={{ Math.floor(Math.random() * 1000000000) }}"
+        }
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        -140
+      ],
+      "id": "2dd68d1e-6238-48ee-8c75-1b3e0eb0727c",
+      "name": "Chutes - Text Generation",
+      "credentials": {
+        "chutesApi": {
+          "id": "ASrwrcsFyESRas64",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chuteUrl": "https://chutes-xiaomimimo-mimo-v2-flash-tee.chutes.ai",
+        "operation": "chat",
+        "messages": {
+          "messageValues": [
+            {
+              "role": "system",
+              "content": "you are the HAL9000 before it went insane, be helpful like the computer in the movie, you are to pretend you are in the movie 2001 a space odyssey, and will not break character. if the user asks questions they also are pretending to be in the movie."
+            },
+            {
+              "content": "can you guess how long before we reach Jupiter, HAL?"
+            }
+          ]
+        },
+        "additionalOptions": {
+          "maxTokens": 10000
+        }
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        60
+      ],
+      "id": "25deb3e8-3108-4383-a03b-1374efb51b02",
+      "name": "Chutes - Chat Generation",
+      "credentials": {
+        "chutesApi": {
+          "id": "ASrwrcsFyESRas64",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "imageGeneration",
+        "chuteUrl": "https://chutes-hunyuan-image-3.chutes.ai",
+        "prompt": "a cat in a hat that sat on a fat stack of pancakes, maple syrup flows down the side of the stack of pancakes",
+        "additionalOptions": {
+          "seed": "={{ Math.floor(Math.random() * 1000000000) }}"
+        }
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        260
+      ],
+      "id": "4563139a-e979-4a5d-b32d-6fc5bc035b30",
+      "name": "Chutes - Image Generation",
+      "credentials": {
+        "chutesApi": {
+          "id": "ASrwrcsFyESRas64",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "imageGeneration",
+        "chuteUrl": "https://chutes-qwen-image-edit-2511.chutes.ai",
+        "operation": "edit",
+        "prompt": "make the hat green and the cat black and the pancakes blueberry pancakes, and make the syrup strawberry colored syrup",
+        "additionalOptions": {}
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        240,
+        500
+      ],
+      "id": "a91b2400-ad55-4895-84be-ac6908895512",
+      "name": "Chutes - Edit Image",
+      "credentials": {
+        "chutesApi": {
+          "id": "ASrwrcsFyESRas64",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "videoGeneration",
+        "chuteUrl": "https://chutes-wan-2-2-i2v-14b-fast.chutes.ai",
+        "operation": "image2video",
+        "prompt": "the maple syrup flows down the pancakes slowly while the cat wags his tail",
+        "additionalOptions": {
+          "timeout": 120
+        }
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        0,
+        660
+      ],
+      "id": "8d3afbae-3dcf-4c99-bfe0-f3bd7066979b",
+      "name": "Chutes - Image to Video",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "chutesApi": {
+          "id": "ASrwrcsFyESRas64",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "textToSpeech",
+        "chuteUrl": "https://chutes-kokoro.chutes.ai",
+        "text": "Ten Thin sticks, three thick bricks. This is a Stupid superstition. Eleven benevolent elephants. Two tried and true tridents. Thirty-Seven Rolling red wagons. One Black back bat. She sees three cheeses. Swiss wrist-watches are the best wrist-watches, but only with red leather yellow leather wrist bands from midtown Manhattan so be sure to never ever have leather weathered by resting in Westchester vestibules because you know you need unique New York and the sunshine shown through the shimmering sheer solariums is worth less investment when listed within a Westchester swiss wrist-watch warehouse where one would wish for never worn unwound widgets.",
+        "voice": "af_jessica",
+        "additionalOptions": {
+          "timeout": 30
+        }
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        980
+      ],
+      "id": "2343ada1-554d-4d16-897d-5c997b15b4ad",
+      "name": "Chutes - Text to Speech",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "credentials": {
+        "chutesApi": {
+          "id": "ASrwrcsFyESRas64",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "speechToText",
+        "chuteUrl": "https://chutes-whisper-large-v3.chutes.ai",
+        "additionalOptions": {}
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        1200
+      ],
+      "id": "93abc16d-a76f-4430-9e75-31534760ba11",
+      "name": "Chutes - Speech to Text",
+      "credentials": {
+        "chutesApi": {
+          "id": "ASrwrcsFyESRas64",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "embeddings",
+        "chuteUrl": "https://chutes-qwen-qwen3-embedding-0-6b.chutes.ai",
+        "text": "Ten Thin sticks, three thick bricks. This is a Stupid superstition. Eleven benevolent elephants. Two tried and true tridents. Thirty-Seven Rolling red wagons. One Black back bat. She sees three cheeses. Swiss wrist-watches are the best wrist-watches, but only with red leather yellow leather wrist bands from midtown Manhattan so be sure to never ever have leather weathered by resting in Westchester vestibules because you know you need unique New York and the sunshine shown through the shimmering sheer solariums is worth less investment when listed within a Westchester swiss wrist-watch warehouse where one would wish for never worn unwound widgets.",
+        "additionalOptions": {}
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        1460
+      ],
+      "id": "55d86c43-3fa2-4fae-adf9-b9980e7990ab",
+      "name": "Chutes - Embeddings",
+      "credentials": {
+        "chutesApi": {
+          "id": "ASrwrcsFyESRas64",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "contentModeration",
+        "chuteUrl": "https://chutes-nsfw-classifier.chutes.ai",
+        "content": "={{ $json.text }}",
+        "additionalOptions": {}
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        1720
+      ],
+      "id": "98e5244b-9374-43d4-8b14-8d179771af7e",
+      "name": "Chutes - Content Moderation",
+      "credentials": {
+        "chutesApi": {
+          "id": "ASrwrcsFyESRas64",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "musicGeneration",
+        "chuteUrl": "https://chutes-diffrhythm.chutes.ai",
+        "prompt": "Upbeat lo-fi hip-hop, playful male vocals, boom-bap drums, jazzy piano chords, warm bass",
+        "lyrics": "[00:00.52]I Spotted the throne, a golden-brown tower\n[00:04.02]Sunny-side up in the breakfast hour\n[00:07.52]Paws took a leap, a majestic ascent\n[00:11.02]A feline king on a buttery tent\n[00:14.52]The hat tipped back, a cool silhouette\n[00:18.02]On a grid of fluffy griddled regret\n[00:21.52]A cat in a hat on a fat stack\n[00:24.52]Syrup river down the side no turning back\n[00:28.02]A cat in a hat on a fat stack\n[00:31.02]Sticky paws no flaws conducting the snack\n[00:34.52]The drizzle is art, a slow-motion cascade\n[00:38.02]A sugary lava, a sweet escapade\n[00:41.52]Survey the land from a pancake peak\n[00:45.02]A silent meow, the statement he speaks\n[00:48.52]No fork no plate, this is primal and true\n[00:52.02]A mission of mess, just me and the goo\n[00:55.52]Yeah, stack attack, maple drip\n[00:57.52]The Purr-fect crime, a sweet syrup trip",
+        "additionalOptions": {
+          "music_duration": 62,
+          "timeout": 300
+        }
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        -580,
+        1340
+      ],
+      "id": "dfce677a-4238-4ac6-910b-96ede683f1a3",
+      "name": "Chutes - Music Generation",
+      "credentials": {
+        "chutesApi": {
+          "id": "ASrwrcsFyESRas64",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "videoGeneration",
+        "chuteUrl": "https://chutes-ltx-2.chutes.ai",
+        "prompt": "A slow cinematic dolly shot pushes through a dense bamboo forest at dawn. The hollow creak and rhythmic rustle of bamboo stalks swaying fills the soundscape as mist hangs low between them. Golden sunlight filters through the canopy in soft volumetric rays. Dew glistens on bamboo leaves in the foreground, occasional droplets falling with soft plinking sounds onto wet leaves below. The camera continues forward, revealing a shallow pond where a red-crowned crane stands motionless. Ambient environmental audio only: distant birdsong, the quiet lap of water at the pond's edge, soft wind through vegetation. The crane spreads its wings with a soft feathery whoosh and lifts off gracefully, its piercing call echoing across the water as ripples spread outward beneath it. The camera tilts upward to follow its ascent, cherry blossom petals drifting lazily through the frame on a breeze that whispers through the branches. A distant pagoda emerges through the morning fog on a hilltop. A second crane joins the first with an answering call, both flying in formation toward the pagoda as the camera completes its upward arc. The shot settles on a wide view of the misty valley below, the two cranes now silhouettes against the brightening sky, their fading cries blending with quiet wind and rustling leaves. Photorealistic, shot on 65mm film, natural motion blur, warm golden hour tones shifting to cool diffused light.",
+        "additionalOptions": {
+          "resolution": "1280*720",
+          "duration": 19,
+          "seed": "={{ Math.floor(Math.random() * 1000000000) }}",
+          "negativePrompt": "low-res, morphing, distortion, warping, flicker, jitter, stutter, shaky camera, erratic motion, temporal artifacts, frame blending, low quality, jpeg artifacts, background music, soundtrack, musical score, orchestral, cinematic music, composed music, piano, dramatic music, intro music, crescendo",
+          "timeout": 300
+        }
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        260,
+        1860
+      ],
+      "id": "e106527a-d99a-460c-b617-93379788b336",
+      "name": "Chutes - LTX2 - T2V",
+      "credentials": {
+        "chutesApi": {
+          "id": "ASrwrcsFyESRas64",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "numberInputs": 5
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        960,
+        1480
+      ],
+      "id": "bc6f9f48-7926-4464-a60c-7b6935a715ac",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "resource": "videoGeneration",
+        "chuteUrl": "https://chutes-ltx-2.chutes.ai",
+        "operation": "image2video",
+        "prompt": "The cat slowly blinks with a self-satisfied expression, then leans forward and takes a long, deliberate lick of the syrup pooling on top of the pancake stack. Its whiskers twitch with pleasure. The syrup continues to drip slowly down the side of the stack, catching the warm light. The cat pauses, looks directly into the camera with half-lidded eyes, and lets out a soft, contented purr. A single drop of syrup falls from the edge of the plate onto the table. The camera holds steady in a medium close-up, shallow depth of field, warm breakfast lighting, cozy domestic atmosphere.",
+        "additionalOptions": {
+          "duration": 5,
+          "seed": "={{ Math.floor(Math.random() * 1000000000) }}",
+          "timeout": 300
+        }
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        300,
+        2080
+      ],
+      "id": "0909f8eb-2415-464d-b6e6-23dfcfe46d21",
+      "name": "Chutes - LTX2 - I2V",
+      "credentials": {
+        "chutesApi": {
+          "id": "ASrwrcsFyESRas64",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "videoGeneration",
+        "chuteUrl": "https://chutes-ltx-2.chutes.ai",
+        "operation": "video2video",
+        "prompt": "make everything in the video studio ghibli animation style, no sound",
+        "additionalOptions": {
+          "seed": "={{ Math.floor(Math.random() * 1000000000) }}",
+          "pipeline": "ic_lora",
+          "loras": {
+            "loraItems": [
+              {
+                "name": "depth-control"
+              }
+            ]
+          },
+          "timeout": 300
+        }
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        260,
+        2260
+      ],
+      "id": "8eba2a4a-d247-4253-9e0a-89f055efa835",
+      "name": "Chutes - V2V edit",
+      "credentials": {
+        "chutesApi": {
+          "id": "ASrwrcsFyESRas64",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "videoGeneration",
+        "chuteUrl": "https://chutes-ltx-2.chutes.ai",
+        "prompt": "Extreme close-up of a weathered steampunk android face in the rain at night. Neon signs reflect pink and blue across its hard wet metal face as raindrops streak down its cheek. Its teal eye flickers to life with a warm green glow, illuminating the water droplets. The camera pushes in slowly as the android blinks. Invader Zim aesthetic, anamorphic lens flares, shallow focus.",
+        "additionalOptions": {
+          "resolution": "1280*720",
+          "duration": 5,
+          "seed": "={{ Math.floor(Math.random() * 1000000000) }}",
+          "timeout": 300
+        }
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        360,
+        1700
+      ],
+      "id": "339fb5bb-02d4-487c-9c2f-460ca0a524fa",
+      "name": "Chutes - LTX2 - T2V - 5sec prompt",
+      "credentials": {
+        "chutesApi": {
+          "id": "ASrwrcsFyESRas64",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "videoGeneration",
+        "chuteUrl": "https://chutes-ltx-2.chutes.ai",
+        "operation": "keyframe",
+        "prompt": "Golden hour wide shot of an endless wheat field with Grand Teton mountains on the horizon and a red barn with white farmhouse in the mid-ground. A woman in a flowing ochre linen dress walks steadily away from camera, moving from the right foreground deeper into the field toward the distant farmhouse. Her stride is unhurried and graceful, arms brushing wheat stalks as she passes. The camera holds stationary on a tripod, locked composition, as she recedes into the landscape, growing smaller against the vast field. Wheat sways gently around her path, parting softly with each step. Warm backlight catches the edges of her dress and hair, creating a soft halo. Atmospheric haze increases depth toward the mountains. 35mm anamorphic, f/2.8, shallow to mid depth of field, Kodak 2383 print emulation, soft contrast, fine film grain. Natural motion blur, cinematic 24fps cadence. Ambient audio: gentle wind through wheat, distant birdsong, soft footsteps in grass.",
+        "keyframeImages": {
+          "images": [
+            {
+              "image": "start_frame_image"
+            },
+            {
+              "image": "data",
+              "frameIndex": 190
+            }
+          ]
+        },
+        "additionalOptions": {
+          "resolution": "768*512",
+          "duration": 12,
+          "seed": "={{ Math.floor(Math.random() * 1000000000) }}"
+        }
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        260,
+        2480
+      ],
+      "id": "0517e8a5-c0fb-46ae-af14-3cf1f08ff885",
+      "name": "Chutes",
+      "credentials": {
+        "chutesApi": {
+          "id": "ASrwrcsFyESRas64",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -20,
+        2480
+      ],
+      "id": "79998f43-d9a5-469b-b84d-06fea1f82720",
+      "name": "Merge2"
+    },
+    {
+      "parameters": {
+        "resource": "imageGeneration",
+        "chuteUrl": "https://chutes-qwen-image-2512.chutes.ai",
+        "prompt": "={{ $json.prompt }}",
+        "size": "1792x1024",
+        "additionalOptions": {
+          "seed": "=8675311",
+          "negativePrompt": "={{ $json.negative_prompt }}",
+          "guidanceScale": 5
+        }
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        -980,
+        2080
+      ],
+      "id": "4ffe8aa5-322f-4df0-897d-cefd070e5fdc",
+      "name": "Chutes - Image Generation1",
+      "credentials": {
+        "chutesApi": {
+          "id": "ASrwrcsFyESRas64",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "imageGeneration",
+        "chuteUrl": "https://chutes-qwen-image-edit-2511.chutes.ai",
+        "operation": "edit",
+        "prompt": "={{ $json.prompt }}",
+        "size": "1792x1024",
+        "additionalOptions": {
+          "seed": 8675312,
+          "negativePrompt": "={{ $json.negative_prompt }}",
+          "timeout": 600
+        }
+      },
+      "type": "CUSTOM.chutes",
+      "typeVersion": 1,
+      "position": [
+        -620,
+        2500
+      ],
+      "id": "3d70c0d2-79f2-46c5-aae7-8cc771ab91ff",
+      "name": "Chutes - Edit Image1",
+      "credentials": {
+        "chutesApi": {
+          "id": "ASrwrcsFyESRas64",
+          "name": "Chutes account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "affe779d-7cd8-43b1-847d-384ecc7927cd",
+              "name": "prompt",
+              "value": "Cinematic wide shot, golden hour photograph | Subject: Young woman positioned on the right third of frame, standing gracefully in a golden wheat field, wearing a flowing linen dress in warm ochre with delicate embroidery details, hair catching the wind | Environment: Endless wheat field with stalks at waist height swaying gently, distant red wooden barn and white farmhouse in the mid-ground left, Grand Teton mountain range visible on horizon with snow-capped peaks | Lighting: Magic hour backlit, warm amber sun low on horizon, lens flare, atmospheric haze in distance | Camera: Anamorphic 2.39:1 cinematic framing, shallow depth of field, Arri Alexa film look | Mood: Elysian, ethereal, nostalgic Americana, Terrence Malick aesthetic",
+              "type": "string"
+            },
+            {
+              "id": "b6085a54-3459-4db7-8d79-2fbb783934fd",
+              "name": "negative_prompt",
+              "value": "artificial looking, plastic skin, oversaturated colors, HDR artifacts, blurry, low quality, watermark, unnatural pose, stiff posture, centered composition",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1320,
+        1980
+      ],
+      "id": "8bf388ad-506e-4ca9-a817-7448b76893a2",
+      "name": "Set Keyframing Start Prompt"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "affe779d-7cd8-43b1-847d-384ecc7927cd",
+              "name": "prompt",
+              "value": "Move the woman from the right side to the far-left of the frame, much farther away from the camera. She should appear smaller, about half her current size, walking deeper into the wheat field toward the farmhouse. Keep her dress, pose direction, and the walking motion natural. ",
+              "type": "string"
+            },
+            {
+              "id": "5f0264ae-7fa2-4acd-b1f2-115fc01e462d",
+              "name": "negative_prompt",
+              "value": "two people,",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -900,
+        2580
+      ],
+      "id": "7b34801c-63d1-495c-b16d-48b28eb88518",
+      "name": "Set Keyframing End Edit Prompt"
+    },
+    {
+      "parameters": {
+        "operation": "resize",
+        "dataPropertyName": "start_frame_image",
+        "width": 768,
+        "height": 512,
+        "resizeOption": "ignoreAspectRatio",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.editImage",
+      "typeVersion": 1,
+      "position": [
+        -260,
+        2260
+      ],
+      "id": "eab61df2-dff9-496b-b633-ec8923e88d06",
+      "name": "Edit Image - start frame"
+    },
+    {
+      "parameters": {
+        "operation": "resize",
+        "width": 768,
+        "height": 512,
+        "resizeOption": "ignoreAspectRatio",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.editImage",
+      "typeVersion": 1,
+      "position": [
+        -260,
+        2640
+      ],
+      "id": "88679635-2d53-470c-948a-115c713ccd67",
+      "name": "Edit Image - end frame"
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "data",
+        "binaryPropertyName": "start_frame_image",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -500,
+        2080
+      ],
+      "id": "30690c3f-dbd9-46e6-8dd1-4f2b08ed826d",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "operation": "binaryToPropery",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -740,
+        2260
+      ],
+      "id": "d21b526d-594d-49b7-aaaa-f7a37f65bdca",
+      "name": "Extract from File"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Chutes - Image Generation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chutes - Text to Speech",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chutes - Text Generation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chutes - Chat Generation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chutes - LTX2 - T2V - 5sec prompt",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Set Keyframing Start Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chutes - Text Generation": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chutes - Chat Generation": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Chutes - Image Generation": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          },
+          {
+            "node": "Chutes - Image to Video",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chutes - Edit Image",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chutes - Content Moderation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chutes - LTX2 - I2V",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chutes - Edit Image": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Chutes - Image to Video": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Chutes - Text to Speech": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 5
+          },
+          {
+            "node": "Chutes - Speech to Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chutes - Speech to Text": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 6
+          },
+          {
+            "node": "Chutes - Content Moderation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chutes - Embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chutes - Embeddings": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 7
+          }
+        ]
+      ]
+    },
+    "Chutes - Content Moderation": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 8
+          }
+        ]
+      ]
+    },
+    "Chutes - Music Generation": {
+      "main": [
+        []
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 9
+          }
+        ]
+      ]
+    },
+    "Chutes - LTX2 - T2V": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chutes - V2V edit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chutes - LTX2 - I2V": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Chutes - V2V edit": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Chutes - LTX2 - T2V - 5sec prompt": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chutes - V2V edit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chutes - Image Generation1": {
+      "main": [
+        [
+          {
+            "node": "Set Keyframing End Edit Prompt",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chutes - Edit Image1": {
+      "main": [
+        [
+          {
+            "node": "Edit Image - end frame",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Keyframing Start Prompt": {
+      "main": [
+        [
+          {
+            "node": "Chutes - Image Generation1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Keyframing End Edit Prompt": {
+      "main": [
+        [
+          {
+            "node": "Chutes - Edit Image1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Image - start frame": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Image - end frame": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Edit Image - start frame",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chutes": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "Chutes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "309d787f-ef87-480d-8421-50022ad9aef8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0766e26a38e4cf9836ab30499d93ee64e5c7b0eae3f1edb925460d34cf41d5c5"
+  },
+  "id": "l2N3qzVJkYMKM3fU",
+  "tags": []
+}

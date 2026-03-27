@@ -47,6 +47,7 @@ export function createMockLoadOptionsFunctions(
 			environment: 'production',
 		}),
 		helpers: {
+			requestWithAuthentication: jest.fn(),
 			request: jest.fn(),
 		} as any,
 		getNode: jest.fn().mockReturnValue({

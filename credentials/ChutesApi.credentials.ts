@@ -78,7 +78,7 @@ export class ChutesApi implements ICredentialType {
 						type: 'notice' as const,
 						default: '',
 					},
-			  ]
+				]
 			: []),
 		{
 			displayName: isServerAccessTokenConfigured()

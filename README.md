@@ -754,7 +754,7 @@ See [tests/README.md](tests/README.md) for detailed testing documentation.
 
 ## Changelog
 
-### [0.2.0] - 2026-03-26
+### [0.1.1] - 2026-03-26
 #### Sign in With Chutes (OAuth)
 - **New credential type: Sign in With Chutes** (`ChutesOAuth2Api`) -- users can authenticate with their Chutes account via OAuth 2.0 with PKCE
 - **Conditional authentication dropdown** -- Chutes nodes show an "Authentication" selector (API Key / Sign in With Chutes) when OAuth is configured on the server
